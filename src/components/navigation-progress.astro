@@ -1,0 +1,117 @@
+<div
+  class="site-navigation-progress"
+  data-state="idle"
+  aria-hidden="true"
+  transition:persist
+>
+  <div class="site-navigation-progress-track"></div>
+</div>
+
+<script>
+  const progress = document.querySelector<HTMLElement>(
+    '.site-navigation-progress',
+  )
+
+  if (progress && !progress.dataset.bound) {
+    progress.dataset.bound = 'true'
+
+    let startTimer: number | undefined
+    let finishTimer: number | undefined
+    let resetTimer: number | undefined
+
+    const clearTimers = () => {
+      window.clearTimeout(startTimer)
+      window.clearTimeout(finishTimer)
+      window.clearTimeout(resetTimer)
+    }
+
+    const isModifiedClick = (event: PointerEvent) =>
+      event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
+
+    const isNavigableLink = (link: HTMLAnchorElement) => {
+      const target = link.getAttribute('target')
+      const href = link.getAttribute('href')
+
+      if (!href || href.startsWith('#') || link.hasAttribute('download')) {
+        return false
+      }
+
+      if (target && target !== '_self') {
+        return false
+      }
+
+      const url = new URL(link.href)
+      return (
+        url.origin === window.location.origin &&
+        (url.pathname !== location.pathname || url.search !== location.search)
+      )
+    }
+
+    const start = () => {
+      window.clearTimeout(finishTimer)
+      window.clearTimeout(resetTimer)
+      progress.dataset.state = 'loading'
+    }
+
+    const startSoon = () => {
+      window.clearTimeout(startTimer)
+      startTimer = window.setTimeout(start, 80)
+    }
+
+    const finish = () => {
+      window.clearTimeout(startTimer)
+
+      if (progress.dataset.state !== 'loading') {
+        return
+      }
+
+      progress.dataset.state = 'complete'
+      finishTimer = window.setTimeout(() => {
+        progress.dataset.state = 'idle'
+      }, 180)
+    }
+
+    document.addEventListener(
+      'pointerdown',
+      (event) => {
+        if (
+          event.button !== 0 ||
+          isModifiedClick(event) ||
+          event.defaultPrevented
+        ) {
+          return
+        }
+
+        const target = event.target
+        const link =
+          target instanceof Element
+            ? target.closest<HTMLAnchorElement>('a[href]')
+            : null
+
+        if (link && isNavigableLink(link)) {
+          startSoon()
+        }
+      },
+      { passive: true },
+    )
+
+    window.addEventListener('popstate', startSoon, { passive: true })
+
+    document.addEventListener('astro:before-preparation', start)
+    document.addEventListener('astro:after-preparation', () => {
+      window.clearTimeout(startTimer)
+    })
+    document.addEventListener('astro:page-load', finish)
+    window.addEventListener('hashchange', finish, { passive: true })
+    window.addEventListener('pageshow', finish, { passive: true })
+
+    window.addEventListener(
+      'pagehide',
+      () => {
+        clearTimers()
+        progress.dataset.state = 'idle'
+      },
+      { passive: true },
+    )
+  }
+</script>

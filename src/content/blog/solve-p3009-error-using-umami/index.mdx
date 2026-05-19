@@ -1,0 +1,62 @@
+---
+title: '解决升级umamiv2.11时出现的P3009错误'
+description: '--- 鉴于中文互联网上关于这个问题的内容很少，我还是水一篇吧'
+date: 2023-04-01
+tags: []
+keywords: ['umami', 'P3009', 'v2.11', 'solution']
+authors: ['xingpingcn']
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+---
+
+鉴于中文互联网上关于这个问题的内容很少，我还是水一篇吧
+
+## 前言
+
+先放issue
+
+[p3009 issue](https://github.com/umami-software/umami/issues/2645#issuecomment-2080419741)
+
+我是在vercel上部署的，所以issue里面提到的用py或者shell去迁移数据库的方法我是实现不了的，只能在build阶段就把问题解决。
+
+## 解决方法
+
+在`package.json`找到
+
+```js
+"build-db": "npm-run-all copy-db-files build-db-client",
+```
+
+然后改成
+
+```js
+"build-db": "npm-run-all copy-db-files build-db-client resolve-db",
+"resolve-db": "prisma migrate resolve --applied '05_add_visit_id'",
+```
+
+就可以了
+
+## 我是怎么样定位到问题所在的
+
+还是再写多一点
+
+打开vercel日志，之后打开GitHub
+
+<ImageGrid
+  images={[
+    {
+      src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20240427/image.6m3p8x2h30.webp',
+      caption: 'vercel日志',
+    },
+    {
+      src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20240427/image.4qr4gat6tr.webp',
+      caption: 'GitHub',
+    },
+  ]}
+/>
+
+图片里面写的很明白，看不到或者看不懂评论区留言

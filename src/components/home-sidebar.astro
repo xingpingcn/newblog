@@ -1,0 +1,38 @@
+---
+import Link from '@/components/link.astro'
+import ProfileCard from '@/components/profile-card.astro'
+import { badgeVariants } from '@/components/ui/badge'
+import { tagHref } from '@/lib/utils'
+import { Icon } from 'astro-icon/components'
+import type { CollectionEntry } from 'astro:content'
+
+interface Props {
+  author: CollectionEntry<'authors'>
+  tags: { tag: string; count: number }[]
+  class?: string
+}
+
+const { author, tags, class: className = '' } = Astro.props
+const visibleTags = tags.slice(0, 12)
+---
+
+<aside class:list={['flex flex-col gap-4 lg:sticky lg:top-24', className]}>
+  <ProfileCard author={author} compact />
+
+  <section class="rounded-xl border p-5">
+    <div class="mb-4 flex items-center gap-2 text-sm font-medium">
+      <Icon name="lucide:tags" class="text-muted-foreground size-4" />
+      热门标签
+    </div>
+    <div class="flex flex-wrap gap-2">
+      {
+        visibleTags.map(({ tag, count }) => (
+          <Link href={tagHref(tag)} class={badgeVariants({ variant: 'muted' })}>
+            {tag}
+            <span class="text-muted-foreground ml-1">({count})</span>
+          </Link>
+        ))
+      }
+    </div>
+  </section>
+</aside>

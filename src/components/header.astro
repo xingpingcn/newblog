@@ -1,36 +1,271 @@
 ---
 import Link from '@/components/link.astro'
 import ThemeToggle from '@/components/theme-toggle.astro'
-import { NAV_LINKS, SITE } from '@/consts'
+import { buttonVariants } from '@/components/ui/button'
+import { NAV_LINKS } from '@/consts'
+import { Icon } from 'astro-icon/components'
 import { Image } from 'astro:assets'
-import logo from '../../public/static/logo.svg'
+import logo from '../../public/static/logo.png'
+
+interface Props {
+  class?: string
+}
+
+const { class: className = 'max-w-3xl' } = Astro.props
+
+const navIconMap: Record<string, string> = {
+  首页: 'lucide:home',
+  作者: 'lucide:users',
+  标签: 'lucide:tags',
+  友链: 'lucide:heart-handshake',
+  开往: 'lucide:train-front',
+  关于: 'lucide:circle-user-round',
+}
+
+const secondaryNavLabels = new Set(['作者', '标签', '关于'])
+const primaryNavLinks = NAV_LINKS.filter(
+  (item) => !secondaryNavLabels.has(item.label),
+)
+const secondaryNavLinks = NAV_LINKS.filter((item) =>
+  secondaryNavLabels.has(item.label),
+)
 ---
 
-<div>
+<site-header-motion class="site-header-motion">
   <div
-    class="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3"
+    class:list={[
+      'site-header-inner mx-auto flex w-full items-center justify-between gap-4 px-4 py-3',
+      className,
+    ]}
   >
-    <Link href="/" class="flex shrink-0 items-center justify-center gap-3">
-      <Image src={logo} alt="Logo" class="size-5 sm:size-6" />
-      <span
-        class="hidden h-full text-lg leading-none font-medium min-[400px]:block"
-        >{SITE.title}</span
-      >
+    <Link
+      href="/"
+      aria-label="首页"
+      title="首页"
+      class={buttonVariants({
+        variant: 'outline',
+        size: 'icon',
+        className: 'site-header-brand size-8 overflow-hidden p-0',
+      })}
+    >
+      <Image
+        src={logo}
+        alt="Logo"
+        class="-m-px size-[calc(100%+2px)] max-w-none rounded-md object-cover"
+      />
     </Link>
-    <div class="flex items-center gap-4">
-      <nav class="flex items-center gap-4 text-sm sm:gap-6">
+    <div class="site-header-actions flex items-center gap-3 sm:gap-4">
+      <nav class="site-header-nav flex items-center gap-3 text-sm sm:gap-5">
         {
-          NAV_LINKS.map((item) => (
+          primaryNavLinks.map((item) => (
             <Link
               href={item.href}
-              class="text-foreground/60 hover:text-foreground capitalize transition-colors"
+              external={item.external}
+              rel={item.external ? 'noopener noreferrer' : undefined}
+              class="site-header-nav-link text-foreground/60 hover:text-foreground inline-flex items-center gap-1.5 whitespace-nowrap capitalize"
             >
-              {item.label}
+              <Icon
+                name={navIconMap[item.label] ?? 'lucide:circle'}
+                class="size-3.5 shrink-0"
+              />
+              <span>{item.label}</span>
             </Link>
           ))
         }
       </nav>
+      <div class="site-header-menu" data-open="false">
+        <button
+          type="button"
+          class={buttonVariants({
+            variant: 'outline',
+            size: 'icon',
+            className: 'site-header-menu-trigger size-8',
+          })}
+          aria-label="更多导航"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          data-site-header-menu-trigger
+        >
+          <Icon name="lucide:ellipsis-vertical" class="size-4" />
+        </button>
+        <div
+          class="site-header-menu-panel"
+          role="menu"
+          aria-label="更多导航"
+          data-site-header-menu-panel
+        >
+          {
+            secondaryNavLinks.map((item) => (
+              <Link
+                href={item.href}
+                external={item.external}
+                rel={item.external ? 'noopener noreferrer' : undefined}
+                role="menuitem"
+                class="site-header-menu-item"
+              >
+                <Icon
+                  name={navIconMap[item.label] ?? 'lucide:circle'}
+                  class="size-4 shrink-0"
+                />
+                <span>{item.label}</span>
+              </Link>
+            ))
+          }
+        </div>
+      </div>
+      <Link
+        href="/search"
+        aria-label="搜索"
+        title="搜索"
+        class={buttonVariants({
+          variant: 'outline',
+          size: 'icon',
+          className: 'size-8',
+        })}
+      >
+        <Icon name="lucide:search" class="size-4" />
+      </Link>
+      <Link
+        href="https://github.com/xingpingcn/newblog"
+        aria-label="源码"
+        title="源码"
+        class={buttonVariants({
+          variant: 'outline',
+          size: 'icon',
+          className: 'size-8',
+        })}
+        rel="noopener noreferrer"
+        external
+      >
+        <Icon name="lucide:github" class="size-4" />
+      </Link>
       <ThemeToggle transition:persist />
     </div>
   </div>
-</div>
+</site-header-motion>
+
+<script>
+  class SiteHeaderMotion extends HTMLElement {
+    private controller?: AbortController
+    private resizeObserver?: ResizeObserver
+
+    connectedCallback() {
+      this.controller?.abort()
+      this.controller = new AbortController()
+      const pageHeader = this.closest<HTMLElement>('.site-page-header')
+      const menu = this.querySelector<HTMLElement>('.site-header-menu')
+      const menuTrigger = this.querySelector<HTMLButtonElement>(
+        '[data-site-header-menu-trigger]',
+      )
+
+      let previousScrollY = window.scrollY
+      let isHeaderVisible = true
+
+      const setMenuOpen = (isOpen: boolean) => {
+        menu?.dataset && (menu.dataset.open = String(isOpen))
+        menuTrigger?.setAttribute('aria-expanded', String(isOpen))
+      }
+
+      const syncMotionHeight = () => {
+        pageHeader?.style.setProperty(
+          '--site-header-motion-height',
+          `${this.offsetHeight}px`,
+        )
+      }
+
+      const update = () => {
+        const currentScrollY = window.scrollY
+        const isNotTop = currentScrollY > 20
+        const scrollDelta = currentScrollY - previousScrollY
+        const isScrollingDown = scrollDelta > 8
+        const isScrollingUp = scrollDelta < -8
+
+        if (currentScrollY < 350) {
+          isHeaderVisible = true
+        } else if (isScrollingDown) {
+          isHeaderVisible = false
+        } else if (isScrollingUp) {
+          isHeaderVisible = true
+        }
+
+        this.classList.toggle('not-top', isNotTop)
+        this.dataset.show = String(isHeaderVisible)
+        pageHeader?.classList.toggle('not-top', isNotTop)
+        pageHeader?.toggleAttribute('data-header-hidden', !isHeaderVisible)
+        if (!isHeaderVisible) {
+          setMenuOpen(false)
+        }
+        syncMotionHeight()
+
+        if (Math.abs(scrollDelta) > 8) {
+          previousScrollY = currentScrollY
+        }
+      }
+
+      update()
+      this.resizeObserver = new ResizeObserver(syncMotionHeight)
+      this.resizeObserver.observe(this)
+
+      menuTrigger?.addEventListener(
+        'click',
+        () => {
+          setMenuOpen(menu?.dataset.open !== 'true')
+        },
+        { signal: this.controller.signal },
+      )
+
+      this.addEventListener(
+        'click',
+        (event) => {
+          const target = event.target
+          if (
+            target instanceof Element &&
+            target.closest('.site-header-menu-item')
+          ) {
+            setMenuOpen(false)
+          }
+        },
+        { signal: this.controller.signal },
+      )
+
+      document.addEventListener(
+        'click',
+        (event) => {
+          if (event.target instanceof Node && !this.contains(event.target)) {
+            setMenuOpen(false)
+          }
+        },
+        { signal: this.controller.signal },
+      )
+
+      document.addEventListener(
+        'keydown',
+        (event) => {
+          if (event.key === 'Escape') {
+            setMenuOpen(false)
+            menuTrigger?.focus()
+          }
+        },
+        { signal: this.controller.signal },
+      )
+
+      window.addEventListener('scroll', update, {
+        passive: true,
+        signal: this.controller.signal,
+      })
+      window.addEventListener('resize', update, {
+        passive: true,
+        signal: this.controller.signal,
+      })
+    }
+
+    disconnectedCallback() {
+      this.controller?.abort()
+      this.resizeObserver?.disconnect()
+    }
+  }
+
+  if (!customElements.get('site-header-motion')) {
+    customElements.define('site-header-motion', SiteHeaderMotion)
+  }
+</script>

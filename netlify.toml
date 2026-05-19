@@ -1,0 +1,66 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/atom.xml"
+  to = "https://cf-blog.xingpingcn.top/atom.xml"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/post-sitemap.xml"
+  to = "https://cf-blog.xingpingcn.top/post-sitemap.xml"
+  status = 302
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/sitemap.xml"
+  to = "https://cf-blog.xingpingcn.top/sitemap.xml"
+  status = 302
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/robots.txt"
+  to = "https://cf-blog.xingpingcn.top/robots.txt"
+  status = 302
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/category-sitemap.xml"
+  to = "https://cf-blog.xingpingcn.top/category-sitemap.xml"
+  status = 302
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/netlify.toml"
+  to = "/404.html"
+  status = 302
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/vercel.json"
+  to = "/404.html"
+  status = 302
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/enhanced-FaaS-in-cn.html"
+  to = "/enhanced-faas-in-cn.html"
+  status = 302
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/免费通过NS1利用监控宝平台实现实时基于不同运营商的故障转移.html"
+  to = "/免费通过ns1利用监控宝平台实现实时基于不同运营商的故障转移.html"
+  status = 302
+  force = true
+  headers = { X-From = "Netlify" }

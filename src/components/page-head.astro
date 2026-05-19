@@ -4,12 +4,14 @@ import { SITE } from '@/consts'
 interface Props {
   title?: string
   description?: string
+  canonical?: string
   noindex?: boolean
 }
 
 const {
   title = SITE.title,
   description = SITE.description,
+  canonical = SITE.href,
   noindex = false,
 } = Astro.props
 const image = new URL('/static/1200x630.png', Astro.site)
@@ -17,7 +19,7 @@ const image = new URL('/static/1200x630.png', Astro.site)
 
 <title>{`${title} | ${SITE.title}`}</title>
 <meta name="description" content={description} />
-<link rel="canonical" href={SITE.href} />
+<link rel="canonical" href={canonical} />
 {noindex && <meta name="robots" content="noindex, nofollow" />}
 
 <meta property="og:title" content={title} />

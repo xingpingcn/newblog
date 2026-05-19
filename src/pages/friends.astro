@@ -1,0 +1,126 @@
+---
+import Breadcrumbs from '@/components/breadcrumbs.astro'
+import FriendCard from '@/components/friend-card.astro'
+import Link from '@/components/link.astro'
+import PageHead from '@/components/page-head.astro'
+import { badgeVariants } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
+import { SITE } from '@/consts'
+import Layout from '@/layouts/layout.astro'
+import { getFriendSites } from '@/lib/friends'
+import { Icon } from 'astro-icon/components'
+
+const friends = await getFriendSites()
+const siteScreenshot =
+  'https://cdn.jsdmirror.com/npm/p-hosting-for-xp@1.0.25/20230508/Snipaste_2023-05-08_00-59-44.2lzfpy52dcu0.webp'
+---
+
+<Layout class="max-w-5xl">
+  <PageHead
+    slot="head"
+    title="友链"
+    description="邢平cn 的朋友们和友情链接申请说明。"
+    canonical={new URL('/friends/', SITE.href).href}
+  />
+  <Breadcrumbs items={[{ label: '友链', icon: 'lucide:heart-handshake' }]} />
+
+  <section class="flex flex-col gap-8">
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-wrap items-center gap-3">
+        <h1 class="text-3xl leading-tight font-medium">我的朋友们</h1>
+        <span class={badgeVariants({ variant: 'muted' })}>
+          {friends.length} 个站点
+        </span>
+      </div>
+      <p class="text-muted-foreground max-w-2xl leading-7">
+        这里展示旧博客友链系统中的站点数据，数据来自公开的
+        <Link
+          href={`https://github.com/${SITE.friends.repo}`}
+          external
+          underline
+        >
+          {SITE.friends.repo}
+        </Link>
+        输出。
+      </p>
+    </div>
+
+    {
+      friends.length > 0 ? (
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {friends.map((site) => (
+            <FriendCard site={site} />
+          ))}
+        </div>
+      ) : (
+        <div class="text-muted-foreground rounded-xl border p-6 text-sm">
+          暂时没有读取到友链数据，可以稍后再试。
+        </div>
+      )
+    }
+
+    <section class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div class="rounded-xl border p-5">
+        <div class="mb-4 flex items-center gap-2 font-medium">
+          <Icon
+            name="lucide:clipboard-check"
+            class="text-muted-foreground size-4"
+          />
+          申请友链需要满足以下全部条件
+        </div>
+        <ul class="text-muted-foreground flex flex-col gap-3 text-sm leading-6">
+          <li>
+            首先将本站 <code>https://xingpingcn.top/</code> 添加至你的友链中。
+          </li>
+          <li>合法的、非营利性、无商业广告、无木马植入。</li>
+          <li>
+            有实质性原创内容的 HTTPS 站点，发布过至少 5
+            篇原创文章，内容题材不限。
+          </li>
+          <li>有独立域名，非免费域名。</li>
+          <li>博客已运行至少半年，非刚搭建好。</li>
+          <li>看我心情。</li>
+        </ul>
+      </div>
+
+      <aside class="flex flex-col gap-4">
+        <div class="rounded-xl border p-5">
+          <div class="mb-4 flex items-center gap-2 font-medium">
+            <Icon
+              name="lucide:badge-info"
+              class="text-muted-foreground size-4"
+            />
+            本站信息
+          </div>
+          <dl class="text-sm leading-6">
+            <div class="flex flex-col gap-1">
+              <dt class="text-muted-foreground">地址</dt>
+              <dd>
+                <Link href={SITE.href} external underline>{SITE.href}</Link>
+              </dd>
+            </div>
+            <div class="mt-3 flex flex-col gap-1">
+              <dt class="text-muted-foreground">截图</dt>
+              <dd>
+                <Link href={siteScreenshot} external underline>站点截图</Link>
+              </dd>
+            </div>
+            <div class="mt-3 flex flex-col gap-1">
+              <dt class="text-muted-foreground">作者</dt>
+              <dd>{SITE.author}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <Link
+          href={SITE.friends.applyUrl}
+          external
+          class={buttonVariants({ variant: 'outline', className: 'w-full' })}
+        >
+          <Icon name="lucide:github" class="size-4" />
+          提交友链申请
+        </Link>
+      </aside>
+    </section>
+  </section>
+</Layout>

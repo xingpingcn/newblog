@@ -1,0 +1,350 @@
+---
+title: 'docker学习笔记'
+description: '通过学习docker-compose将hysteria2通过bridge模式提供服务'
+date: 2023-04-01
+tags: []
+keywords:
+  ['bridge模式 container容器 hysteria2 docker nginx proxy_pass docker配置']
+authors: ['xingpingcn']
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+这是一篇通过配置hysteria2学习docker-compose的笔记
+
+## 前言
+
+用官方的docker和配置3分钟就搭好了，但是想试试通过bridge和通过nginx反代来实现（最后没有实验），于是就开始了折腾，，，
+
+## docker的network模式
+
+docker会隔离文件、网络、进程，而网络的隔离程度分为4种：
+
+- `host` 这个相当于和主机共用一个网络
+- `none` 容器不需要内部和外部网络
+- `container` 似乎是容器内的网络，和主机分离。
+- `bridge` 命令`docker network create`的默认模式，连接到该网络的容器可以互相连通，而且可以暴露端口给主机和主机通讯。客户端通过`主机ip:port`访问。
+
+<Callout variant="tip" title="NOTE">
+docker默认创建除`container`的三个网络。可以通过`docker network ls`查看。
+
+</Callout>
+
+```bash
+root@:/bin/hy2# docker network ls
+NETWORK ID     NAME          DRIVER    SCOPE
+c069db7ead85   bridge        bridge    local
+cf668a8174a8   host          host      local
+162c8b1b3229   nginx-proxy   bridge    local # `nginx-proxy`是我自己创建的。
+4f9ce671d49a   none          null      local
+```
+
+<Callout variant="tip" title="NOTE">
+值得注意的是，docker默认创建一个名为docker0的网口用于连接主机和容器。通过`ip link`查看
+进入hy2容器执行`ip link`命令可以看到，hy2的网卡（`eth0`）是和主机上的`veth6f76815`虚拟网卡连接（240:241）
+
+</Callout>
+
+```bash
+root@445:/bin/hy2# ip link
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DEFAULT group default qlen 1000
+    link/ether [隐私删除] brd ff:ff:ff:ff:ff:ff
+    altname enp0s3
+    altname ens3
+3: docker0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default
+    link/ether 02:42:4e:38:4d:51 brd ff:ff:ff:ff:ff:ff
+12: br-162c8b1b3229: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default
+    link/ether 02:42:93:b0:6a:4a brd ff:ff:ff:ff:ff:ff
+223: veth3452fbb@if222: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-162c8b1b3229 state UP mode DEFAULT group default
+    link/ether d2:85:53:63:a1:76 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+241: veth6f76815@if240: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-162c8b1b3229 state UP mode DEFAULT group default
+    link/ether aa:e0:71:cf:9e:50 brd ff:ff:ff:ff:ff:ff link-netnsid 1
+root@445:/bin/hy2# docker exec -it hy2 /bin/bash
+1cb800f27bd1:/# ip link
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+240: eth0@if241: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP
+    link/ether 02:42:ac:14:00:03 brd ff:ff:ff:ff:ff:ff
+1cb800f27bd1:/#
+```
+
+## 配置hy2的yaml
+
+官方的`yaml`是使用的`host`模式，我现在要创建一个名为`nginx-proxy`的网络并且在配置文件中更改。
+
+```yaml
+version: '3.9'
+services:
+  hysteria:
+    image: tobyxdd/hysteria
+    container_name: hy2
+    restart: always
+    volumes:
+      - acme:/acme
+      - ./hysteria.yaml:/etc/hysteria.yaml
+    command: ['server', '-c', '/etc/hysteria.yaml']
+    networks:
+      - nginx-proxy
+    ports:
+      - '10808:443'
+    # expose:
+    #   - "443"
+networks:
+  nginx-proxy:
+    external: true
+volumes:
+  acme:
+```
+
+这样我以为就可以通过访问`10808`端口科学上网了。但是ping不通，，，
+
+经过努力的排查，找到了`docker inspect`命令，发现容器被分配的`IP`是空的，，，
+
+原来还需要手动通过输入`docker network connect`来连接，，，我看`nginx`是自动连接的，不知道对应的yaml怎么写。
+
+结果还是是ping不通，，，
+
+用`iptables -t nat -nvL --line-number`查看发现，`Chain DOCKER`里也有容器IP的`DNAT`了，为什么还是不行。
+
+不细心眼力不好还发现不了，是暴露端口的时候默认暴露tcp，，，。结合hy2文档也知道hy2是基于udp的，然后更改配置
+
+```yaml
+services:
+  hysteria:
+    ports:
+      - "10808:443/udp"
+    ...
+```
+
+成功！
+
+但是关闭连接的时候就会出错再也连不上，通过日志发现，原来关闭的时候通过`tcp`沟通的。
+
+最终的配置文档应该像这样的
+
+```yaml
+services:
+  hysteria:
+    ports:
+      - "10808:443/udp"
+      - "10808:443/tcp"
+    ...
+```
+
+最后删除多余的NAT，和设置新的NAT，并备份iptables
+
+<Callout variant="warning" title="warning">
+`iptables-save -f /etc/iptables/rules.v4`适用于Debian，其他系统可能会恢复不了`iptables`
+
+</Callout>
+
+```bash
+iptables -t nat -D PREROUTING 1
+iptables -t nat -A PREROUTING -i eth0 -p udp --dport 20000:50000 -j DNAT --to-destination :10808
+iptables-save -f /etc/iptables/rules.v4
+systemctl restart iptables
+```
+
+<Callout variant="warning" title="warning">
+如果使用`ufw`，则修改以下文件。重启`ufw`的时候不会删除`iptables`已经有的规则，也就是说重复重启`ufw`会添加多条相同的规则，需要手动删除。
+
+```bash
+net/ipv4/ip_forward=1
+```
+
+<Callout variant="warning" title="warning">
+注意！必须在前一个filter block最后，即COMMIT之后添加！
+
+最后只放行那个要转发的端口！
+
+例如`ufw allow 12345`，而不是`ufw allow 20000-50000`
+
+</Callout>
+
+```bash
+# 注意！必须在前一个filter block最后，即COMMIT之后添加！
+# don't delete the 'COMMIT' line or these rules won't be processed
+COMMIT
+
+# Custom
+*nat
+:PREROUTING ACCEPT [0:0]
+-A PREROUTING -i eth0 -p udp --dport 10000:30000 -j DNAT --to-destination :3456
+
+COMMIT
+```
+
+</Callout>
+
+最后放上配置
+
+```yaml
+listen: :10808
+
+#acme:
+#domains:
+#  -  xxx #把xxx.com改成你的域名，需要先解析到服务器ip
+#email: @gmail.com #可以改成自己邮箱，也可以把test这里随便加几个字符
+tls:
+  cert: /etc/cert/domain.com.cert.pem
+  key: /etc/cert/domain.com.key.pem
+auth:
+  type: password
+  password: #设置密码
+
+masquerade:
+  type: proxy
+  proxy:
+    url: https://bing.com #伪装网址
+    rewriteHost: true
+quic:
+  initStreamReceiveWindow: 26843545
+  maxStreamReceiveWindow: 26843545
+  initConnReceiveWindow: 67108864
+  maxConnReceiveWindow: 67108864
+```
+
+## nginx初次使用
+
+由于nginx运行在`docker`内，而每个`docker`都会被`network`的虚拟网关分配一个`ip`，如果nginx要反代同一`network`内的`docker container`是不是就要预先知道它的ip呢？这样做其实也可以，但是如果机器重启就会出问题，因为重启后每个容器的ip会被重新分配，分配的规则我猜测是根据启动顺序来决定的。更优雅的方式是直接使用`container`的别名作为`ip`。
+
+例如在同一网络内有两个`container`，别名分别为`nginx_test`和`api`，则`nginx_test`的反代配置应该是类似于这样的。
+
+```bash
+server {
+    listen       80;
+    server_name  localhost;
+    location /api {
+        proxy_pass http://api:3000;
+    }
+}
+```
+
+以上情况只是适用于nginx通过`docker`部署的情况。而我用的是直接安装在主机的方式，反代的容器需要暴露端口到`localhost`。
+
+```yaml
+services:
+  hysteria:
+    ports:
+      - "127.0.0.1:3000:443/udp"
+      - "127.0.0.1:3000:443/tcp"
+    ...
+```
+
+这样子，使用`ip:10808`就不能访问了，必须在nginx那里反代`proxy_pass http://127.0.0.1:3000;`通过`ip:443`访问
+
+<Callout variant="warning" title="WARNING">
+hy2 并不支持和 nginx 共享 443 端口，所以需要自己用 acme 申请证书，然后在 hy2 的配置中填写 tls
+
+</Callout>
+
+### nginx安装和证书自动申请
+
+意外地发现需要结合多个教程才能搞定，记录一下备忘
+
+有两种方法，一种是acme.sh，一种是Certbot，后者更加方便，但是过程中做了什么我不知道，前者需要手动的地方更多，但是你会知道证书放在了哪里。
+
+可以先设置软连接。注意路径，第一个为默认的nginx配置路径，第二个为你要软连接的路径。
+
+```bash
+ln -s /etc/nginx/nginx.conf /home/nginx/nginx.conf
+```
+
+#### acme.sh
+
+先在`conf`中写好域名，`acme.sh`会根据配置帮你申请域名
+
+```properties
+server {
+    server_name domain.com;
+    listen 80;
+}
+```
+
+安装`acme.sh`后，`重新`打开一个终端，输入以下命令；需要域名先指向你的vps
+
+```bash
+acme.sh --issue  -d  domain.com --nginx /home/nginx/nginx.conf
+```
+
+这里有个可以不用`nginx`的方法，如果使用的是华为云，可以运行以下命令。原理就是利用api自动添加txt记录。如果需要更多支持的dns请点击[这里](https://github.com/acmesh-official/acme.sh/wiki/dnsapi)，基本上包含了主流dns服务器了。
+
+```bash
+export HUAWEICLOUD_Username=""
+export HUAWEICLOUD_Password=""
+export HUAWEICLOUD_DomainName="" # 注意的是这个的中文名为账户名而不是域名，需要你去设置里面查看
+acme.sh --issue --dns dns_huaweicloud -d example.com -d *.example.com #填写你的域名
+```
+
+最后运行以下命令。快到期会自动续。注意路径。
+
+```bash
+acme.sh --install-cert -d domain.com \
+--key-file      /home/nginx/cert/domain.com.key.pem  \
+--fullchain-file /home/nginx/cert/domain.com.cert.pem \
+--reloadcmd     "nginx -s reload"
+```
+
+第一个命令是申请证书，证书会放在`acme.sh`自己脚本所在的目录，所以后面要使用`--install-cert`安装。这个并不会修改`conf`，所以要手动配置。
+
+再打开`conf`，填写`443`端口，之后就会在过期前30天自动更新
+
+```properties
+server{
+		listen 443 ssl;
+		server_name domain.com;
+		location /{
+			client_max_body_size  64m;
+			proxy_http_version 1.1;
+			proxy_pass http://localhost:8080;  # 请根据实际情况修改你的端口
+			proxy_set_header Host $host;
+			proxy_set_header X-Forwarded-For $remote_addr;
+			proxy_cache_bypass $http_upgrade;
+			proxy_set_header Accept-Encoding gzip;
+			proxy_read_timeout 360s;  # GPT-4 需要较长的超时时间，请自行调整
+		}
+		ssl_certificate   /home/nginx/cert/domain.com.cert.pem;
+    ssl_certificate_key  /home/nginx/cert/domain.com.key.pem;
+
+      # ssl_session_cache shared:SSL:1m;
+      # ssl_session_timeout 5m;
+      # ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4;
+
+		access_log    /home/nginx/log/domain.com.access.log;
+		error_log     /home/nginx/log/domain.com.error.log;
+	}
+```
+
+#### Certbot
+
+```bash
+sudo snap install --classic certbot
+sudo ln -s /snap/bin/certbot /usr/bin/certbott
+```
+
+之后conf中填写好`443`端口
+
+使用 certbot 获取 SSL 证书：`sudo certbot --nginx`
+
+`sudo vim ./push`查看更改。重启`nginx`
+
+### 重启nginx
+
+有两个，前者确定不会重启`nginx`，后者应该会。
+
+```bash
+nginx -s reload
+service nginx restart
+```
+
+## 容器更新
+
+```bash
+docker-compose pull
+docker-compose up -d --remove-orphans # 重启
+docker image prune # 删除旧的
+```

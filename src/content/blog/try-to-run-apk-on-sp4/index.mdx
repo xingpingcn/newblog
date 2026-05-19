@@ -1,0 +1,39 @@
+---
+title: '尝试在闲置的surface pro 4上运行安卓应用'
+description: '尝试在闲置的surface pro 4上运行安卓应用'
+date: 2023-04-01
+tags: []
+keywords: ['sp4', 'surface pro 4', '闲置', '运行安卓']
+authors: ['xingpingcn']
+coverImage: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20240217/sp4.malhlsg00kg.webp'
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+目前的结论是能在使用触屏的同时运行安卓应用，也仅仅是能用。
+
+目前尝试过几种方案
+
+- fydo os
+- [blissos](https://blissos.org/index.html)
+- Ubuntu+anbox
+
+## fydo os
+
+我只使用过免费版，目前体验下来是最流畅的，也是最不需要折腾的，但是目前免费版没触屏。遗憾
+
+## blissos
+
+装上之后触屏时有时无，而在有的时候只是拙劣的鼠标点击模拟，基本的多指操作和滑动功能都没有，流畅度还不如`fydo os`，出的这个surface专版感觉就是纯粹让ppt好看些。
+
+## Ubuntu+anbox
+
+最后只能尝试在`Linux`上运行安卓了。
+
+我装的是`LTS 22`，安装好系统后还得找hy2能用的客户端（因为要去GitHub下资源），一番折腾后找到了[nekoray](https://github.com/MatsuriDayo/nekoray/releases)这个带GUI的客户端（因为这个时候`sing-box`，`clashmeta`还有`hy2`官方都没有Linux GUI，而且路由配置还非常麻烦，没现成的作业可以抄），而`nekoray`后端用的就是`sing-box`，可惜`nekoray`自带广告。
+
+之后刷入[Surface Linux Kernel](https://github.com/linux-surface/linux-surface/wiki/Installation-and-Setup)，触屏是有了，也仅仅是能用的程度，不太跟手，和`win`下的体验差太多。
+
+之后安装anbox，一开始闪退，最后发现不是配置有问题，而是不支持5.17以上内核，安装`Surface Linux Kernel`的时候已经默认安装目前最新的6.6版本了，理论上降级是能用的，但是不知道修改过的`Surface Linux Kernel`能不能用，我也懒得再降级了。马上花10分钟打开PE滚回去`windows`。

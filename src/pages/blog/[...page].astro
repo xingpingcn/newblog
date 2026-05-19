@@ -24,11 +24,11 @@ const years = Object.keys(postsByYear).sort((a, b) => parseInt(b) - parseInt(a))
 ---
 
 <Layout class="max-w-3xl">
-  <PageHead slot="head" title="Blog" />
+  <PageHead slot="head" title="博客" />
   <Breadcrumbs
     items={[
-      { label: 'Blog', href: '/blog', icon: 'lucide:library-big' },
-      { label: `Page ${page.currentPage}`, icon: 'lucide:book-copy' },
+      { label: '博客', href: '/blog', icon: 'lucide:library-big' },
+      { label: `第 ${page.currentPage} 页`, icon: 'lucide:book-copy' },
     ]}
   />
 

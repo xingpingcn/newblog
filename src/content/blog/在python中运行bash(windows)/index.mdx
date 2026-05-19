@@ -1,0 +1,85 @@
+---
+title: '在python中运行bash实时输出结果（windows）'
+description: '在windows系统下的python中使用环境变量运行bash'
+date: 2023-04-01
+tags: ['python']
+keywords:
+  ['bash', 'windows', 'python', 'env', '环境变量', 'nvm', 'adb', '实时输出结果']
+authors: ['xingpingcn']
+coverImage: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230926/image.7iqa1vhy4240.png'
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+在windows的cmd中是不能运行bash的，我们需要利用git工具的bash来运行，但是用subprocess.run()会出问题，例如不能使用已经添加到环境变量的命令，如nvm、adb等；因此改用subprocess.Popen()
+
+## 批量输入并且最后输出所有结果
+
+`bash_path`用于定位你的git工具的`bash`，参数`cwd=`用于定位你的工作目录，和在文件夹中右键`git bash here`是一样的效果。
+
+输入的命令可以带有空格，但是必须在最后加上`\n`
+
+```python
+import subprocess
+bash_path = r'F:\Program Files\Git\bin\bash.exe'
+subp = subprocess.Popen(bash_path,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,encoding='utf8',cwd='$your_path')
+#输入的命令可以带有空格，但是必须在最后加上`\n`
+subp.stdin.write('nvm -v\n')
+subp.stdin.flush()
+subp.stdin.write('nvm -v\n')
+subp.stdin.flush()
+subp.stdin.write('nvm -v\n')
+subp.stdin.flush()
+#不要忘记了关闭subp，否则会阻塞
+subp.stdin.close()
+print(subp.stdout.read())
+```
+
+```python
+1.1.11
+1.1.11
+1.1.11
+```
+
+## 实时输入并输出结果
+
+需要用到多线程`threading`和队列`queue`来实时获取输出结果。最后也不要忘记调用子进程的`close()`方法。
+
+```python
+import subprocess
+import queue
+import threading,time
+
+bash_path = r'F:\Program Files\Git\bin\bash.exe'
+def thread_for_listen(subp,q):
+   for line in iter(subp.stdout.readline,''):
+      q.put(line)
+subp = subprocess.Popen(bash_path,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,encoding='utf8',cwd='./public')
+q = queue.Queue()
+p1 = threading.Thread(target =thread_for_listen,args=(subp,q))
+
+p1.start()
+for i in range(5):
+   subp.stdin.write('nvm -v\n')
+   subp.stdin.flush()
+   print(q.get(),end='')
+   time.sleep(0.3)
+   print('wake up after 0.3s')
+subp.stdin.close()
+q.task_done()
+```
+
+```python
+1.1.11
+wake up after 0.3s
+1.1.11
+wake up after 0.3s
+1.1.11
+wake up after 0.3s
+1.1.11
+wake up after 0.3s
+1.1.11
+wake up after 0.3s
+```

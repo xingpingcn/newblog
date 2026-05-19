@@ -2,45 +2,127 @@
 import Breadcrumbs from '@/components/breadcrumbs.astro'
 import Link from '@/components/link.astro'
 import PageHead from '@/components/page-head.astro'
-import ProjectCard from '@/components/project-card.astro'
+import ProfileCard from '@/components/profile-card.astro'
 import Layout from '@/layouts/layout.astro'
-import { getAllProjects } from '@/lib/data-utils'
+import { getAllAuthors } from '@/lib/data-utils'
 
-const projects = await getAllProjects()
+const authors = await getAllAuthors()
+const author = authors.find((item) => item.id === 'xingpingcn') ?? authors[0]
 ---
 
 <Layout class="max-w-3xl">
-  <PageHead slot="head" title="About" />
-  <Breadcrumbs items={[{ label: 'About', icon: 'lucide:info' }]} />
+  <PageHead slot="head" title="关于" />
+  <Breadcrumbs items={[{ label: '关于', icon: 'lucide:info' }]} />
 
   <section>
     <div class="min-w-full">
+      {author && <ProfileCard author={author} />}
       <div class="prose mb-8">
-        <p class="mt-0">
-          astro-erudite is an opinionated, unstyled static blogging template
-          that prioritizes simplicity and performance, built with <Link
-            href="https://astro.build"
-            external
-            underline>Astro</Link
-          >, <Link href="https://tailwindcss.com" external underline
-            >Tailwind</Link
-          >, and <Link href="https://ui.shadcn.com" external underline
-            >shadcn/ui</Link
-          >. It provides a clean foundation for your content while being
-          extremely easy to customize.
+        <h2>关于网站</h2>
+        <p>
+          本站分享一些各方面踩过的坑，为有相似经历的人提供参考，也会放一些笔记、随笔和研究成果。
         </p>
         <p>
-          To learn more about the philosophy behind this template, check out the
-          following blog post: <Link
-            href="/blog/the-state-of-static-blogs"
-            underline>The State of Static Blogs in 2024</Link
-          >.
+          旧博客内容已从 Hexo/Volantis 迁移到 <Link
+            href="https://astro.build"
+            rel="noopener noreferrer"
+            external
+            underline>Astro</Link
+          >，目前保留原有文章和主要图片展示方式。
         </p>
-      </div>
 
-      <h2 class="mb-4 text-2xl font-medium">Example Projects Listing</h2>
-      <div class="flex flex-col gap-4">
-        {projects.map((project) => <ProjectCard project={project} />)}
+        <h2>记事</h2>
+        <ol
+          class="not-prose border-muted-foreground/35 my-6 space-y-6 border-l pl-5"
+        >
+          <li class="relative">
+            <span
+              class="bg-muted border-muted-foreground/45 absolute top-1.5 -left-[1.625rem] size-3 rounded-full border"
+            ></span>
+            <div class="space-y-2">
+              <div
+                class="text-muted-foreground flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm"
+              >
+                <time datetime="2026-05-19">2026-05-19</time>
+                <span class="text-foreground font-medium">
+                  完成旧 Hexo/Volantis 博客内容迁移
+                </span>
+              </div>
+              <p class="text-muted-foreground text-sm leading-6">
+                将旧博客文章、记事和文章协议迁移到 Astro，新站保留旧文章内容、主要图片展示方式和旧
+                `.html` 链接兼容入口。
+              </p>
+            </div>
+          </li>
+          <li class="relative">
+            <span
+              class="bg-muted border-muted-foreground/45 absolute top-1.5 -left-[1.625rem] size-3 rounded-full border"
+            ></span>
+            <div class="space-y-2">
+              <div
+                class="text-muted-foreground flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm"
+              >
+                <time datetime="2023-11-15">2023-11-15</time>
+                <span class="text-foreground font-medium">
+                  使用 Umami 进行统计
+                </span>
+              </div>
+              <ul
+                class="text-muted-foreground ml-4 list-disc space-y-1 text-sm leading-6"
+              >
+                <li>
+                  抛弃了 GA4 和百度统计，使用 <Link
+                    href="https://github.com/umami-software/umami"
+                    rel="noopener noreferrer"
+                    external
+                    underline>Umami</Link
+                  > 进行统计，公开统计信息在 <Link
+                    href="https://stats.xingpingcn.top/share/XoDdV8TeKUUp8E8f/xingpingcn"
+                    rel="noopener noreferrer"
+                    external
+                    underline>这里</Link
+                  >。
+                </li>
+                <li>Umami 部署在 Vercel。</li>
+                <li>
+                  数据库使用 <Link
+                    href="https://yugabyte.com"
+                    rel="noopener noreferrer"
+                    external
+                    underline>Yugabyte</Link
+                  >。免费 10G，15 个同时连接。
+                </li>
+              </ul>
+            </div>
+          </li>
+          <li class="relative">
+            <span
+              class="bg-muted border-muted-foreground/45 absolute top-1.5 -left-[1.625rem] size-3 rounded-full border"
+            ></span>
+            <div class="space-y-1">
+              <div
+                class="text-muted-foreground flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm"
+              >
+                <time datetime="2023-04">2023-04</time>
+                <span class="text-foreground font-medium">建站时间</span>
+              </div>
+              <p class="text-muted-foreground text-sm leading-6">
+                本站建于2023-04。
+              </p>
+            </div>
+          </li>
+        </ol>
+
+        <h2>关于我</h2>
+        <p>喜欢分享踩过的坑，热爱社会科学和计算机技术。</p>
+        <p>不是程序员，专业也不是工科。</p>
+
+        <h2>写在最后</h2>
+        <p>
+          欢迎通过 <Link href="mailto:zzy4on9@outlook.com" underline>Email</Link
+          >
+          联系我，基本上都会回复。
+        </p>
       </div>
     </div>
   </section>

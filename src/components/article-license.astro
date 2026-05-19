@@ -1,0 +1,173 @@
+---
+import Link from '@/components/link.astro'
+import { SITE } from '@/consts'
+import { formatDate } from '@/lib/utils'
+import { Icon } from 'astro-icon/components'
+import type { CollectionEntry } from 'astro:content'
+
+interface Props {
+  post: CollectionEntry<'blog'>
+}
+
+type LicenseType =
+  | 'cc-by-nc-sa-4.0'
+  | 'no-repost'
+  | 'original'
+  | 'internet'
+  | 'repost-allowed'
+  | 'paid-repost'
+
+const { post } = Astro.props
+const license = post.data.license
+const licenseConfig = license && typeof license === 'object' ? license : null
+
+const legacyTypeMap: Record<string, LicenseType> = {
+  type1: 'cc-by-nc-sa-4.0',
+  type2: 'no-repost',
+  type3: 'original',
+  type4: 'internet',
+  type5: 'repost-allowed',
+  type6: 'paid-repost',
+}
+
+const licenseRules: Record<
+  LicenseType,
+  {
+    label: string
+    href?: string
+    statement: string
+  }
+> = {
+  'cc-by-nc-sa-4.0': {
+    label: 'CC BY-NC-SA 4.0',
+    href: 'https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans',
+    statement:
+      '博客内容遵循 署名-非商业性使用-相同方式共享 4.0 国际（CC BY-NC-SA 4.0）协议。',
+  },
+  'no-repost': {
+    label: '禁止转载引用',
+    statement: '除非获得原作者的单独授权，任何第三方不得转载。',
+  },
+  original: {
+    label: '原作许可协议',
+    statement: '本文转载自他站，转载或引用本文时，请遵守原作许可协议。',
+  },
+  internet: {
+    label: '来自互联网',
+    statement: '本文来自互联网，未知来源，侵权请联系删除。',
+  },
+  'repost-allowed': {
+    label: '允许规范转载',
+    statement: '转载请保留本文转载地址，著作权归作者所有。',
+  },
+  'paid-repost': {
+    label: '允许付费转载',
+    statement: '您可以联系作者通过付费方式获得授权。',
+  },
+}
+
+function isLicenseType(value: string): value is LicenseType {
+  return value in licenseRules
+}
+
+const rawLicenseType =
+  legacyTypeMap[licenseConfig?.type ?? ''] ??
+  licenseConfig?.type ??
+  (post.data.canonicalURL ? 'original' : 'cc-by-nc-sa-4.0')
+
+const licenseType = isLicenseType(rawLicenseType)
+  ? rawLicenseType
+  : 'cc-by-nc-sa-4.0'
+
+const rule = licenseRules[licenseType] ?? licenseRules['cc-by-nc-sa-4.0']
+const permalink = new URL(`/${post.id}/`, SITE.href).toString()
+const sourceUrl = licenseConfig?.sourceUrl ?? post.data.canonicalURL
+const sourceTitle = licenseConfig?.sourceTitle ?? post.data.title
+const author = licenseConfig?.author ?? SITE.author
+const shouldRender = license !== false
+---
+
+{
+  shouldRender && (
+    <aside
+      class="not-prose border-border bg-muted/20 col-start-2 rounded-md border px-4 py-4 text-sm"
+      aria-labelledby="article-license-title"
+    >
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-2">
+          <Icon
+            name="lucide:copyright"
+            class="text-muted-foreground size-4 shrink-0"
+          />
+          <h2
+            id="article-license-title"
+            class="text-foreground text-sm font-medium"
+          >
+            文章协议
+          </h2>
+        </div>
+
+        <p class="text-muted-foreground leading-6">{rule.statement}</p>
+
+        <dl class="grid gap-2 text-xs sm:grid-cols-2">
+          <div class="flex min-w-0 gap-2">
+            <dt class="text-muted-foreground shrink-0">作者</dt>
+            <dd class="text-foreground min-w-0 truncate">{author}</dd>
+          </div>
+          <div class="flex min-w-0 gap-2">
+            <dt class="text-muted-foreground shrink-0">发布</dt>
+            <dd class="text-foreground min-w-0 truncate">
+              {formatDate(post.data.date)}
+            </dd>
+          </div>
+          <div class="flex min-w-0 gap-2 sm:col-span-2">
+            <dt class="text-muted-foreground shrink-0">链接</dt>
+            <dd class="min-w-0 truncate">
+              <Link
+                href={permalink}
+                underline
+                class="text-foreground max-w-full"
+              >
+                {decodeURI(permalink)}
+              </Link>
+            </dd>
+          </div>
+          {sourceUrl && (
+            <div class="flex min-w-0 gap-2 sm:col-span-2">
+              <dt class="text-muted-foreground shrink-0">原文</dt>
+              <dd class="min-w-0 truncate">
+                <Link
+                  href={sourceUrl}
+                  external
+                  rel="noopener noreferrer"
+                  underline
+                  class="text-foreground max-w-full"
+                >
+                  {sourceTitle}
+                </Link>
+              </dd>
+            </div>
+          )}
+          <div class="flex min-w-0 gap-2 sm:col-span-2">
+            <dt class="text-muted-foreground shrink-0">许可</dt>
+            <dd class="min-w-0 truncate">
+              {rule.href ? (
+                <Link
+                  href={rule.href}
+                  external
+                  rel="noopener noreferrer"
+                  underline
+                  class="text-foreground max-w-full"
+                >
+                  {rule.label}
+                </Link>
+              ) : (
+                <span class="text-foreground">{rule.label}</span>
+              )}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </aside>
+  )
+}

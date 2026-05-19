@@ -2,8 +2,10 @@
 import AvatarComponent from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   getCombinedReadingTime,
+  getPostLinkTarget,
   getSubpostCount,
   isSubpost,
   parseAuthors,
@@ -23,31 +25,61 @@ const formattedDate = formatDate(entry.data.date)
 const readTime = await getCombinedReadingTime(entry.id)
 const authors = await parseAuthors(entry.data.authors ?? [])
 const subpostCount = !isSubpost(entry.id) ? await getSubpostCount(entry.id) : 0
+const linkTarget = getPostLinkTarget(entry)
 ---
 
 <div
   class="hover:bg-muted/50 rounded-xl border p-4 transition-colors duration-300 ease-in-out"
 >
   <Link
-    href={`/${entry.collection}/${entry.id}`}
+    href={linkTarget.href}
+    external={linkTarget.external}
     class="flex flex-col gap-4 sm:flex-row"
   >
     {
-      entry.data.image && (
-        <div class="w-full sm:max-w-3xs sm:shrink-0">
+      entry.data.image ? (
+        <div class="bg-muted/30 relative aspect-[1200/630] w-full overflow-hidden rounded-md sm:max-w-3xs sm:shrink-0">
+          <Skeleton className="absolute inset-0 size-full rounded-none transition-opacity duration-300 has-[+img[data-loaded=true]]:animate-none has-[+img[data-loaded=true]]:opacity-0" />
           <Image
             src={entry.data.image}
             alt={entry.data.title}
             width={1200}
             height={630}
-            class="object-cover"
+            class="absolute inset-0 size-full object-cover opacity-0 transition-opacity duration-300 data-[loaded=true]:opacity-100"
+            onload="this.dataset.loaded = 'true'"
           />
         </div>
+      ) : (
+        entry.data.coverImage && (
+          <div class="bg-muted/30 relative aspect-[1200/630] w-full overflow-hidden rounded-md sm:max-w-3xs sm:shrink-0">
+            <Skeleton className="absolute inset-0 size-full rounded-none transition-opacity duration-300 has-[+img[data-loaded=true]]:animate-none has-[+img[data-loaded=true]]:opacity-0" />
+            <img
+              src={entry.data.coverImage}
+              alt={entry.data.title}
+              width="1200"
+              height="630"
+              loading="lazy"
+              decoding="async"
+              class="absolute inset-0 size-full object-cover opacity-0 transition-opacity duration-300 data-[loaded=true]:opacity-100"
+              onload="this.dataset.loaded = 'true'"
+            />
+          </div>
+        )
       )
     }
 
     <div class="grow">
-      <h3 class="mb-1 text-lg font-medium">{entry.data.title}</h3>
+      <div class="mb-1 flex flex-wrap items-center gap-2">
+        {
+          entry.data.pinned && (
+            <Badge variant="outline" className="gap-x-1">
+              <Icon name="lucide:pin" class="size-3" />
+              置顶
+            </Badge>
+          )
+        }
+        <h3 class="text-lg font-medium">{entry.data.title}</h3>
+      </div>
       <p class="text-muted-foreground mb-2 text-sm">{entry.data.description}</p>
 
       <div

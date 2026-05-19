@@ -9,8 +9,36 @@ const blog = defineCollection({
       title: z.string(),
       description: z.string(),
       date: z.coerce.date(),
+      pinned: z.boolean().optional(),
       order: z.number().optional(),
       image: image().optional(),
+      coverImage: z.url().or(z.string().startsWith('/')).optional(),
+      canonicalURL: z.url().optional(),
+      license: z
+        .object({
+          type: z
+            .enum([
+              'cc-by-nc-sa-4.0',
+              'no-repost',
+              'original',
+              'internet',
+              'repost-allowed',
+              'paid-repost',
+              'type1',
+              'type2',
+              'type3',
+              'type4',
+              'type5',
+              'type6',
+            ])
+            .optional(),
+          author: z.string().optional(),
+          sourceTitle: z.string().optional(),
+          sourceUrl: z.url().optional(),
+        })
+        .or(z.literal(false))
+        .optional(),
+      keywords: z.array(z.string()).optional(),
       tags: z.array(z.string()).optional(),
       authors: z.array(z.string()).optional(),
       draft: z.boolean().optional(),
@@ -33,18 +61,4 @@ const authors = defineCollection({
   }),
 })
 
-const projects = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/projects' }),
-  schema: ({ image }) =>
-    z.object({
-      name: z.string(),
-      description: z.string(),
-      tags: z.array(z.string()),
-      image: image(),
-      link: z.url(),
-      startDate: z.coerce.date().optional(),
-      endDate: z.coerce.date().optional(),
-    }),
-})
-
-export const collections = { blog, authors, projects }
+export const collections = { blog, authors }

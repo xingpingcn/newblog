@@ -1,0 +1,65 @@
+---
+import BlogCard from '@/components/blog-card.astro'
+import HomeSidebar from '@/components/home-sidebar.astro'
+import PaginationComponent from '@/components/ui/pagination'
+import { SITE } from '@/consts'
+import type { CollectionEntry } from 'astro:content'
+
+interface Props {
+  posts: CollectionEntry<'blog'>[]
+  author?: CollectionEntry<'authors'>
+  tags: { tag: string; count: number }[]
+  currentPage: number
+  totalPages: number
+}
+
+const { posts, author, tags, currentPage, totalPages } = Astro.props
+---
+
+<section class="border-b pb-8">
+  <h1 class="mb-3 text-3xl leading-tight font-medium">{SITE.title}</h1>
+  <p class="text-muted-foreground leading-7">{SITE.description}</p>
+</section>
+<div class="grid gap-x-6 gap-y-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+  <div class="flex flex-wrap items-end justify-between gap-3 lg:col-start-1">
+    <div>
+      <h2 class="text-2xl font-medium">最新文章</h2>
+      <p class="text-muted-foreground mt-1 text-sm">
+        第 {currentPage} / {totalPages} 页
+      </p>
+    </div>
+  </div>
+  <section class="flex min-w-0 flex-col gap-y-5 lg:col-start-1 lg:row-start-2">
+    <ul class="flex flex-col gap-y-4">
+      {
+        posts.map((post) => (
+          <li>
+            <BlogCard entry={post} />
+          </li>
+        ))
+      }
+    </ul>
+    {
+      totalPages > 1 && (
+        <div class="pt-2">
+          <PaginationComponent
+            currentPage={currentPage}
+            totalPages={totalPages}
+            baseUrl="/page/"
+            firstPageUrl="/"
+            client:load
+          />
+        </div>
+      )
+    }
+  </section>
+  {
+    author && (
+      <HomeSidebar
+        author={author}
+        tags={tags}
+        class="lg:col-start-2 lg:row-start-2"
+      />
+    )
+  }
+</div>

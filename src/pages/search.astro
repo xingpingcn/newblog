@@ -1,0 +1,233 @@
+---
+import Breadcrumbs from '@/components/breadcrumbs.astro'
+import PageHead from '@/components/page-head.astro'
+import { buttonVariants } from '@/components/ui/button'
+import Layout from '@/layouts/layout.astro'
+import { Icon } from 'astro-icon/components'
+---
+
+<Layout class="max-w-3xl">
+  <PageHead
+    slot="head"
+    title="搜索"
+    description="搜索站内文章标题、摘要、标签和正文。"
+    canonical={new URL('/search', Astro.site).href}
+  />
+  <Breadcrumbs
+    items={[
+      { label: '首页', href: '/', icon: 'lucide:home' },
+      { label: '搜索', icon: 'lucide:search' },
+    ]}
+  />
+
+  <section
+    class="flex min-h-[calc(100vh-18rem)] flex-col gap-6"
+    data-pagefind-ignore="all"
+  >
+    <div class="flex flex-col gap-3">
+      <h1 class="text-3xl leading-tight font-medium sm:text-4xl">搜索</h1>
+      <p class="text-muted-foreground text-sm">
+        输入关键词后会在本地加载静态索引，结果来自文章标题、摘要、标签和正文。
+      </p>
+    </div>
+
+    <search-page class="contents">
+      <form class="search-shell" data-search-form role="search">
+        <div class="search-input-wrap">
+          <Icon name="lucide:search" class="search-input-icon size-4" />
+          <input
+            class="search-input"
+            name="q"
+            type="search"
+            placeholder="搜索文章"
+            autocomplete="off"
+            enterkeyhint="search"
+            data-search-input
+          />
+          <button
+            type="button"
+            class="search-clear"
+            aria-label="清空搜索"
+            hidden
+            data-search-clear
+          >
+            <Icon name="lucide:x" class="size-4" />
+          </button>
+        </div>
+        <button
+          type="submit"
+          class={buttonVariants({
+            variant: 'default',
+            className: 'search-submit',
+          })}
+        >
+          搜索
+        </button>
+      </form>
+
+      <div class="search-status" aria-live="polite" data-search-status>
+        输入关键词开始搜索。
+      </div>
+
+      <ol class="search-results" data-search-results></ol>
+    </search-page>
+  </section>
+</Layout>
+
+<script>
+  type PagefindResultData = {
+    url: string
+    excerpt: string
+    plain_excerpt?: string
+    meta: Record<string, string | undefined>
+  }
+
+  type PagefindSearchResult = {
+    data: () => Promise<PagefindResultData>
+  }
+
+  type PagefindModule = {
+    search: (
+      term: string,
+      options?: { sort?: Record<string, 'asc' | 'desc'> },
+    ) => Promise<{ results: PagefindSearchResult[] }>
+  }
+
+  class SearchPage extends HTMLElement {
+    private pagefind?: Promise<PagefindModule>
+    private searchId = 0
+
+    connectedCallback() {
+      const form = this.querySelector<HTMLFormElement>('[data-search-form]')
+      const input = this.querySelector<HTMLInputElement>('[data-search-input]')
+      const clearButton = this.querySelector<HTMLButtonElement>(
+        '[data-search-clear]',
+      )
+      const status = this.querySelector<HTMLElement>('[data-search-status]')
+      const results = this.querySelector<HTMLOListElement>(
+        '[data-search-results]',
+      )
+
+      if (!form || !input || !clearButton || !status || !results) return
+
+      const params = new URLSearchParams(window.location.search)
+      const initialQuery = params.get('q')?.trim() ?? ''
+      input.value = initialQuery
+      clearButton.hidden = initialQuery.length === 0
+
+      const search = () => {
+        void this.runSearch(input.value, status, results, clearButton)
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault()
+        const query = input.value.trim()
+        const nextUrl = query
+          ? `/search?q=${encodeURIComponent(query)}`
+          : '/search'
+        history.replaceState(null, '', nextUrl)
+        search()
+      })
+
+      input.addEventListener('input', () => {
+        clearButton.hidden = input.value.trim().length === 0
+        search()
+      })
+
+      clearButton.addEventListener('click', () => {
+        input.value = ''
+        clearButton.hidden = true
+        history.replaceState(null, '', '/search')
+        status.textContent = '输入关键词开始搜索。'
+        results.replaceChildren()
+        input.focus()
+      })
+
+      if (initialQuery) {
+        search()
+      } else {
+        input.focus({ preventScroll: true })
+      }
+    }
+
+    private async loadPagefind() {
+      const pagefindPath = '/pagefind/pagefind.js'
+      this.pagefind ??= import(/* @vite-ignore */ pagefindPath)
+      return await this.pagefind
+    }
+
+    private async runSearch(
+      rawQuery: string,
+      status: HTMLElement,
+      results: HTMLOListElement,
+      clearButton: HTMLButtonElement,
+    ) {
+      const query = rawQuery.trim()
+      const currentSearchId = ++this.searchId
+      clearButton.hidden = query.length === 0
+
+      if (!query) {
+        status.textContent = '输入关键词开始搜索。'
+        results.replaceChildren()
+        return
+      }
+
+      status.textContent = '正在搜索...'
+      results.replaceChildren()
+
+      try {
+        const pagefind = await this.loadPagefind()
+        const search = await pagefind.search(query)
+        if (currentSearchId !== this.searchId) return
+
+        const visibleResults = await Promise.all(
+          search.results.slice(0, 20).map((result) => result.data()),
+        )
+        if (currentSearchId !== this.searchId) return
+
+        status.textContent =
+          search.results.length > 0
+            ? `找到 ${search.results.length} 个结果。`
+            : '没有找到匹配文章。'
+        results.replaceChildren(
+          ...visibleResults.map((result) => this.renderResult(result)),
+        )
+      } catch (error) {
+        console.error(error)
+        if (currentSearchId !== this.searchId) return
+        status.textContent = '搜索索引加载失败，请刷新页面后重试。'
+      }
+    }
+
+    private renderResult(result: PagefindResultData) {
+      const item = document.createElement('li')
+      item.className = 'search-result'
+
+      const link = document.createElement('a')
+      link.href = result.url
+      link.className = 'search-result-link'
+
+      const title = document.createElement('span')
+      title.className = 'search-result-title'
+      title.textContent = result.meta.title || result.url
+
+      const meta = document.createElement('span')
+      meta.className = 'search-result-meta'
+      meta.textContent = [result.meta.date, result.url]
+        .filter(Boolean)
+        .join(' · ')
+
+      const excerpt = document.createElement('span')
+      excerpt.className = 'search-result-excerpt'
+      excerpt.innerHTML = result.excerpt
+
+      link.append(title, meta, excerpt)
+      item.append(link)
+      return item
+    }
+  }
+
+  if (!customElements.get('search-page')) {
+    customElements.define('search-page', SearchPage)
+  }
+</script>

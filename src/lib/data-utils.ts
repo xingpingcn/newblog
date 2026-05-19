@@ -1,6 +1,36 @@
 import { getCollection, render, type CollectionEntry } from 'astro:content'
 import { readingTime, calculateWordCountFromHtml } from '@/lib/utils'
 
+type PostLinkOptions = {
+  hash?: string
+  trailingSlash?: boolean
+}
+
+export type PostLinkTarget = {
+  href: string
+  external: boolean
+}
+
+export function getPostLinkTarget(
+  post: CollectionEntry<'blog'>,
+  options: PostLinkOptions = {},
+): PostLinkTarget {
+  if (post.data.canonicalURL) {
+    return {
+      href: post.data.canonicalURL,
+      external: true,
+    }
+  }
+
+  const slash = options.trailingSlash ? '/' : ''
+  const hash = options.hash ? `#${options.hash}` : ''
+
+  return {
+    href: `/${post.id}${slash}${hash}`,
+    external: false,
+  }
+}
+
 export async function getAllAuthors(): Promise<CollectionEntry<'authors'>[]> {
   return await getCollection('authors')
 }
@@ -9,7 +39,13 @@ export async function getAllPosts(): Promise<CollectionEntry<'blog'>[]> {
   const posts = await getCollection('blog')
   return posts
     .filter((post) => !post.data.draft && !isSubpost(post.id))
-    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+    .sort((a, b) => {
+      const pinnedDiff =
+        Number(Boolean(b.data.pinned)) - Number(Boolean(a.data.pinned))
+      if (pinnedDiff !== 0) return pinnedDiff
+
+      return b.data.date.valueOf() - a.data.date.valueOf()
+    })
 }
 
 export async function getAllPostsAndSubposts(): Promise<
@@ -18,16 +54,13 @@ export async function getAllPostsAndSubposts(): Promise<
   const posts = await getCollection('blog')
   return posts
     .filter((post) => !post.data.draft)
-    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-}
+    .sort((a, b) => {
+      const pinnedDiff =
+        Number(Boolean(b.data.pinned)) - Number(Boolean(a.data.pinned))
+      if (pinnedDiff !== 0) return pinnedDiff
 
-export async function getAllProjects(): Promise<CollectionEntry<'projects'>[]> {
-  const projects = await getCollection('projects')
-  return projects.sort((a, b) => {
-    const dateA = a.data.startDate?.getTime() || 0
-    const dateB = b.data.startDate?.getTime() || 0
-    return dateB - dateA
-  })
+      return b.data.date.valueOf() - a.data.date.valueOf()
+    })
 }
 
 export async function getAllTags(): Promise<Map<string, number>> {

@@ -1,0 +1,84 @@
+---
+title: 'cron笔记'
+description: 'cron笔记，包含cron不执行shell脚本的解决办法'
+date: 2023-04-01
+tags: []
+keywords: ['cron不执行shell脚本']
+authors: ['xingpingcn']
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+cron笔记，包含cron不执行shell脚本的解决办法
+
+也许shell脚本本身可以执行，但是cron中不能执行，需要像下面这样设置
+
+```text
+SHELL=/bin/bash
+0 * * * * . /etc/profile;/bin/sh /pathto/run.sh
+
+```
+
+<Callout variant="note" title="NOTE">
+最后一定要有一个回车！后者会导入失败
+
+</Callout>
+
+```bash
+#!/bin/bash
+PATH=/opt/someApp/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+LOGS_FILE="/pathto/logs/$(date "+%Y-%m-%d-%H-%M-%S").log"
+cd /pathto
+docker-compose up >> $LOGS_FILE 2>&1
+```
+
+最后设置到cron
+
+```bash
+crontab /pathto/cron-for-run-per-1h.cron
+```
+
+<Callout variant="warning" title="warning">
+使用此命令会覆盖之前所有的cron任务
+
+</Callout>
+
+如果你不想覆盖之前的，那么就`/etc/cron.d`中新建文件，然后写进去。
+
+<Callout variant="warning" title="warning">
+cron的话基本必有一个`?`，它仅可存在于`dayofmouth`或者`dayofweek`
+
+</Callout>
+
+个人docker配置备份
+
+```docker
+FROM python:3.11
+WORKDIR /bin/test
+COPY ./requirements.txt ./
+RUN pip install -r ./requirements.txt
+ENTRYPOINT [ "python" ]
+CMD [ "./test.py" ]
+```
+
+```yaml
+version: '3.8'
+services:
+  enhanced-faas:
+    build:
+      context: ./
+    container_name: enhanced-faas
+    volumes:
+      - './:/bin/test'
+    expose:
+      - 443,80
+    command: ./main.py
+    networks:
+      - nginx-proxy
+
+networks:
+  nginx-proxy:
+    external: true
+```

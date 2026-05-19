@@ -2,8 +2,10 @@
 import BlogCard from '@/components/blog-card.astro'
 import Breadcrumbs from '@/components/breadcrumbs.astro'
 import PageHead from '@/components/page-head.astro'
+import { Badge } from '@/components/ui/badge'
 import Layout from '@/layouts/layout.astro'
-import { getAllTags, getPostsByTag } from '@/lib/data-utils'
+import { getAllTags, getPostsByTag, groupPostsByYear } from '@/lib/data-utils'
+import { Icon } from 'astro-icon/components'
 
 export async function getStaticPaths() {
   const tagMap = await getAllTags()
@@ -24,29 +26,49 @@ export async function getStaticPaths() {
 }
 
 const { tag, posts } = Astro.props
+const postsByYear = groupPostsByYear(posts)
+const years = Object.keys(postsByYear).sort((a, b) => parseInt(b) - parseInt(a))
 ---
 
 <Layout class="max-w-3xl">
   <PageHead
     slot="head"
-    title={`Posts tagged with "${tag}"`}
-    description={`A collection of posts tagged with ${tag}.`}
-    noindex
+    title={`标签：${tag}`}
+    description={`所有标记为 ${tag} 的文章。`}
   />
   <Breadcrumbs
     items={[
-      { href: '/tags', label: 'Tags', icon: 'lucide:tags' },
+      { href: '/tags', label: '标签', icon: 'lucide:tags' },
       { label: tag, icon: 'lucide:tag' },
     ]}
   />
 
-  <ul class="flex flex-col gap-y-4">
+  <section class="flex flex-col gap-y-8">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 class="text-3xl font-medium">标签：{tag}</h1>
+        <p class="text-muted-foreground mt-2 text-sm">
+          共 {posts.length} 篇文章
+        </p>
+      </div>
+      <Badge variant="muted" className="gap-x-1">
+        <Icon name="lucide:hash" class="size-3" />
+        {tag}
+      </Badge>
+    </div>
     {
-      posts.map((post) => (
-        <li>
-          <BlogCard entry={post} />
-        </li>
+      years.map((year) => (
+        <section class="flex flex-col gap-y-4">
+          <div class="font-medium">{year}</div>
+          <ul class="flex flex-col gap-4">
+            {postsByYear[year].map((post) => (
+              <li>
+                <BlogCard entry={post} />
+              </li>
+            ))}
+          </ul>
+        </section>
       ))
     }
-  </ul>
+  </section>
 </Layout>

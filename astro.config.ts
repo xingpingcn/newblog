@@ -20,8 +20,16 @@ import type { ExpressiveCodeTheme } from 'rehype-expressive-code'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  site: 'https://astro-erudite.vercel.app',
-  integrations: [mdx(), react(), sitemap(), icon()],
+  site: 'https://xingpingcn.top',
+  integrations: [
+    mdx(),
+    react(),
+    sitemap({
+      filter: (page) =>
+        !page.endsWith('.html/') && !page.endsWith('/sitemap.xml'),
+    }),
+    icon(),
+  ],
   vite: {
     plugins: [tailwindcss()],
   },

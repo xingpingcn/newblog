@@ -1,11 +1,21 @@
 ---
 import Link from '@/components/link.astro'
 import { buttonVariants } from '@/components/ui/button'
+import { getPostLinkTarget } from '@/lib/data-utils'
 import { cn } from '@/lib/utils'
 import { Icon } from 'astro-icon/components'
 
 const { newerPost, olderPost, parentPost } = Astro.props
 const isSubpost = !!parentPost
+const olderLink = olderPost
+  ? getPostLinkTarget(olderPost, { hash: 'post-title' })
+  : null
+const parentLink = parentPost
+  ? getPostLinkTarget(parentPost, { hash: 'post-title' })
+  : null
+const newerLink = newerPost
+  ? getPostLinkTarget(newerPost, { hash: 'post-title' })
+  : null
 ---
 
 <nav
@@ -15,7 +25,8 @@ const isSubpost = !!parentPost
   )}
 >
   <Link
-    href={olderPost ? `/blog/${olderPost.id}#post-title` : '#'}
+    href={olderLink?.href ?? '#'}
+    external={olderLink?.external}
     class={cn(
       buttonVariants({ variant: 'outline' }),
       'rounded-lg group flex items-center justify-start size-full',
@@ -43,7 +54,8 @@ const isSubpost = !!parentPost
   {
     isSubpost && (
       <Link
-        href={parentPost ? `/blog/${parentPost.id}#post-title` : '#'}
+        href={parentLink?.href ?? '#'}
+        external={parentLink?.external}
         class={cn(
           buttonVariants({ variant: 'outline' }),
           'group flex size-full items-center justify-center rounded-lg',
@@ -67,7 +79,8 @@ const isSubpost = !!parentPost
   }
 
   <Link
-    href={newerPost ? `/blog/${newerPost.id}#post-title` : '#'}
+    href={newerLink?.href ?? '#'}
+    external={newerLink?.external}
     class={cn(
       buttonVariants({ variant: 'outline' }),
       'rounded-lg group flex items-center justify-end size-full',

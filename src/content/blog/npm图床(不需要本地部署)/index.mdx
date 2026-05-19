@@ -1,0 +1,203 @@
+---
+title: 'npm图床（不需要本地部署）'
+description: '不在本地部署npm图床通过cdn加速html、jpg等资源'
+date: 2023-04-01
+tags: ['npm']
+keywords: ['npm', '图床', '远程图片', 'html加速', 'cdn']
+authors: ['xingpingcn']
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+本篇意在建立一个上传到GitHub repo自动发布package到npm空间的npm图床
+
+## 前言
+
+本篇为`picture-bed-using-freecdn`脚本的教程之一。脚本意在提高静态博客的cdn稳定性。
+
+[picture-bed-using-freecdn](https://github.com/xingpingcn/picture-bed-use-freecdn)
+
+脚本的另一篇使用教程在这里[ [使用freecdn-js提高hexo博客的cdn稳定性]](/使用freecdn-js提高hexo博客的cdn稳定性)
+
+## 建立用于储存图片等静态资源的npm图床
+
+可以放置js、css、图片（最好带上hash）等不经常变动的资源。
+
+### 准备工作
+
+<Callout variant="note">
+  准备工作网上有很多教程，这里不重复造轮子。请搜索“npm图床”
+</Callout>
+
+需要：
+
+- npm账号，创建一个`token`；
+- GitHub账号：创建一个repo，并在repo的`setting`创建一个名为`NPM_TOKEN`的secrets，值为上面的`token`。
+
+<Figure
+  src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20231001/image.2zlsco3s1iu0.png"
+  caption="添加NPM_TOKEN"
+/>
+
+### 创建package.json
+
+该文件指定了要上传的图床的名字和图床版本（不需要事先在npm空间创建一个空的package）；其中名字不能和现有的package重复，所以写的尽量长。
+
+```json
+{
+  "name": "",
+  "version": "1.0.0",
+  "description": "DO STUFF",
+  "author": "XDF"
+}
+```
+
+看好名称写就行，`version`尽量和我一样就行。
+
+### 创建GitHub action
+
+`GitHub action`可以在你把文件push或者release到repo时自动执行自定义命令，这里我们让他自动把我们push的图片发布到npm空间，使资源能通过npm cdn访问。
+
+在reop的上方点击`Action`，然后点击`new workflow`，之后点击`set up a workflow yourself `，名字随便（我这里是npm-publish.yml），之后填入以下信息：
+
+```yaml
+name: npm-publish
+
+on:
+  push:
+    branches:
+      - master
+permissions:
+  contents: write
+
+jobs:
+  publish-npm:
+    runs-on: ubuntu-latest
+    # Clone 仓库
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master
+      # 安装 Node.js
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: https://registry.npmjs.org/
+
+      # 发布 NPM 包
+      - name: Publish Package
+        run: |
+          git config --global user.email "zzy4on9@outlook.com"
+          git config --global user.name "user_name"
+          npm version patch
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+      - name: Push
+        run: |
+          git push
+```
+
+其中的`master`要换成你`branch`（分支）的名字。`NPM_TOKEN`就是最开始在secrets填写的`token`，因此名字要对应上。`email`和`user_name`可以随便写。
+
+### 上传图片
+
+使用图床工具或者手动上传到GitHub repo就能自动发布到npm空间，可以看到npm包的版本`version`变化了（npm不支持覆盖发布，所以版本一定会变化），同时`.json`文件里面的版本也变化了，这得益于GitHub action。
+
+这里推荐一个图床工具吧，只用于GitHub的，比较轻量，使用浏览器就行。
+
+[PicX图床工具官方文档](https://picx-docs.xpoet.cn)
+
+### 使用图片
+
+提供几个国内能用的npm cdn
+
+```yaml
+https://npm.onmicrosoft.cn/,
+https://jsd.onmicrosoft.cn/npm/,
+https://cdn.jsdelivr.net/npm/,
+https://unpkg.com/
+```
+
+使用格式为：
+
+```yaml
+https://{cdn}/{npm_name}@{version}/path/to/resource.ext
+```
+
+例如
+
+```yaml
+https://unpkg.com/html-hosting-for-xp@1.0.1/%E5%9C%A8python%E4%B8%AD%E8%BF%90%E8%A1%8Cbash%EF%BC%88windows%EF%BC%89.html
+https://jsd.onmicrosoft.cn/npm/p-hosting-for-xp@1.0.15/20230525/logo%20(2).ln5ua8psy9s.webp
+```
+
+<Callout variant="tip">
+  freecdn-js可以把资源的响应头中的`mime`改成`text/html`（而不是原来的text/plain），从而能够让浏览器渲染网页。我写的脚本支持自动把用于写作博客.md文件转换为对应的html
+  cdn列表。见前言
+</Callout>
+
+## 建立用于储存html静态资源的npm图床
+
+同样图床可以储存html文件。我是在本地编译好博客然后发布到GitHub repo的，因而在push之后依然可以在action中把html发布到npm空间。
+
+```json
+{
+  "name": "",
+  "version": "1.0.0",
+  "description": "DO STUFF",
+  "author": "XDF"
+  "files": [
+        "*.html"
+    ]
+}
+```
+
+这里的`package.json`多了一个`files`的`key`，表示只发布html文件到npm空间。`files`是一个列表（array），和.gitignore文件的写作规则一样。
+
+这里的action中的`.yml`文件和储存图片的repo的`.yml`一样，但是要删去`npm version patch`这行。
+
+`npm version patch`的作用是更新version，在本地发布html之前（hexo d），在命令行输入`npm version patch`就能更新本地的`package.json`中的version（换而言之，在更新version之前，本地的`package.json`和`.yml`内容和`目录`要和GitHub repo的一致，然后push更新了version之后的`.json`之后，让action自动部署，发布html到npm空间）
+
+<Callout variant="warning">
+  如果用我的命令行上传博客会多次push本地文件，但是只在push
+  html之前会更新version，那么之后的push会因为没有更新version而action部署失败，但是事实上没有什么影响
+</Callout>
+
+## 脚本的使用
+
+脚本链接见前言。如果你要使用npm空间，要在`config.py`中写上你的npm包名，用于查询最新的version。
+
+<Callout variant="warning">同样需要注意替换你的branch</Callout>
+
+```bash
+    f:
+    cd f:/blog #博客根目录
+    hexo clean && hexo g
+    cd f:/blog/package_json #储存package.json和.yml的文件夹（注意.yml路径！！）
+    npm version patch
+    cd f:/blog
+    gulp
+    # 上传之前确保./public存在package.json和.yml（注意.yml路径！！）
+    xcopy .\package_json .\public /e/h
+    hexo d
+    cd f:/blog/.deploy_git
+    python ../import_to_db_with_hexo_blog.py
+    python ../import_to_db_with_urls_txt.py
+    freecdn find --save
+    freecdn manifest --merge ../pic.conf
+    freecdn manifest --merge ../custom.conf -o manifest-full.txt #用于生成外置的freecdn-manifest.txt
+    freecdn js --make --cdn "https://jsd.cdn.zzko.cn/gh/user/repo@main/freecdn-internal/ver/freecdn-main.min.js unpkg jsdelivr elemecdn " #此命令为配置cdn链接用于加速.min.js文件，详细请查看freecdn项目的GitHub
+    git add --all
+    git commit -m "update"
+    git push origin main #如果需要添加origin地址，请自行添加。
+    python ../generate_external_manifest_file.py
+    git add --all
+    git commit -m "update"
+    git push origin main  #如果“is_refresh_tag”为 “True”需要上传多次
+    python ../refresh_cdn_cache.py #可能没用
+```

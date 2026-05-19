@@ -1,0 +1,107 @@
+---
+title: '在存在父子文件结构情况下使用python import'
+description: '在存在父子文件结构情况下使用python import，深刻理解python如何引import用子文件和父文件。Attempted relative import with no known parent package'
+date: 2023-04-01
+tags: ['python']
+keywords:
+  ['python引入子文件夹 python引入父文件夹 绝对引入 相对引入 __init__.py']
+authors: ['xingpingcn']
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+## 前言
+
+网上的资料大多数都比较乱，包括`stackoverflow`也是，也就产生了这篇笔记。
+
+## 文件结构和可能存在的引用链条
+
+现在有这样一个文件夹
+
+```bash
+root
+|____ a.py  # 该文件作为演示的运行入口文件
+|____ b.py
+|____ c.py
+|____ dir1
+     |____d.py
+     |____e.py
+     |____dir2
+          |____x.py
+```
+
+<Callout variant="warning" title="IMPORTANT">
+* 我使用的是`python3.11`，该版本中不需要`__init__.py`也能把文件夹变成一个`package`。
+* 如果你不能引入子文件夹，则直接在该文件夹中新建一个`__init__.py`，内容为空。
+
+</Callout>
+可能存在的引用链条有
+
+- a -> d -> b（引用父文件）
+
+```python
+    # a.py
+    import d
+    # d.py
+    import b
+
+```
+
+- a -> d -> x -> e（引用子文件后再引用其父文件）
+- a -> b -> c
+- a -> d -> x -> c
+
+## 非运行入口文件和运行入口文件
+
+<Callout variant="warning" title="IMPORTANT">
+一定要区分哪个是运行入口文件！
+
+</Callout>
+在`python a.py`中，`a.py`就是运行入口文件，其他的都不是。如果你`cd dir1 & python e.py`，那么`a.py`就不是运行入口文件了，`e.py`才是。`一般`而言运行入口文件使用绝对引入。
+
+## 绝对引入和相对引入
+
+`import a`就是绝对引入，`from . import a`就是相对引入。也就是说带`.`的就是相对引入。
+
+## a -> d -> b（引用父文件）
+
+```python
+# a.py
+from dir1 import d
+# d.py
+from .. import b
+#正确写法 import b
+```
+
+如果你这么写的话一定会报错的，Attempted relative import with no known parent package，不报错你也不会来看我的博客（）
+
+这里假设`a.py`是运行入口文件，正确的写法是直接`import b`，这是因为`b.py`和`a.py`同级，也就是说如果是要引入同运行入口文件同级的`.py`，则直接`import`就可以。
+
+## a -> d -> x -> e（引用子文件后再引用其父文件）
+
+这个在`d.py`中就是正常的`from .dir1 import x`，但是需要注意的是，在`x.py`中需要使用`from .. import e`，这和上面那个引用父文件的方法不一样，所以说一定要注意哪个才是运行入口文件！！
+
+## a -> d -> x -> c
+
+这里也出现了`a.py`引用同级的`c.py`的情况，与`x.py`引用`e.py`不同，`x.py`引用`c.py`的时候直接`import c`就可以。
+
+## a -> b -> c
+
+最后这个也是同级，`import c`就可以。
+
+## 在运行入口文件中引用其父文件
+
+不是不可以，其实没什么必要这么做，因为如果后续要继续改的话会频繁出错，例如如果存在另一个同级或非同级的文件，此文件要引用原来的运行入口文件，那么原运行入口文件所引用的文件很可能就引用失败。
+
+所以我看有些库，例如`requests`，官方的`asyncio`都是只有一个层级，大家都是非运行入口文件，互相引用的时候都是用相对引入。
+
+如果你真的要在运行入口文件中引用其父文件，那么这样写
+
+```python
+import sys
+from os import path
+sys.path(path.dirname(path.dirname(path.abspath(__file__))))
+import a
+```

@@ -1,0 +1,56 @@
+---
+title: '甲骨文密钥ssh连不上且忘记登录密码解决方法'
+description: '甲骨文云服务器密钥无法登录且忘记密码时的解决方法，详细介绍如何通过VNC和挂载引导卷重置密码，适用于未设置过本地密码的用户。'
+date: 2023-04-01
+tags: []
+keywords: ['甲骨文', 'Oracle Cloud', '密码重置', 'VNC']
+authors: ['xingpingcn']
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+试过很多方法，搞了一个通宵才搞定
+
+- 有试过进 bios 改 `init=/bin/bash`，结果卡在 `random: crng init done` 了
+- 有试过连 VNC，结果发现要密码。这点甲骨文很坑，因为我一直都是用的密钥登录的，根本没有设置过密码，默认密码也没告诉过我。所以这都是血的教训，以后一定要改密码先
+- 最后是开了一台新机然后把引导卷从主力鸡上分离出来，放到工具鸡里面重置密码。然后再通过 VNC 连接机子，这时候就可以输入刚刚设置的密码进入系统救小鸡了。
+
+## 前期工作
+
+正如前面说的，开了一台新机然后把引导卷从主力鸡上分离出来，放到工具鸡里面重置密码。（如果工具鸡超出免费额度可能要扣钱）
+
+<Callout variant="warning" title="IMPORTANT">
+开的工具鸡要和主力鸡的架构一样，系统也尽量一样
+
+</Callout>
+
+之后就是从主力鸡下面分离引导卷。其实也不难，就文字简单描述一下
+
+1. 打开主力鸡控制台，主力鸡关机，之后选择存储，点击右边三个点，选择分离
+1. 新建工具鸡，之后进工具鸡的存储，选择添加附加存储卷（不是引导卷）
+1. 之后开始 ssh 连接工具鸡
+1. 还有一点很重要的，就是要进去新版的控制台页面（一般没有改动的都是新版 ui），在更换系统那个 tag 下找到 cloud shell 连接 VNC（旁边是上传本地 rsa 公钥，cloud shell 其实就是自动帮你创建和上传），这个之后要用到。
+
+## 重置密码
+
+1. 首先查看挂载的盘在哪。输入`fdisk -l`，看硬盘大小猜测哪个才是挂载的盘。
+1. `cd / && mkdir mnt-tmp`
+1. 如果附加卷是 `/dev/sdb1`，就输入 `mount /dev/sdb1 /mnt-tmp`。这步是为了挂载附加卷
+1. `chroot /mnt-tmp`，它能让你在主力机的文件系统里执行命令。
+1. `passwd root` 或者 `passwd ubuntu`。反正重置你的有`root`权限的用户就是了
+1. 记住密码。
+1. `exit && umount /mnt-tmp`
+
+## 恢复主力鸡
+
+1. 从工具鸡里分离附加卷，在主力机里添加引导卷。工具鸡可以不用关机也能分离
+1. 主力机开机并且连接好 VNC
+
+<Callout variant="note" title="INFO">
+   不会开 VNC 的看[前期工作](#前期工作)第四点
+
+</Callout>
+1. 进去 VNC 输入用户密码做该做的事情。
+1. 完了删除工具鸡，记得把引导卷也删了，不然要继续扣钱。

@@ -1,0 +1,122 @@
+---
+import Link from '@/components/link.astro'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { FriendSite } from '@/lib/friends'
+import { Icon } from 'astro-icon/components'
+
+interface Props {
+  site: FriendSite
+}
+
+const { site } = Astro.props
+const previewImage = site.screenshot || site.avatar
+---
+
+<article
+  class="hover:bg-muted/50 group overflow-hidden rounded-xl border transition-colors duration-300"
+>
+  <Link href={site.url} external class="flex h-full flex-col">
+    {
+      previewImage && (
+        <div class="bg-muted/30 relative aspect-[16/9] overflow-hidden border-b">
+          <Skeleton className="absolute inset-0 size-full rounded-none transition-opacity duration-300 has-[+img[data-state=error]]:animate-none has-[+img[data-state=error]]:opacity-0 has-[+img[data-state=loaded]]:animate-none has-[+img[data-state=loaded]]:opacity-0" />
+          <img
+            src={previewImage}
+            alt={`${site.title} 预览图`}
+            loading="lazy"
+            decoding="async"
+            data-friend-image
+            data-state="loading"
+            class="peer absolute inset-0 size-full object-cover opacity-0 transition-transform duration-300 group-hover:scale-[1.02] data-[state=error]:hidden data-[state=loaded]:opacity-100"
+            onload="this.dataset.state = this.naturalWidth > 0 ? 'loaded' : 'error'"
+            onerror="this.dataset.state = 'error'"
+          />
+          <div class="text-muted-foreground absolute inset-0 hidden size-full items-center justify-center peer-data-[state=error]:flex">
+            <Icon name="lucide:image-off" class="size-8" />
+          </div>
+        </div>
+      )
+    }
+
+    <div class="flex grow flex-col gap-4 p-4">
+      <div class="flex items-start gap-3">
+        {
+          site.avatar ? (
+            <div class="bg-muted/30 relative size-11 shrink-0 overflow-hidden rounded-md border">
+              <Skeleton className="absolute inset-0 size-full rounded-none transition-opacity duration-300 has-[+img[data-state=error]]:animate-none has-[+img[data-state=error]]:opacity-0 has-[+img[data-state=loaded]]:animate-none has-[+img[data-state=loaded]]:opacity-0" />
+              <img
+                src={site.avatar}
+                alt={`${site.title} 头像`}
+                loading="lazy"
+                decoding="async"
+                data-friend-image
+                data-state="loading"
+                class="peer absolute inset-0 size-full object-cover opacity-0 data-[state=error]:hidden data-[state=loaded]:opacity-100"
+                onload="this.dataset.state = this.naturalWidth > 0 ? 'loaded' : 'error'"
+                onerror="this.dataset.state = 'error'"
+              />
+              <div class="text-muted-foreground absolute inset-0 hidden size-full items-center justify-center peer-data-[state=error]:flex">
+                <Icon name="lucide:globe" class="size-5" />
+              </div>
+            </div>
+          ) : (
+            <div class="bg-muted text-muted-foreground flex size-11 shrink-0 items-center justify-center rounded-md border">
+              <Icon name="lucide:globe" class="size-5" />
+            </div>
+          )
+        }
+
+        <div class="min-w-0">
+          <h2 class="truncate text-base font-medium">{site.title}</h2>
+          <p class="text-muted-foreground mt-1 line-clamp-2 text-sm leading-6">
+            {site.description || site.url}
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-auto flex flex-wrap items-center gap-2">
+        <Badge variant="outline" className="gap-x-1">
+          <Icon name="lucide:external-link" class="size-3" />
+          访问
+        </Badge>
+        {
+          site.labels?.map((label) => (
+            <Badge variant="muted" className="gap-x-1">
+              <span
+                class="size-2 rounded-full"
+                style={`background-color: #${label.color || 'ededed'}`}
+              />
+              {label.name}
+            </Badge>
+          ))
+        }
+      </div>
+    </div>
+  </Link>
+</article>
+
+<script>
+  const markStalledFriendImages = () => {
+    document
+      .querySelectorAll<HTMLImageElement>('img[data-friend-image]')
+      .forEach((image) => {
+        if (image.dataset.fallbackTimer === 'set') return
+
+        image.dataset.fallbackTimer = 'set'
+
+        window.setTimeout(() => {
+          if (image.dataset.state === 'loaded') return
+          if (image.complete && image.naturalWidth > 0) {
+            image.dataset.state = 'loaded'
+            return
+          }
+
+          image.dataset.state = 'error'
+        }, 6000)
+      })
+  }
+
+  markStalledFriendImages()
+  document.addEventListener('astro:after-swap', markStalledFriendImages)
+</script>

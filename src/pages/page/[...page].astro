@@ -1,0 +1,50 @@
+---
+import HomePage from '@/components/home-page.astro'
+import PageHead from '@/components/page-head.astro'
+import { SITE } from '@/consts'
+import Layout from '@/layouts/layout.astro'
+import { getAllAuthors, getAllPosts, getSortedTags } from '@/lib/data-utils'
+
+export async function getStaticPaths() {
+  const allPosts = await getAllPosts()
+  const lastPage = Math.ceil(allPosts.length / SITE.postsPerPage)
+
+  return Array.from({ length: Math.max(lastPage - 1, 0) }, (_, index) => {
+    const currentPage = index + 2
+    const start = (currentPage - 1) * SITE.postsPerPage
+    const end = start + SITE.postsPerPage
+
+    return {
+      params: { page: String(currentPage) },
+      props: {
+        page: {
+          data: allPosts.slice(start, end),
+          currentPage,
+          lastPage,
+        },
+      },
+    }
+  })
+}
+
+const { page } = Astro.props
+const tags = await getSortedTags()
+const authors = await getAllAuthors()
+const author = authors.find((item) => item.id === 'xingpingcn') ?? authors[0]
+const title = `首页 · 第 ${page.currentPage} 页`
+---
+
+<Layout class="max-w-6xl">
+  <PageHead
+    slot="head"
+    title={title}
+    canonical={new URL(`/page/${page.currentPage}/`, SITE.href).href}
+  />
+  <HomePage
+    posts={page.data}
+    author={author}
+    tags={tags}
+    currentPage={page.currentPage}
+    totalPages={page.lastPage}
+  />
+</Layout>

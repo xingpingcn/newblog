@@ -1,0 +1,133 @@
+---
+title: '列举几个免费域名和权威dns服务器'
+description: '说一下我用过的免费域名和权威dns服务器的优缺点'
+date: 2023-04-01
+tags: []
+keywords: ['免费域名', '免费权威dns服务器', '体验', '评测', '优缺点']
+authors: ['xingpingcn']
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+## 免费域名
+
+- [www.sitelutions.com](https://www.sitelutions.com/)
+  - 优点
+    - 这个能分配一个二级子域名，有很多域名，可以自定义NS
+    - 长期免费
+  - 缺点
+    - 但是不是所有都可以用，能用的子域名都不能部署在vercel，可以部署在netlify
+- [freedomain.one](https://freedomain.one/index.jsp)
+  - 同上
+- [nic.eu.org](https://nic.eu.org/)
+  这个基本大家都有了
+  - 优点
+    - 子域名都能部署在vercel
+    - 长期免费
+    - 有dnssec
+  - 缺点
+    - 大概率被墙
+    - 申请要等比较久
+- [cloudns.net](https://www.cloudns.net/)
+  这本身是一个dns服务器，但是可以获得一个子域名
+  - 优点
+    - 可以绑定到cf
+  - 缺点
+    - 只能绑定到cf
+    - 新账号分配的子域名似乎不能绑定到cf
+- [www.azote.org](https://www.azote.org)
+  - 优点
+    - 可以申请很多域名
+  - 缺点
+    - 不能绑定到cf，但是可以通过cf的SaaS来CNAME进行域名加速
+- [secure.nom.za](https://secure.nom.za/)
+  - 优点
+    - 可以绑定到cf
+  - 缺点
+    - 一个月不用会被回收
+- [硅云](https://www.vpsor.cn/)
+  - 优点
+    - 免费一年的`.xyz`或者`.top`域名
+  - 缺点
+    - 只有新用户才有1年的免费使用
+    - 国产
+
+此外还有pp.ua，虽然免费但是要绑定银行卡，每年续费
+
+https://dns.beaa.cn/ 免费二级域名
+
+## 免费权威dns服务器
+
+- [cloudns.net](https://www.cloudns.net/)
+  这本身是一个dns服务器，但是可以获得一个子域名
+  - 优点
+    - 申请简单，可以拿到一个免费域名
+    - 可以转移到cf，这样就没有解析次数限制
+  - 缺点
+    - 速度一般
+    - 新账号分配的子域名似乎不能绑定到cf
+    - 如果用它自己的dns解析只能每个月用500k次，转到cf就没有限制了
+- [NS1](https://my.nsone.net/)
+  - 优点
+    - 可以说是目前最牛的DNS服务器了，最近被IBM收购，文档有点乱，应该很快就会改
+    - 相对于其他国外的dns服务器来说，免费版在国内速度不错。而且他有国内和京东云合作的中国特供dns服务器，非常快，但是不免费
+    - 功能非常强大，免费版就可以体验到特色功能`filter chain`。我写过一篇[教程](https://xingpingcn.top/%E5%85%8D%E8%B4%B9%E9%80%9A%E8%BF%87ns1%E5%88%A9%E7%94%A8%E7%9B%91%E6%8E%A7%E5%AE%9D%E5%B9%B3%E5%8F%B0%E5%AE%9E%E7%8E%B0%E5%AE%9E%E6%97%B6%E5%9F%BA%E4%BA%8E%E4%B8%8D%E5%90%8C%E8%BF%90%E8%90%A5%E5%95%86%E7%9A%84%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB.html#NS1-com%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B)介绍如何使用。付费版还有更多强大功能。
+    - 每个月5m次解析，1个`filter chain`
+    - 可以接入http测速等监控工具（包括第三方服务和自定义的），实现自动故障转移
+    - 可以有国内的分路线解析。我写过一篇[教程](https://xingpingcn.top/%E5%85%8D%E8%B4%B9%E9%80%9A%E8%BF%87ns1%E5%88%A9%E7%94%A8%E7%9B%91%E6%8E%A7%E5%AE%9D%E5%B9%B3%E5%8F%B0%E5%AE%9E%E7%8E%B0%E5%AE%9E%E6%97%B6%E5%9F%BA%E4%BA%8E%E4%B8%8D%E5%90%8C%E8%BF%90%E8%90%A5%E5%95%86%E7%9A%84%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB.html#NS1-com%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B)介绍如何使用
+    - 有dnssec
+  - 缺点
+    - 申请困难
+    - 不知道为什么会有很多dns解析占用你的免费额度
+- [netlify](https://www.netlify.com/)
+  是的，就是那个可以部署项目的netlify，他也有dns服务
+  - 优点
+    - 它是接入ns1的，也就是说你可以享受ns1的速度，但是没有ns1的次数限制
+  - 缺点
+    - 基本上就体验不到ns1的各种功能了
+- vercel
+  - 优点
+    - 一样的没有次数限制，速度可以
+  - 缺点
+    - 功能少
+- 华为云
+  - 优点
+    - 有分路线解析
+    - 国际版不用绑定手机号和银行卡
+    - SOA没有指向此NS也能添加域名
+  - 缺点
+    - 速度一般，不稳定
+    - 分路线解析一般般，识别不能说很准确
+    - 作为国内dns服务器功能较少，如307重定向这种，和类似dnspod的http监控
+    - 500条dns记录。是的，他能绑定50个域名，可是**总共**只能添加500条dns解析。有点神经病了，不过它可以申请提高这个限制，我不知道容易不容易
+    - 无dnssec
+- cf
+  - 优点
+    - 免费，无限制
+    - 可以用cdn
+  - 缺点
+    - 没有分路线解析
+    - 国内解析很慢，cdn很慢
+    - 不能添加子域名，某些特殊的子域名可以
+- dnspod
+  - 优点
+    - 有免费的http测速和负载均衡
+  - 缺点
+    - 国际版也要绑定银行卡
+- [dns.he.net](https://dns.he.net/)
+  国外老牌
+  - 优点
+    - 国内速度快
+    - 有ddns
+    - SOA没有指向此NS也能添加域名
+    - 记录类型多
+  - 缺点
+    - 暂时想不到
+- [geoscaling.com](https://www.geoscaling.com/dns2/index.php?module=auth)
+  - 优点
+    - 就像它的名字一样，可以根据地理位置解析
+    - 速度还行
+  - 缺点
+    - 想要按照地理位置解析，规则编写起来很麻烦

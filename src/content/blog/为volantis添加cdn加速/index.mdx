@@ -1,0 +1,156 @@
+---
+title: '优化部署在github page的hexo-volantis的国内访问速度（dom、图片、js、css等）'
+description: '部署在github page的volantis国内访问太慢 cdn加速 图床cdn加速 弄完之后确实快了许多'
+date: 2023-04-01
+tags: ['volantis']
+keywords:
+  [
+    'github page',
+    '国内加速',
+    'volantis',
+    'cdn加速',
+    'hexo',
+    '不生效',
+    '图片',
+    '图床',
+    '国内访问',
+  ]
+authors: ['xingpingcn']
+coverImage: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230420/image.55d0qoox6bg0.png'
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+国内直连访问自己的网站太慢了，发现官方文档推荐使用cdn加速，于是试了一下，也踩了一些坑，弄完之后确实快了许多
+
+## 进阶设置
+
+<Callout variant="tip">进阶的设置请看以下文章</Callout>
+
+- [提升部署在vercel或netlify的网站在中国的访问速度和稳定性](/enhanced-faas-in-cn)
+- [使用freecdn-js提高hexo博客的cdn稳定性](/使用freecdn-js提高hexo博客的cdn稳定性)
+- [免费通过NS1利用监控宝平台实现实时基于不同运营商的故障转移](/免费通过ns1利用监控宝平台实现实时基于不同运营商的故障转移)
+
+## 寻找访问慢的根源
+
+打开`调试台`-`网络`，查看原因
+
+<Figure
+  src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230420/image.az5hs7zk4ck.png"
+  caption="寻找访问慢的根源"
+/>
+
+可以看到，访问`GitHub page`、`css`文件和`js`文件都超过了1秒以上，加载图片更是慢的不得了，这几个问题都是要解决的。
+
+## 使用netlify部署网页
+
+<Figure
+  src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230508/image.7j23eumhawg0.webp"
+  caption="netlify page访问速度"
+/>
+
+访问`GitHub page`很慢，使用使用`netlify`部署网页能加快访问速度[【netlify示例】](https://xingpingcn.netlify.app)，`netlify`支持从`GitHub`抓取`repo`并部署，也就是说`hexo`生成并上传网页到`GitHub`，`netlify`就能同步部署，而且速度还很快。`netlify`每个月有100g免费流量，把图片、`js`等静态资源放在`GitHub`，然后用`cdn`加速（下面会讲到），会节省不少流量。
+
+可以从上图看到，`netlify`托管的网页国内访问速度非常快，比`cf page`（平均2+秒，较为稳定）和`vercel`电信很慢，其他还行；容易被墙，访问跳转到反诈平台）好多了。看了一下，访问慢的似乎是因为刚刚换了`netlify`的`dns`，还有缓存所以域名解析到`vercel`了，所以慢的都是vercel()。
+
+`netlify`可以`免费`给你分配一个二级域名，也可以换成自己买的域名（我没有备案速度也很快），真的很良心了。
+
+域名我在[namesilo(点击购买域名)](https://www.namesilo.com/domain/search-domains?rid=e824566hn)买的，`.top`后缀续费4.8刀，和阿里云国际版价格差不多，国内版要便宜很多，不过要实名。当然`namesilo`这个价格比很多国外域名注册商便宜了。
+
+`.xyz`只要0.99刀更加便宜。
+
+<Callout variant="tip">
+  其他免费的静态网站托管平台[render.com](https://render.com)国内比较快，100g每月流量，自定义域名，ca证书、[4everland.org](https://4everland.org)去中心化托管平台，国内速度一般般；支持自定义域名，ca证书未知）
+</Callout>
+
+## 使用`jsd.cdn.zzko.cn`替代`cdn.jsdelivr.net`进行cdn加速`css`和`js`
+
+[进阶设置 / 使用freecdn-js](https://xingpingcn.top/使用freecdn-js提高hexo博客的cdn稳定性.html)
+
+主题默认配置用的`cdn.jsdelivr.net`现在似乎不会突然抽筋了，但是依然很慢，`jsd.cdn.zzko.cn`是一个免费面向中国境内外的高速`jsdelivr`镜像站，访问速度很快，可以作为理想的替代方案。
+
+<Callout variant="note">
+  备用域名`cdn.jsdelivr.ren`、`gcore.jsdelivr.net` 等
+</Callout>
+
+` `
+
+[54ayao/Chinajsdelivr](https://github.com/54ayao/Chinajsdelivr)
+
+` `
+
+<Callout variant="tip">
+  现在`jsd.cdn.zzko.cn`应该是修复了，所以不需要改了。直接在配置中添加一下代码即可。
+</Callout>
+
+~~如果仔细观察上面的图，可以发现访问的`style.css`变成了`style.xxxx.css`，同理`app.js`。这个是hexo在生成`public`文件夹的时候生成的，而怎么样不让他改为这种类型的名字，我不知道怎么样做。出于保险，我用了一个替代的方案，把`blog\public\css\style.xxxx.css`复制出来，并重命名为`style.css`，同理`app.js`。（这个是因为设置了`cdn_version: true`）~~
+
+~~由于访问`jsd.cdn.zzko.cn`的响应头（response）中没有指定`content-type: charset=utf-8`，因而浏览器在解析的时候会出错。这时需要在`style.css`手动添加代码~~
+
+` `
+
+~~如果在配置文件中修改了`css`布局，如`sidebar`从左边移到了右边，则需要重新添加代码并上传至GitHub，因而推荐弄好布局后再上传~~
+
+```css
+@charset "UTF-8";
+```
+
+<Callout variant="warning">需要在第一行顶格填写</Callout>
+
+这时我们有了能正常访问的`css`文件（`js`不需要改）
+
+之后需要cdn加速`css`和`js`文件，直接把`css`和`js`文件放在`blog\source`下，上传网页的时候hexo会把这些一起上传到根目录`/`。
+
+或者在GitHub新开一个不同于个人GitHub page的`repo`，之后在根目录`/`上传这两个改了名字后的`css`和`js`文件。
+
+使用
+
+```html
+https://jsd.cdn.zzko.cn/gh/user/repo/style.css
+```
+
+就能访问`style.css`了，同理`app.js`。
+
+要让`volantis`访问cdn加速链接，需要在配置中添加一下代码。
+
+```yaml
+cdn:
+  enable: true
+
+  set:
+    js:
+      app: https://jsd.cdn.zzko.cn/gh/user/repo/app.js
+    css:
+      style: https://jsd.cdn.zzko.cn/gh/user/repo/style.css # (异步加载样式)
+
+cdn_version: false
+
+volantis_static_cdn: https://jsd.cdn.zzko.cn/npm/volantis-static@0.0.1654736714924/
+```
+
+`user`和`repo`都改为自己的。如果没有刷新没有变化记得设置`cdn_version: false`然后重启服务器。
+
+`volantis_static_cdn`的值或许需要根据默认配置中的静态文件版本去更改，也就是`@`后面的一串数字。
+
+## 使用PicX图床工具
+
+[XPoet/picx](https://github.com/XPoet/picx)
+
+使用方便管理的图床让你编辑文章更加得心应手，此图床可以自动压缩图片，添加md格式等，配置也十分简单，直接看官方文档就ok。
+
+其图床还有多种cdn加速可选，十分方便。
+
+[PicX图床工具官方文档](https://picx-docs.xpoet.cn)
+
+## 结语
+
+最后看看访问速度
+
+<Figure
+  src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230420/image.7grs1emx5ok0.png"
+  caption="访问速度快"
+/>
+
+`shift+F5`强制刷新，速度还挺满意，dom打开速度很快了，只是没更新图片（），，懒，可以直接试试测我的网站速度看看。

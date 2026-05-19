@@ -1,0 +1,33 @@
+---
+title: 'curl遇到的坑'
+description: 'curl中post表格的时候的坑'
+date: 2023-04-01
+tags: []
+keywords: ['bash', 'curl -d', 'post']
+authors: ['xingpingcn']
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+一开始我是这么写的
+
+```bash
+# 获取更新后的证书和私钥文件路径
+CERT_PATH=$(cat ./netlify_cert/domain.com.cert.pem)
+KEY_PATH=$(cat ./netlify_cert/domain.com.key.pem)
+FULLCHAIN_CERT_PATH=$(cat ./netlify_cert/domain.com.fullchain.pem)
+
+# 使用 Netlify API 上传证书
+curl -X POST \
+  -H "Authorization: Bearer $NETLIFY_API_KEY" \
+  -d "key=${KEY_PATH}" \
+  -d "ca_certificates=${FULLCHAIN_CERT_PATH}" \
+  -d "certificate=${CERT_PATH}" \
+  "https://api.netlify.com/api/v1/sites/${NETLIFY_SITE_ID}/ssl"
+```
+
+这么写看着没用什么问题，但是`-d`命令是默认进行`urlencode`的，这样子我的证书就会改变。需要改成`--form-string`才行。
+
+这种默认就`urlencode`的，`curl -h`中又没说明，真的好坑

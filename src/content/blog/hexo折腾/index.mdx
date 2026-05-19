@@ -1,0 +1,198 @@
+---
+title: '使用volantis中遇到的坑'
+description: 'volantis404页面不生效？sidebar效果不生效？如何更改图片尺寸？手机模式下toc会被遮挡'
+date: 2023-04-20
+tags: ['volantis']
+keywords:
+  [
+    'volantis',
+    'hexo',
+    '博客',
+    '404页面',
+    'sidebar',
+    '不生效',
+    '图片',
+    '显示尺寸',
+    'toc被遮挡',
+  ]
+authors: ['xingpingcn']
+coverImage: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230420/image.5hpz9c2gz240.png'
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+使用volantis中遇到几个坑，如volantis404页面不生效，sidebar效果不生效，如何更改图片尺寸，手机模式下toc会被遮挡等，这里做了笔记
+
+## 写在前面
+
+<Callout variant="warning">
+  更改配置的时候记得刷新页面，如果不生效，记得重启本地服务器！
+</Callout>
+<Callout variant="warning">
+  更改配置的时候记得刷新页面，如果不生效，记得重启本地服务器！
+</Callout>
+<Callout variant="warning">
+  更改配置的时候记得刷新页面，如果不生效，记得重启本地服务器！
+</Callout>
+
+## 404页面不生效
+
+按照官方的[文档](https://volantis.js.org/v6/page-settings/#404%E9%A1%B5%E9%9D%A2)配置404页面，在本地打开一个不存在的页面，并不显示404页面，重启服务器依然不行。干脆直接放到GitHub page上，结果404页面能生效
+
+<Callout variant="tip">
+  结论：如果本地404页面不生效，就上传到服务器端查看是否生效
+</Callout>
+
+## sidebar效果不生效
+
+我的volantis版本是volantis`5.7`，主题文件设置中的sidebar的`shadow`, `floatable`, `blur`效果不生效
+
+```yaml
+sidebar:
+  effect: [shadow, floatable, blur]
+```
+
+我的方法是打开`blog\node_modules\hexo-theme-volantis\layout\_widget`，这里存放着`sidebar`的各个组件。
+
+以下以修改`blogger`组件为例：
+
+找到代码
+
+```html
+<section
+  class="widget <%- item.class %> <%- page.widget_platform %> <%- page.widget_pjax %>"
+></section>
+```
+
+可以看到`class`中是没有`shadow`, `floatable`, `blur`的，只需要我们手动添加关键词就能生效
+
+```html
+<section
+  class="widget floatable <%- item.class %> <%- page.widget_platform %> <%- page.widget_pjax %> shadow blur"
+></section>
+```
+
+刷新就可以看到效果生效，左边的`blogger`组件有高斯模糊并且有阴影效果了。
+
+<Figure
+  src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230420/image.3ezxjhosk9i.png"
+  caption="效果"
+/>
+
+其他组件也是同样的方法，关键是要找到这行代码
+
+```html
+<section class="widget ..."></section>
+```
+
+这行代码可以在浏览器打开元素查看器找到
+
+<Callout variant="note" title="info">
+按<kbd>F12</kbd>可以打开元素查看器
+
+</Callout>
+
+<Figure
+  src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230420/image.2v43xxro3vs0.png"
+  caption="效果"
+/>
+
+## 更改图片显示尺寸和圆角半径
+
+### 图片显示尺寸
+
+使用以下代码，则能显示如本post中的图片一样的效果
+
+    <Figure
+
+src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230420/image.2v43xxro3vs0.png"
+alt="效果"
+caption="效果"
+width={1916}
+height={935}
+/>
+
+其中的`url`，`width`和`alt`可以自己修改。`width`的单位可以是`px`也可以是百分比`%`
+
+### 图片圆角半径
+
+打开`\img.styl`就可以修改圆角半径
+
+```styl
+.md
+  img
+    position: relative
+    trans()
+    @media screen and (max-width: $device-mobile)
+      box-shadow: none
+  div>img,p>img,a>img
+    display: block
+    margin: auto
+    border-radius: 4px
+    @media screen and (max-width: $device-mobile)
+      border-radius: 4px
+  span
+    img
+      display: inline
+      margin: auto
+```
+
+其中的`border-radius`就是半径的`key`（默认的配置文件中应该有3个，我没有复制全），修改你想要的`value`。
+
+如果在像我一样在第7行行尾添加`a>img`，则可以修改使用`gallery`标签插件的图片中`border-radius`的值。
+
+## 解决手机模式下toc会被遮挡的问题
+
+<ImageGrid
+  images={[
+    {
+      src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230420/image.64ovonl779w0.png',
+      caption: 'toc被遮挡',
+    },
+    {
+      src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230420/image.30uajx353wa0.png',
+      caption: '解决后',
+    },
+  ]}
+/>
+
+只需要在`\navbar_first.styl`中修改`z-index`值为一个较小的数字。
+
+```styl
+.l_header
+  $iconW = 36px
+  $iconMargin = 4px
+  position: fixed
+  z-index: 10
+```
+
+## 引入css的rel=preload跨域问题
+
+如果你的`_config.yml`中设置的`css`链接是跨域url，例如使用了`cdn`，在浏览器的控制台中报错`A preload for .css is found, but is not used because the request credentials mode does not match. Consider taking a look at crossorigin attribute`，则需要修改`head.ejs`。
+
+<Callout variant="note" title="NOTE">
+如果css资源路径域名和你的博客域名一致则不需要改
+
+</Callout>
+
+```yaml
+cdn:
+  enable: true
+  set:
+    css:
+      style: https://cdn.example.com/style.css
+```
+
+```html
+<!-- 更改之前 -->
+<link rel="preload" href="<%- theme.cdn.map.css.style %>" as="style" />
+<!-- 更改之后 -->
+<link
+  rel="preload"
+  href="<%- theme.cdn.map.css.style %>"
+  as="style"
+  crossorigin="anonymous"
+/>
+```

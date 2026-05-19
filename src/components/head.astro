@@ -21,6 +21,18 @@ import Favicons from './favicons.astro'
     name="format-detection"
     content="telephone=no,date=no,address=no,email=no,url=no"
   />
+  <meta name="baidu-site-verification" content={SITE.verification.baidu} />
+  {
+    SITE.verification.google.map((content) => (
+      <meta name="google-site-verification" content={content} />
+    ))
+  }
+  <meta name="msvalidate.01" content={SITE.verification.bing} />
+  <script
+    is:inline
+    async
+    src={SITE.analytics.umami.src}
+    data-website-id={SITE.analytics.umami.websiteId}></script>
 
   <meta
     name="theme-color"
@@ -33,7 +45,7 @@ import Favicons from './favicons.astro'
     media="(prefers-color-scheme: light)"
   />
 
-  <link rel="sitemap" href="/sitemap-index.xml" />
+  <link rel="sitemap" href="/sitemap.xml" />
   <link rel="manifest" href="/site.webmanifest" />
   <link
     rel="alternate"
