@@ -54,8 +54,8 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
         class="-m-px size-[calc(100%+2px)] max-w-none rounded-md object-cover"
       />
     </Link>
-    <div class="site-header-actions flex items-center gap-3 sm:gap-4">
-      <nav class="site-header-nav flex items-center gap-3 text-sm sm:gap-5">
+    <div class="site-header-actions flex items-center gap-2 sm:gap-3">
+      <nav class="site-header-nav flex items-center gap-2 text-sm sm:gap-3">
         {
           primaryNavLinks.map((item) => (
             <Link
@@ -163,6 +163,7 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
 
       let previousScrollY = window.scrollY
       let isHeaderVisible = true
+      let motionHeight = 0
 
       const setMenuOpen = (isOpen: boolean) => {
         menu?.dataset && (menu.dataset.open = String(isOpen))
@@ -171,7 +172,13 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
 
       const syncMotionHeight = (height: number) => {
         if (!Number.isFinite(height) || height <= 0) return
+        if (Math.abs(height - motionHeight) < 0.5) return
+        motionHeight = height
         pageHeader?.style.setProperty('--site-header-motion-height', `${height}px`)
+        pageHeader?.style.setProperty(
+          '--site-header-motion-hide-offset',
+          `${-(height + 8)}px`,
+        )
       }
 
       const update = () => {
