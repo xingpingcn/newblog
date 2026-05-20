@@ -305,4 +305,4 @@ friends: {
 node scripts/migrate-hexo-blog.mjs /tmp/newblog-migration/blog-source
 ```
 
-脚本会把旧 Hexo 图片 / gallery 标签转换成 `Figure` 和 `ImageGrid`，把已知 CDN URL 规范化为 `cdn.jsdmirror.com`，并把旧的占位邮箱替换成 `zzy4on9@outlook.com`。
+脚本会把旧 Hexo 图片 / gallery 标签转换成 `Figure` 和 `ImageGrid`，把已知 CDN URL 规范化为 `cdn.jsdmirror.com`。
