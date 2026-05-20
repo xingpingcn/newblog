@@ -10,8 +10,11 @@
     "preview": "astro preview",
     "astro": "astro",
     "test:search": "node tests/search-contract.test.mjs",
+    "test:format-cjk": "node tests/format-cjk-spacing.test.mjs",
     "sync:image-metadata": "node scripts/sync-image-metadata.mjs",
-    "prettier": "prettier --write **/*.{ts,tsx,css,astro,md,mdx} --ignore-path .gitignore"
+    "prettier": "prettier --write **/*.{ts,tsx,css,astro,md,mdx} --ignore-path .gitignore",
+    "format:cjk": "node scripts/format-cjk-spacing.mjs",
+    "format": "npm run prettier && npm run format:cjk"
   },
   "dependencies": {
     "@astrojs/check": "0.9.7",
