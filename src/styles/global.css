@@ -160,6 +160,9 @@
 .site-header-inner {
   border: 1px solid transparent;
   border-radius: 0;
+  background-color: color-mix(in oklab, var(--background) 72%, transparent);
+  backdrop-filter: blur(16px) saturate(1.35);
+  -webkit-backdrop-filter: blur(16px) saturate(1.35);
   transition:
     padding 300ms ease,
     border-color 150ms ease,
