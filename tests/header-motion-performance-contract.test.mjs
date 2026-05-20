@@ -5,6 +5,11 @@ const root = new URL('../', import.meta.url)
 const header = await readFile(new URL('src/components/header.astro', root), 'utf8')
 const consts = await readFile(new URL('src/consts.ts', root), 'utf8')
 const css = await readFile(new URL('src/styles/global.css', root), 'utf8')
+const layout = await readFile(new URL('src/layouts/layout.astro', root), 'utf8')
+const subpostsHeader = await readFile(
+  new URL('src/components/subposts-header.astro', root),
+  'utf8',
+)
 
 const updateBlock = header.match(/const update = \(\) => \{[\s\S]*?\n      \}/)?.[0]
 assert(updateBlock, 'header motion should define a scroll update function')
@@ -195,34 +200,12 @@ assert(
 )
 
 assert(
-  /isolation:\s*isolate/.test(compactMobileHeaderBlock) &&
-    /background-color:\s*transparent/.test(compactMobileHeaderBlock) &&
+  /background-color:\s*transparent/.test(compactMobileHeaderBlock) &&
     /-webkit-backdrop-filter:\s*none/.test(compactMobileHeaderBlock) &&
     /backdrop-filter:\s*none/.test(compactMobileHeaderBlock) &&
     /box-shadow:\s*none/.test(compactMobileHeaderBlock) &&
-    /top:\s*0\.5rem/.test(
-      compactMobileHeaderShellBlock,
-    ) &&
-    /border:\s*1px solid var\(--border\)/.test(
-      compactMobileHeaderShellBlock,
-    ) &&
-    /border-radius:\s*inherit/.test(compactMobileHeaderShellBlock) &&
-    /-webkit-backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
-      compactMobileHeaderShellBlock,
-    ) &&
-    /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
-      compactMobileHeaderShellBlock,
-    ) &&
-    /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
-      compactMobileHeaderShellBlock,
-    ) &&
-    /box-shadow:[\s\S]*0 10px 24px/.test(
-      compactMobileHeaderShellBlock,
-    ) &&
-    /pointer-events:\s*none/.test(
-      compactMobileHeaderShellBlock,
-    ),
-  'compact mobile article header should draw one lowered blurred rounded shell around nav and TOC without moving content',
+    compactMobileHeaderShellBlock === '',
+  'compact mobile article header should not draw a rounded wrapper around stacked nav, TOC, and subpost controls',
 )
 
 assert(
@@ -240,19 +223,32 @@ assert(
     /border-color:\s*transparent/.test(compactMobileHeaderInnerBlock) &&
     /border-radius:\s*0/.test(compactMobileHeaderInnerBlock) &&
     /box-shadow:\s*none/.test(compactMobileHeaderInnerBlock) &&
-    /background-color:\s*transparent/.test(compactMobileHeaderBackdropBlock) &&
+    /border-color:\s*transparent/.test(compactMobileHeaderBackdropBlock) &&
     /box-shadow:\s*none/.test(compactMobileHeaderBackdropBlock) &&
-    /-webkit-backdrop-filter:\s*none/.test(compactMobileHeaderBackdropBlock) &&
-    /backdrop-filter:\s*none/.test(compactMobileHeaderBackdropBlock),
-  'compact mobile article header should not draw a second rounded blurred nav capsule',
+    /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
+      compactMobileHeaderBackdropBlock,
+    ) &&
+    /-webkit-backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      compactMobileHeaderBackdropBlock,
+    ) &&
+    /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      compactMobileHeaderBackdropBlock,
+    ),
+  'compact mobile article nav should keep a flat blurred layer without a visible outer border',
 )
 
 assert(
-  /background-color:\s*transparent/.test(compactMobileTocBlock) &&
-    /-webkit-backdrop-filter:\s*none/.test(compactMobileTocBlock) &&
-    /backdrop-filter:\s*none/.test(compactMobileTocBlock) &&
+  /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
+    compactMobileTocBlock,
+  ) &&
+    /-webkit-backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      compactMobileTocBlock,
+    ) &&
+    /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      compactMobileTocBlock,
+    ) &&
     /border-radius:\s*0/.test(compactMobileTocBlock),
-  'compact mobile article TOC should live inside the single blurred shell without its own corner layer',
+  'compact mobile article TOC should keep a flat blurred bar without a rounded wrapper',
 )
 
 assert(
@@ -263,10 +259,13 @@ assert(
 )
 
 assert(
-  /\.site-page-header\[data-header-hidden\]\s+\.mobile-toc-header\s*\{[\s\S]*?transform:\s*translateY\(calc\(-1 \* var\(--site-header-motion-height, 4rem\)\)\)/.test(
+  /\.site-page-header\[data-header-hidden\]\s+:is\([^)]*\.mobile-toc-header[^)]*\.mobile-subposts-header[^)]*\)\s*\{[\s\S]*?transform:\s*translateY\(calc\(-1 \* var\(--site-header-motion-height, 4rem\)\)\)/.test(
     headerCss,
-  ),
-  'mobile article TOC should keep its original hidden transform',
+  ) ||
+    /\.site-page-header\[data-header-hidden\]\s+:is\([^)]*\.mobile-subposts-header[^)]*\.mobile-toc-header[^)]*\)\s*\{[\s\S]*?transform:\s*translateY\(calc\(-1 \* var\(--site-header-motion-height, 4rem\)\)\)/.test(
+      headerCss,
+    ),
+  'mobile article TOC and subpost controls should share the hidden-header transform',
 )
 
 assert(
@@ -274,4 +273,16 @@ assert(
     !mobileTocBlock.includes('position: relative') &&
     !mobileTocBlock.includes('z-index'),
   'header performance fix should not add new mobile TOC positioning or variables',
+)
+
+assert.match(
+  layout,
+  /<slot name="subposts-navigation" \/>[\s\S]*?<slot name="table-of-contents" \/>/,
+  'mobile subposts navigation should render above the article TOC when both exist',
+)
+
+assert.match(
+  subpostsHeader,
+  /<div[\s\S]*?id="mobile-subposts-container"[\s\S]*?class="mobile-subposts-header w-full lg:hidden"[\s\S]*?>/,
+  'mobile subposts navigation should expose a stable class for shared sticky-header styling',
 )

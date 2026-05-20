@@ -10,6 +10,7 @@ async function readProjectFile(path) {
 const articleLicense = await readProjectFile('src/components/article-license.astro')
 const tocSidebar = await readProjectFile('src/components/toc-sidebar.astro')
 const subpostsSidebar = await readProjectFile('src/components/subposts-sidebar.astro')
+const postPage = await readProjectFile('src/pages/[...id].astro')
 
 for (const [name, source] of [
   ['desktop article TOC sidebar', tocSidebar],
@@ -38,4 +39,18 @@ assert.match(
   articleLicense,
   /self-start/,
   'article license card should keep its natural height inside the article grid',
+)
+
+const subpostsSidebarIndex = postPage.indexOf('<SubpostsSidebar')
+const articleIndex = postPage.indexOf('<article')
+const articleLicenseIndex = postPage.indexOf('<ArticleLicense')
+
+assert(
+  subpostsSidebarIndex > articleIndex && subpostsSidebarIndex < articleLicenseIndex,
+  'desktop subposts sidebar should be emitted beside the article body before the license card',
+)
+
+assert(
+  articleLicenseIndex > articleIndex,
+  'article license should remain after the article body',
 )

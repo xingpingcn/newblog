@@ -270,8 +270,6 @@ const tocSections = await getTOCSections(currentPostId)
       <Content />
     </article>
 
-    <ArticleLicense post={post} />
-
     {
       (hasChildPosts || isCurrentSubpost) && (
         <SubpostsSidebar
@@ -282,6 +280,8 @@ const tocSections = await getTOCSections(currentPostId)
         />
       )
     }
+
+    <ArticleLicense post={post} />
 
     <PostNavigation
       newerPost={navigation.newer}
