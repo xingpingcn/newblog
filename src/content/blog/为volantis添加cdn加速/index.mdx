@@ -68,11 +68,11 @@ import ImageGrid from '@/components/image-grid.astro'
   证书未知）
 </Callout>
 
-## 使用 `jsd.cdn.zzko.cn` 替代 `cdn.jsdelivr.net` 进行 cdn 加速 `css` 和 `js`
+## 使用 `cdn.jsdmirror.com` 替代 `cdn.jsdelivr.net` 进行 cdn 加速 `css` 和 `js`
 
 [进阶设置 / 使用 freecdn-js](https://xingpingcn.top/使用freecdn-js提高hexo博客的cdn稳定性.html)
 
-主题默认配置用的 `cdn.jsdelivr.net` 现在似乎不会突然抽筋了，但是依然很慢，`jsd.cdn.zzko.cn` 是一个免费面向中国境内外的高速 `jsdelivr` 镜像站，访问速度很快，可以作为理想的替代方案。
+主题默认配置用的 `cdn.jsdelivr.net` 现在似乎不会突然抽筋了，但是依然很慢，`cdn.jsdmirror.com` 是一个免费面向中国境内外的高速 `jsdelivr` 镜像站，访问速度很快，可以作为理想的替代方案。
 
 <Callout variant="note">
   备用域名 `cdn.jsdelivr.ren`、`gcore.jsdelivr.net` 等
@@ -85,13 +85,13 @@ import ImageGrid from '@/components/image-grid.astro'
 ` `
 
 <Callout variant="tip">
-  现在 `jsd.cdn.zzko.cn`
+  现在 `cdn.jsdmirror.com`
   应该是修复了，所以不需要改了。直接在配置中添加一下代码即可。
 </Callout>
 
 ~~如果仔细观察上面的图，可以发现访问的 `style.css` 变成了 `style.xxxx.css`，同理 `app.js`。这个是 hexo 在生成 `public` 文件夹的时候生成的，而怎么样不让他改为这种类型的名字，我不知道怎么样做。出于保险，我用了一个替代的方案，把 `blog\public\css\style.xxxx.css` 复制出来，并重命名为 `style.css`，同理 `app.js`。（这个是因为设置了 `cdn_version: true`）~~
 
-~~由于访问 `jsd.cdn.zzko.cn` 的响应头（response）中没有指定 `content-type: charset=utf-8`，因而浏览器在解析的时候会出错。这时需要在 `style.css` 手动添加代码~~
+~~由于访问 `cdn.jsdmirror.com` 的响应头（response）中没有指定 `content-type: charset=utf-8`，因而浏览器在解析的时候会出错。这时需要在 `style.css` 手动添加代码~~
 
 ` `
 
@@ -112,7 +112,7 @@ import ImageGrid from '@/components/image-grid.astro'
 使用
 
 ```html
-https://jsd.cdn.zzko.cn/gh/user/repo/style.css
+https://cdn.jsdmirror.com/gh/user/repo/style.css
 ```
 
 就能访问 `style.css` 了，同理 `app.js`。
@@ -125,13 +125,13 @@ cdn:
 
   set:
     js:
-      app: https://jsd.cdn.zzko.cn/gh/user/repo/app.js
+      app: https://cdn.jsdmirror.com/gh/user/repo/app.js
     css:
-      style: https://jsd.cdn.zzko.cn/gh/user/repo/style.css # (异步加载样式)
+      style: https://cdn.jsdmirror.com/gh/user/repo/style.css # (异步加载样式)
 
 cdn_version: false
 
-volantis_static_cdn: https://jsd.cdn.zzko.cn/npm/volantis-static@0.0.1654736714924/
+volantis_static_cdn: https://cdn.jsdmirror.com/npm/volantis-static@0.0.1654736714924/
 ```
 
 `user` 和 `repo` 都改为自己的。如果没有刷新没有变化记得设置 `cdn_version: false` 然后重启服务器。

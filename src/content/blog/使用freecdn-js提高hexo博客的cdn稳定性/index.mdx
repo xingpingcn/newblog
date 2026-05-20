@@ -19,7 +19,7 @@ import Callout from '@/components/callout.astro'
 import Figure from '@/components/figure.astro'
 import ImageGrid from '@/components/image-grid.astro'
 
-由于 `cdn.jsdelivr.net` 在国内不太稳定，替代的 `jsd.cdn.zzko.cn` 稳定性稍好，但是也不是 100%稳定，因而需要一个脚本实时切换到合适的 CDN。[freecdn-js](https://github.com/EtherDream/freecdn)能实现这个需求。freecdn-js 是纯前端的，使用 `service worker`，只需要插入一段 `js` 代码就可以，因此改造成本很低。但是我的文件（图片、js 等）储存在 GitHub 图床，而 `freecdn-js` 本身需要被加速的文件的 `hash` 值，因此需要自己写脚本处理下载图片并计算。因为图片等文件的 cdn 链接是直接写在 `.md` 文件中的，所以写了一个正则脚本来提取 cdn 的链接。
+由于 `cdn.jsdelivr.net` 在国内不太稳定，替代的 `cdn.jsdmirror.com` 稳定性稍好，但是也不是 100%稳定，因而需要一个脚本实时切换到合适的 CDN。[freecdn-js](https://github.com/EtherDream/freecdn)能实现这个需求。freecdn-js 是纯前端的，使用 `service worker`，只需要插入一段 `js` 代码就可以，因此改造成本很低。但是我的文件（图片、js 等）储存在 GitHub 图床，而 `freecdn-js` 本身需要被加速的文件的 `hash` 值，因此需要自己写脚本处理下载图片并计算。因为图片等文件的 cdn 链接是直接写在 `.md` 文件中的，所以写了一个正则脚本来提取 cdn 的链接。
 
 ## 脚本使用方法
 
