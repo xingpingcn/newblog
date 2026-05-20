@@ -62,6 +62,7 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
               href={item.href}
               external={item.external}
               rel={item.external ? 'noopener noreferrer' : undefined}
+              data-nav-label={item.label}
               class="site-header-nav-link text-foreground/60 hover:text-foreground inline-flex items-center gap-1.5 whitespace-nowrap capitalize"
             >
               <Icon

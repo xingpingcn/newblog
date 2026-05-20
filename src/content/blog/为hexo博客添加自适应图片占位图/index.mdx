@@ -1,6 +1,6 @@
 ---
-title: '为hexo博客添加自适应图片占位图（配合lazyload）'
-description: '为hexo博客解决图片抖动问题添加自适应图片占位图'
+title: '为 hexo 博客添加自适应图片占位图（配合 lazyload）'
+description: '为 hexo 博客解决图片抖动问题添加自适应图片占位图'
 date: 2023-04-01
 tags: ['volantis']
 keywords:
@@ -15,11 +15,11 @@ import ImageGrid from '@/components/image-grid.astro'
 
 我们要得到的结果如封面所示
 
-由于博客采用了图片懒加载（lazyload）插件，在加载dom后和图片加载成功之前，图片占位图为1px的像素，图片加载成功之后，则会把布局撑开，造成布局抖动。如果把和要加载的图片（本博客所有图片都放在了GitHub图床上，所以要用到`image-size`库访问远程图片）一样大小的占位图替代1px大小的占位图，则能解决布局抖动问题。本post将会占位图以硬编码的方式写到`dom`中，这需要修改在生成hexo博客时会用到的`fancybox.js`（或许每个主题用到的文件里都不一样，但最终都会使用`hexo.extend.tag.register()`方法；本博客使用`volantis`主题）。
+由于博客采用了图片懒加载（lazyload）插件，在加载 dom 后和图片加载成功之前，图片占位图为 1px 的像素，图片加载成功之后，则会把布局撑开，造成布局抖动。如果把和要加载的图片（本博客所有图片都放在了 GitHub 图床上，所以要用到 `image-size` 库访问远程图片）一样大小的占位图替代 1px 大小的占位图，则能解决布局抖动问题。本 post 将会占位图以硬编码的方式写到 `dom` 中，这需要修改在生成 hexo 博客时会用到的 `fancybox.js`（或许每个主题用到的文件里都不一样，但最终都会使用 `hexo.extend.tag.register()` 方法；本博客使用 `volantis` 主题）。
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230506/image.p9bxtn3d6ww.webp"
-  caption="为hexo博客添加自适应图片占位图"
+  caption="为 hexo 博客添加自适应图片占位图"
 />
 
 ## 为图片添加占位图的基本结构
@@ -44,23 +44,23 @@ import ImageGrid from '@/components/image-grid.astro'
 </div>
 ```
 
-其中`position`、`width`、`height`、`padding`为必要属性，`${h_divide_w_str}`为占位图的`宽高比`。因为需要解决布局抖动问题，所以占位图的`宽高比`要与图片一致，如何动态获取`宽高比`呢？这需要在生成hexo博客之前获取，然后代入到`${h_divide_w_str}`中。
+其中 `position`、`width`、`height`、`padding` 为必要属性，`${h_divide_w_str}` 为占位图的 `宽高比`。因为需要解决布局抖动问题，所以占位图的 `宽高比` 要与图片一致，如何动态获取 `宽高比` 呢？这需要在生成 hexo 博客之前获取，然后代入到 `${h_divide_w_str}` 中。
 
-## volantis主题动态获取远程图片的宽高比
+## volantis 主题动态获取远程图片的宽高比
 
 <Callout variant="note">
   有些时候可能读取不了图片就出错，可以试多几次就没有问题，或者自己写一个失败重试的代码
 </Callout>
 
-在编写博客的时候用到了`gallery`标签插件，这个插件可以在点击图片的时候放大（这是由`fancybox.js`和`fancybox.css`驱动。`注意：`这里的`fancybox.js`是`JavaScript`文件，而生成hexo博客用到的同名文件是`Nodejs`文件）
+在编写博客的时候用到了 `gallery` 标签插件，这个插件可以在点击图片的时候放大（这是由 `fancybox.js` 和 `fancybox.css` 驱动。`注意：` 这里的 `fancybox.js` 是 `JavaScript` 文件，而生成 hexo 博客用到的同名文件是 `Nodejs` 文件）
 
-我们需要修改的，就是生成html对应的文件，而生成`gallery`的文件位于`blog\node_modules\hexo-theme-volantis\scripts\tags\fancybox.js`（nodejs文件）。
+我们需要修改的，就是生成 html 对应的文件，而生成 `gallery` 的文件位于 `blog\node_modules\hexo-theme-volantis\scripts\tags\fancybox.js`（nodejs 文件）。
 
-点击链接可以下载我修改好的`fancybox.js`
+点击链接可以下载我修改好的 `fancybox.js`
 
 [fancybox.js](https://github.com/xingpingcn/picx-images-hosting/blob/master/fancybox.js)
 
-### 以下是使用`image-size`库访问远程图片得到`宽高比`的代码示例。
+### 以下是使用 `image-size` 库访问远程图片得到 `宽高比` 的代码示例。
 
 [image-size](https://www.npmjs.com/package/image-size)
 
@@ -90,7 +90,7 @@ http.get(options, function (response) {
 
 ### 修改宽高比
 
-得到`宽高比`后自定义css样式，以下以`volantis`主题为例
+得到 `宽高比` 后自定义 css 样式，以下以 `volantis` 主题为例
 
 ```js
 const result = `<div class='fancybox' style='position: relative; width: 100%;'>
@@ -101,30 +101,30 @@ const result = `<div class='fancybox' style='position: relative; width: 100%;'>
 ```
 
 <Callout variant="warning">
-  此代码只是实例，不同主题的class和变量名称可能不一样
+  此代码只是实例，不同主题的 class 和变量名称可能不一样
 </Callout>
 
-因为是获取图片`宽高比`异步进行的，所以要在`hexo.extend.tag.register()`方法中添加`async: true`以堵塞博客的生成，这样才能在得到`宽高比`后生成博客。此方法点击以下链接查看更多。
+因为是获取图片 `宽高比` 异步进行的，所以要在 `hexo.extend.tag.register()` 方法中添加 `async: true` 以堵塞博客的生成，这样才能在得到 `宽高比` 后生成博客。此方法点击以下链接查看更多。
 
-[hexo标签插件（Tag）](https://hexo.io/zh-cn/api/tag.html)
+[hexo 标签插件（Tag）](https://hexo.io/zh-cn/api/tag.html)
 
 ```js
 hexo.extend.tag.register('gallery', postFancybox, { ends: true, async: true })
 ```
 
-其中`postFancybox`是返回值是`promise`类型。（点击以上的hexo标签插件（Tag）查看更多）
+其中 `postFancybox` 是返回值是 `promise` 类型。（点击以上的 hexo 标签插件（Tag）查看更多）
 
-如果在一个`gallery`内有多个图片，或许需要用到`for`循环，那么需要`promise.all()`确保所有占位图生成完成后再生成网页。
+如果在一个 `gallery` 内有多个图片，或许需要用到 `for` 循环，那么需要 `promise.all()` 确保所有占位图生成完成后再生成网页。
 
-## 修改fancybox.css
+## 修改 fancybox.css
 
-`hexo`的`css`是用`styl`编写的，而`volantis`主题的`fancybox.css`位于`blog\node_modules\hexo-theme-volantis\source\css\_style\_tag-plugins\fancybox.styl`。
+`hexo` 的 `css` 是用 `styl` 编写的，而 `volantis` 主题的 `fancybox.css` 位于 `blog\node_modules\hexo-theme-volantis\source\css\_style\_tag-plugins\fancybox.styl`。
 
 点击链接查看更多
 
 [fancybox.styl](https://github.com/xingpingcn/picx-images-hosting/blob/master/fancybox.styl)
 
-主要就是把影响自定义`css`的`height`属性删去（我大概也忘了修改过什么了，，，）。
+主要就是把影响自定义 `css` 的 `height` 属性删去（我大概也忘了修改过什么了，，，）。
 
 ## 添加动画
 
@@ -146,7 +146,7 @@ hexo.extend.tag.register('gallery', postFancybox, { ends: true, async: true })
   </svg>
 </div>
 
-将`html`代码添加到`fancybox.js`对应位置就能得到以上效果
+将 `html` 代码添加到 `fancybox.js` 对应位置就能得到以上效果
 
 ```js
 <svg class="spinner0" viewBox="0 0 50 50">
@@ -162,7 +162,7 @@ hexo.extend.tag.register('gallery', postFancybox, { ends: true, async: true })
 </svg>
 ```
 
-然后修改`css`样式
+然后修改 `css` 样式
 
 ```styl
 .spinner0 {

@@ -1,5 +1,5 @@
 ---
-title: '让traefik代替你的 waf（使用CrowdSec）+ nginx + acme.sh + mtls-auth'
+title: '让 traefik 代替你的 waf（使用 CrowdSec）+ nginx + acme.sh + mtls-auth'
 description: '本文详细介绍了如何使用 Traefik 作为现代化的反向代理和入口网关，并整合 CrowdSec 作为 WAF 进行安全防护、抛弃通过 acme.sh 实现证书自动续期的方案，以及配置 mTLS 客户端认证来增强安全性，全面取代传统的 Nginx 方案。'
 date: 2025-07-16
 tags: []
@@ -36,9 +36,9 @@ traefik 可以帮你：
 
 本文是对[traefik](https://traefik.io/)的一个简单介绍，主要介绍如何使用 traefik 来代替 waf（使用 CrowdSec）、nginx、acme.sh、mtls-auth 等。
 
-traefik会是你服务器的入口，所有的请求都会先经过 traefik，然后再转发到后端服务。
+traefik 会是你服务器的入口，所有的请求都会先经过 traefik，然后再转发到后端服务。
 
-后端服务也不用配置绑定的端口和ip了（例如`docker.port: 127.0.0.1:8080:8080`，然后nginx反代，每个服务都要记住端口很麻烦），traefik 会自动处理。
+后端服务也不用配置绑定的端口和 ip 了（例如 `docker.port: 127.0.0.1:8080:8080`，然后 nginx 反代，每个服务都要记住端口很麻烦），traefik 会自动处理。
 
 <Callout variant="note" title="info">
 主要贴出配置，注意多看注释
@@ -91,9 +91,9 @@ traefik/
 
 <Callout variant="warning" title="IMPORTANT">
 
-1. 如果要自动帮你续证书，记得`acme.json`的权限要设置为`600`，否则 traefik 无法写入证书。
+1. 如果要自动帮你续证书，记得 `acme.json` 的权限要设置为 `600`，否则 traefik 无法写入证书。
 2. 如果你使用的是 cf 的 cdn，记得在添加你的 cf 证书。到[这里](https://developers.cloudflare.com/ssl/origin-configuration/authenticated-origin-pull/set-up/zone-level/)下载证书。
-3. 记得事先创建`traefik-net`网络，或者在`docker-compose.yml`中注释掉网络部分。
+3. 记得事先创建 `traefik-net` 网络，或者在 `docker-compose.yml` 中注释掉网络部分。
 
 </Callout>
 
@@ -303,7 +303,7 @@ tcp:
 2. CrowdSec Agent (`crowdsec` 服务) 通过挂载的 Docker Socket 读取 Traefik 的日志。
 3. Agent 使用 `crowdsecurity/traefik` collection 中的解析器和场景分析日志，检测到攻击行为（如暴力破解、扫描等）。
 4. 一旦检测到威胁，CrowdSec 会生成一个“决策”，将攻击者的 IP 标记为恶意，并推送到 local API。
-5. local API马上推送到所有Bouncer（如果还配置了其他Bouncer），其中Traefik 中的 CrowdSec Bouncer 插件会获取最新的决策列表。
+5. local API 马上推送到所有 Bouncer（如果还配置了其他 Bouncer），其中 Traefik 中的 CrowdSec Bouncer 插件会获取最新的决策列表。
 6. 当被标记为恶意的 IP 再次尝试访问时，Bouncer 会在 Traefik 层面直接拒绝该请求，从而保护所有后端服务。
 
 ```yaml

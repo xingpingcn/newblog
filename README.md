@@ -94,7 +94,7 @@ import ImageGrid from '@/components/image-grid.astro'
 
 ```mdx
 license:
-  type: 'cc-by-nc-sa-4.0'
+type: 'cc-by-nc-sa-4.0'
 ```
 
 转载文章示例：
@@ -102,9 +102,9 @@ license:
 ```mdx
 canonicalURL: 'https://example.com/original-post'
 license:
-  type: 'original'
-  sourceTitle: '原文标题'
-  sourceUrl: 'https://example.com/original-post'
+type: 'original'
+sourceTitle: '原文标题'
+sourceUrl: 'https://example.com/original-post'
 ```
 
 首页和 `/blog` 列表会排除 subpost，并按下面规则排序：

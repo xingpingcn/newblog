@@ -1,6 +1,6 @@
 ---
-title: 'curl遇到的坑'
-description: 'curl中post表格的时候的坑'
+title: 'curl 遇到的坑'
+description: 'curl 中 post 表格的时候的坑'
 date: 2023-04-01
 tags: []
 keywords: ['bash', 'curl -d', 'post']
@@ -28,6 +28,6 @@ curl -X POST \
   "https://api.netlify.com/api/v1/sites/${NETLIFY_SITE_ID}/ssl"
 ```
 
-这么写看着没用什么问题，但是`-d`命令是默认进行`urlencode`的，这样子我的证书就会改变。需要改成`--form-string`才行。
+这么写看着没用什么问题，但是 `-d` 命令是默认进行 `urlencode` 的，这样子我的证书就会改变。需要改成 `--form-string` 才行。
 
-这种默认就`urlencode`的，`curl -h`中又没说明，真的好坑
+这种默认就 `urlencode` 的，`curl -h` 中又没说明，真的好坑

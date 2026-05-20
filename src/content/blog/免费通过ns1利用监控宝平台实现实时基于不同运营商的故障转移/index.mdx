@@ -1,6 +1,6 @@
 ---
-title: '免费通过NS1利用监控宝平台实现实时基于不同运营商的故障转移'
-description: '免费利用NS1权威DNS服务器实时基于不同运营商故障转移，利用监控宝平台监控指定网站'
+title: '免费通过 NS1 利用监控宝平台实现实时基于不同运营商的故障转移'
+description: '免费利用 NS1 权威 DNS 服务器实时基于不同运营商故障转移，利用监控宝平台监控指定网站'
 date: 2023-04-01
 tags: []
 keywords:
@@ -22,38 +22,38 @@ import Callout from '@/components/callout.astro'
 import Figure from '@/components/figure.astro'
 import ImageGrid from '@/components/image-grid.astro'
 
-本教程用到的资源全部都是免费且可持续使用的。NS1.com这个权威DNS服务器能根据ASN、国家或省份、DNS轮询（可加权）等方式解析域名，并且提供了API去控制某个解析（answer）是否响应。监控宝能实时监控网站（通过HTTP、PING、DNS方式等）并输出警告（webhook、Email、短信等），最高监控频率为2分钟。亚马逊的AWS Lambda是一个FaaS平台（serverless），可以作为连接NS1.com和监控宝之间的桥梁，当监控宝检测到网站速度变慢的时候发送信息到AWS Lambda，AWS Lambda得到信息后再传递给NS1.com，速度恢复的时候也是同样的操作。为什么要夹在一个AWS Lambda呢？这是因为监控宝发送的格式是固定的，并不能直接接入到NS1.com。
+本教程用到的资源全部都是免费且可持续使用的。NS1.com 这个权威 DNS 服务器能根据 ASN、国家或省份、DNS 轮询（可加权）等方式解析域名，并且提供了 API 去控制某个解析（answer）是否响应。监控宝能实时监控网站（通过 HTTP、PING、DNS 方式等）并输出警告（webhook、Email、短信等），最高监控频率为 2 分钟。亚马逊的 AWS Lambda 是一个 FaaS 平台（serverless），可以作为连接 NS1.com 和监控宝之间的桥梁，当监控宝检测到网站速度变慢的时候发送信息到 AWS Lambda，AWS Lambda 得到信息后再传递给 NS1.com，速度恢复的时候也是同样的操作。为什么要夹在一个 AWS Lambda 呢？这是因为监控宝发送的格式是固定的，并不能直接接入到 NS1.com。
 
 ## 前言
 
 需要用到的工具和技能有：
 
 <Callout variant="note" title="工具和技能">
-* [NS1.com](https://NS1.com)。免费一个[Filter Chain](https://help.ns1.com/hc/en-us/articles/360020683013-About-the-NS1-Filter-Chain)。Filter Chain就是根据不同条件进行响应的工具。
+* [NS1.com](https://NS1.com)。免费一个[Filter Chain](https://help.ns1.com/hc/en-us/articles/360020683013-About-the-NS1-Filter-Chain)。Filter Chain 就是根据不同条件进行响应的工具。
 
-- [监控宝国际版](https://www.cloudwise.sg/en/synthetic/)。国际版可以用中国大陆和海外的手机号注册，同样可以用国内电信、移动、联通、教育网的监控节点。免费5个网站监控。
+- [监控宝国际版](https://www.cloudwise.sg/en/synthetic/)。国际版可以用中国大陆和海外的手机号注册，同样可以用国内电信、移动、联通、教育网的监控节点。免费 5 个网站监控。
 
-- [AWS Lambda](https://aws.amazon.com/cn/lambda/getting-started/)。注册使用可能需要visa银行卡或其他银行卡验证。每月一百万次调用。
+- [AWS Lambda](https://aws.amazon.com/cn/lambda/getting-started/)。注册使用可能需要 visa 银行卡或其他银行卡验证。每月一百万次调用。
 
 - 一点点耐心。
 
-- 一点点点python技术。
+- 一点点点 python 技术。
 
 </Callout>
 
-## NS1.com使用教程
+## NS1.com 使用教程
 
-### Filter Chain的使用
+### Filter Chain 的使用
 
-[NS1.COM官方文档 / Filter Chain使用示例](https://help.ns1.com/hc/en-us/articles/360020683013)
+[NS1.COM 官方文档 / Filter Chain 使用示例](https://help.ns1.com/hc/en-us/articles/360020683013)
 
-顾名思义就是不断地过滤不符合条件的answer，直到链（Chain）的结尾就是要返回给用户的解析结果。
+顾名思义就是不断地过滤不符合条件的 answer，直到链（Chain）的结尾就是要返回给用户的解析结果。
 
 <Callout variant="warning">
   因此每个过滤器的顺序十分重要（这一点官方文档写到比较隐晦，但是十分重要）
 </Callout>
 
-一般而言，以`Up`开头，`Select First N`结尾。前者代表是否开启该`answer`，我们使用监控包如果发现网站速度过慢则可以设置为`Up: False`；后者表示假如链（Chain）的结尾有多个`answer`，则返回前N个`answer`，默认N为1。可以通过调整`Priority`调整优先级。
+一般而言，以 `Up` 开头，`Select First N` 结尾。前者代表是否开启该 `answer`，我们使用监控包如果发现网站速度过慢则可以设置为 `Up: False`；后者表示假如链（Chain）的结尾有多个 `answer`，则返回前 N 个 `answer`，默认 N 为 1。可以通过调整 `Priority` 调整优先级。
 
 这是我的设置
 
@@ -66,18 +66,18 @@ import ImageGrid from '@/components/image-grid.astro'
   建议勾选对应的复选框。因为每个人的设置不一样，请仔细阅读说明决定是否勾选！
 </Callout>
 
-之后我们要根据不同的运营商或者国家地区来返回DNS解析结果。因为NS1没有提供国内运营商的分类，但是提供了`ASN`来分类。我写了个爬虫小脚本，爬取不同运营商的`ASN`，使用以下这个项目获取，然后填入到对应区域。
+之后我们要根据不同的运营商或者国家地区来返回 DNS 解析结果。因为 NS1 没有提供国内运营商的分类，但是提供了 `ASN` 来分类。我写了个爬虫小脚本，爬取不同运营商的 `ASN`，使用以下这个项目获取，然后填入到对应区域。
 
-[中国大陆ASN](https://github.com/xingpingcn/china-mainland-asn)
+[中国大陆 ASN](https://github.com/xingpingcn/china-mainland-asn)
 
-我是创建了`answer group`来分类不同的运营商的。
+我是创建了 `answer group` 来分类不同的运营商的。
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20231027/image.6tza0wmi6k40.webp"
-  caption="answer设置"
+  caption="answer 设置"
 />
 
-你也可以使用自动化工具来定时更新`ASN`。使用到的工具有`aws lambda`（下文有介绍）和`aws cloud bridge`的定时器（需自行配置），例如每隔10更新一次。
+你也可以使用自动化工具来定时更新 `ASN`。使用到的工具有 `aws lambda`（下文有介绍）和 `aws cloud bridge` 的定时器（需自行配置），例如每隔 10 更新一次。
 
 ```python
 import requests
@@ -106,52 +106,52 @@ for ns1_asn_label, gh_asn in asn_dict.items():
     print(res.status_code)
 ```
 
-之后可以选择`country`为`CN`的`answer`作为未命中规则的备选。之后再填写一个只有`Up`的`answer`作为除中国之外全球的DNS解析结果。
+之后可以选择 `country` 为 `CN` 的 `answer` 作为未命中规则的备选。之后再填写一个只有 `Up` 的 `answer` 作为除中国之外全球的 DNS 解析结果。
 
 <Callout variant="warning" title="强烈建议">
-如果你使用`render`、`railway`、`cf`、`cyclic`、`zeabur`等托管你的网站，除中国之外全球的DNS解析结果是必须配置的，此设置用于ssl证书的申请。建议设置为加权的DNS轮询（此方法似乎对于`netlify`有点水土不服，因为只要DNS没解析到`netlify`就暂停ssl证书。其他的只要认证了网站就可以用一段时间，一般是3个月，下一个3个月会重新申请，认证一次不过会自动重试几次；成功一次就可以继续用3个月）
+如果你使用 `render`、`railway`、`cf`、`cyclic`、`zeabur` 等托管你的网站，除中国之外全球的 DNS 解析结果是必须配置的，此设置用于 ssl 证书的申请。建议设置为加权的 DNS 轮询（此方法似乎对于 `netlify` 有点水土不服，因为只要 DNS 没解析到 `netlify` 就暂停 ssl 证书。其他的只要认证了网站就可以用一段时间，一般是 3 个月，下一个 3 个月会重新申请，认证一次不过会自动重试几次；成功一次就可以继续用 3 个月）
 
 </Callout>
 
-<Callout variant="note">建议国内少用`country`，因为不太准</Callout>
+<Callout variant="note">建议国内少用 `country`，因为不太准</Callout>
 
-### NS1 API的使用
+### NS1 API 的使用
 
-#### 设置DNS
+#### 设置 DNS
 
-[NS1.COM官方文档 / NS1 data feed创建](https://help.ns1.com/hc/en-us/articles/360020474154-Create-a-data-feed)
+[NS1.COM 官方文档 / NS1 data feed 创建](https://help.ns1.com/hc/en-us/articles/360020474154-Create-a-data-feed)
 
-根据图的指引创建`data source`和`data feed`。详细看官方文档。
+根据图的指引创建 `data source` 和 `data feed`。详细看官方文档。
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20231027/image.6kam8770lhc0.webp"
-  caption="NS1 API的使用"
+  caption="NS1 API 的使用"
 />
 
-可以看到上面的图，在`answer`里已经设置好了关联的`data feed`了（绿色箭头表示开启，红色表示关闭）；先关联，之后我们会通过`AWS Lambda`来控制的。关联的`data feed`详细操作看官方文档。
+可以看到上面的图，在 `answer` 里已经设置好了关联的 `data feed` 了（绿色箭头表示开启，红色表示关闭）；先关联，之后我们会通过 `AWS Lambda` 来控制的。关联的 `data feed` 详细操作看官方文档。
 
-[NS1.COM官方文档 / answer关联data feed](https://help.ns1.com/hc/en-us/articles/360020471154-Automatic-failover)
+[NS1.COM 官方文档 / answer 关联 data feed](https://help.ns1.com/hc/en-us/articles/360020471154-Automatic-failover)
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20231027/image.6ezli28bbhw0.webp"
-  caption="answer关联data feed"
+  caption="answer 关联 data feed"
 />
 
-#### 编写feed更改请求-python
+#### 编写 feed 更改请求-python
 
-[NS1 API官方文档 / 修改data feed](https://ns1.com/api?docId=2188)
+[NS1 API 官方文档 / 修改 data feed](https://ns1.com/api?docId=2188)
 
-我们可以编写python以请求`API`来更改`UP`的状态。之后我们会把代码放到`AWS Lambda`来控制的。
+我们可以编写 python 以请求 `API` 来更改 `UP` 的状态。之后我们会把代码放到 `AWS Lambda` 来控制的。
 
 注意填写必要的信息。
 
 <Callout variant="warning" title="参数设置">
-* `status`为`True`是开启，`False`是关闭。
-* `source_id`和`label`就是上面图中提到要记住的内容。
-* `ns1_api_key`需要自己到设置里申请。建议只开启必要的权限。
+* `status` 为 `True` 是开启，`False` 是关闭。
+* `source_id` 和 `label` 就是上面图中提到要记住的内容。
+* `ns1_api_key` 需要自己到设置里申请。建议只开启必要的权限。
 
-<Callout variant="tip" title="设置`KEY`">
-点击右上角的`settings`里的`users&teams`
+<Callout variant="tip" title="设置 `KEY`">
+点击右上角的 `settings` 里的 `users&teams`
 
 </Callout>
 
@@ -175,26 +175,26 @@ data = {
 res = requests.post(url,headers=headers,json=data)
 ```
 
-## 使用AWS Lambda
+## 使用 AWS Lambda
 
-`AWS Lambda`支持python且可以通过各种条件来触发，现在我们用监控平台（本教程用的监控宝）的`webhook`来触发，发送`POST`请求到`NS1`来更新`answer`状态。
+`AWS Lambda` 支持 python 且可以通过各种条件来触发，现在我们用监控平台（本教程用的监控宝）的 `webhook` 来触发，发送 `POST` 请求到 `NS1` 来更新 `answer` 状态。
 
 ### 创建函数
 
 点击创建函数——填写信息——点击高级设置
 
 <Callout variant="warning">
-  授权类型选`NONE`，勾选配置跨源资源共享(CORS)
+  授权类型选 `NONE`，勾选配置跨源资源共享(CORS)
 </Callout>
 
-[监控宝官方文档 / 回调url实例](https://help.cloudwise.com/help/38/39/520)
+[监控宝官方文档 / 回调 url 实例](https://help.cloudwise.com/help/38/39/520)
 
 如果里选择使用监控宝，那么填入以下代码 ↓
 
 <Callout variant="warning" title="参数设置">
-`url_token`填写监控宝里回调url里的`回调token`。如果没有监控宝还没有设置，不要紧回来再弄。
+`url_token` 填写监控宝里回调 url 里的 `回调token`。如果没有监控宝还没有设置，不要紧回来再弄。
 其他参数请看[这里](#编写feed更改请求-python)
-其中`status`会根据监控宝的状态自动设置。
+其中 `status` 会根据监控宝的状态自动设置。
 
 </Callout>
 
@@ -237,24 +237,25 @@ def lambda_handler(event, context):
 ```
 
 <Callout variant="tip">
-  这里不得不吐槽一句监控宝，`回调url`设置中的测试发送的json和实际应用中发送的json不一样的，如果发现测试报错请使用正常监控方式来测试
+  这里不得不吐槽一句监控宝，`回调url` 设置中的测试发送的 json 和实际应用中发送的
+  json 不一样的，如果发现测试报错请使用正常监控方式来测试
 </Callout>
 
-<Callout variant="warning">记得点击`deploy`！</Callout>
+<Callout variant="warning">记得点击 `deploy`！</Callout>
 
 ### 设置层（layers）
 
-因为`AWS Lambda`默认不能使用第三方库，因为用到了`requests`库，所以要自己上传`requests`库。或者你也可以自己用python原生库重写。
+因为 `AWS Lambda` 默认不能使用第三方库，因为用到了 `requests` 库，所以要自己上传 `requests` 库。或者你也可以自己用 python 原生库重写。
 
-[AWS官方文档 / 为依赖项创建Python层](https://docs.aws.amazon.com/zh_cn/lambda/latest/dg/python-package.html#python-package-dependencies-layers)
+[AWS 官方文档 / 为依赖项创建 Python 层](https://docs.aws.amazon.com/zh_cn/lambda/latest/dg/python-package.html#python-package-dependencies-layers)
 
-`requests.zip`可以根据官方文档自己生成，也可以上传我制作的`requests.zip`
+`requests.zip` 可以根据官方文档自己生成，也可以上传我制作的 `requests.zip`
 
 <Callout variant="note">
   [下载](https://jsd.cdn.zzko.cn/gh/xingpingcn/website.comments@main/requests.zip)|[下载-GitHub](https://github.com/xingpingcn/website.comments/raw/main/requests.zip)|[下载-备用](https://cdn.jsdelivr.us/gh/xingpingcn/website.comments@main/requests.zip)
 </Callout>
 
-之后设置函数的`层`（layers），选择我们上传的`requests.zip`包。
+之后设置函数的 `层`（layers），选择我们上传的 `requests.zip` 包。
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20231027/image.49csmacgss80.webp"
@@ -263,12 +264,12 @@ def lambda_handler(event, context):
 
 ## 使用监控平台
 
-类似的平台还有观测云，免费版最高30分钟的检测频率，20万次访问每天好像是，节点11个，3网都有。
+类似的平台还有观测云，免费版最高 30 分钟的检测频率，20 万次访问每天好像是，节点 11 个，3 网都有。
 
-或者可以破解一些免费测速网站的js。
+或者可以破解一些免费测速网站的 js。
 
 <Callout variant="warning" title="warning">
-监控宝似乎在14天试用期之后直接封我号了，发两份邮件也不回，建议改用`观测云`，配置都是差不多的。
+监控宝似乎在 14 天试用期之后直接封我号了，发两份邮件也不回，建议改用 `观测云`，配置都是差不多的。
 
 </Callout>
 
@@ -276,9 +277,9 @@ def lambda_handler(event, context):
 
 <Callout variant="warning" title="点击查看，但是不建议" defaultOpen={false}>
 
-监控宝可以使用回调url（webhook）来传递信息，设置如下图。
+监控宝可以使用回调 url（webhook）来传递信息，设置如下图。
 
-`回调url`就填写`AWS Lambda`提供的url
+`回调url` 就填写 `AWS Lambda` 提供的 url
 
 <ImageGrid
   images={[
@@ -288,20 +289,20 @@ def lambda_handler(event, context):
     },
     {
       src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20231027/image.4iyi2poeafq0.webp',
-      caption: '回调url',
+      caption: '回调 url',
     },
   ]}
 />
 
-之后创建监控任务，记得在`Webhook通知`那里选择你的回调url。
+之后创建监控任务，记得在 `Webhook通知` 那里选择你的回调 url。
 
-[监控宝官方文档 / 回调url实例](https://help.cloudwise.com/help/38/39/520)
+[监控宝官方文档 / 回调 url 实例](https://help.cloudwise.com/help/38/39/520)
 
 </Callout>
 
 ### 观测云
 
-`aws lambda`填入以下代码
+`aws lambda` 填入以下代码
 
 ```python
 import json

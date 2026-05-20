@@ -1,9 +1,9 @@
 ---
-title: 'v2ray+ws+tls太慢解决方法'
-description: 'v2ray太慢 用自选cloudflare 自选ip解决 ws+tls'
+title: 'v2ray+ws+tls 太慢解决方法'
+description: 'v2ray 太慢 用自选 cloudflare 自选 ip 解决 ws+tls'
 date: 2023-04-01
 tags: ['v2ray']
-keywords: ['cdn加速', 'cloudflare', '自选ip', 'v2ray', 'ws+tls']
+keywords: ['cdn 加速', 'cloudflare', '自选 ip', 'v2ray', 'ws+tls']
 authors: ['xingpingcn']
 coverImage: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230525/logo (2).ln5ua8psy9s.webp'
 ---
@@ -12,74 +12,75 @@ import Callout from '@/components/callout.astro'
 import Figure from '@/components/figure.astro'
 import ImageGrid from '@/components/image-grid.astro'
 
-目前推荐hysteria，一个比较新的协议，gfw似乎还没有针对这个做出限制。
-我自己搭建梯子的话感觉kcp和ws+tls是比较快的，但是kcp容易被墙，而且掉包有点高，ws+tls需要用上cf的cdn加速才能快，而且要筛选速度快的cf的ip才能快（目前来看稳定性较差，建议用hysteria搭建梯子）。
+目前推荐 hysteria，一个比较新的协议，gfw 似乎还没有针对这个做出限制。
+我自己搭建梯子的话感觉 kcp 和 ws+tls 是比较快的，但是 kcp 容易被墙，而且掉包有点高，ws+tls 需要用上 cf 的 cdn 加速才能快，而且要筛选速度快的 cf 的 ip 才能快（目前来看稳定性较差，建议用 hysteria 搭建梯子）。
 
 <Callout variant="note" title="info">
-放上`hy2`的[搭建方法](/docker-learning-notes)
+放上 `hy2` 的[搭建方法](/docker-learning-notes)
 
 </Callout>
 
 先看优化结果
 
 <Callout variant="tip">
-  如果用hysteria在非晚高峰可以秒开4k60fps，晚高峰秒开1080p60fps。cf的cdn则看运气
+  如果用 hysteria 在非晚高峰可以秒开 4k60fps，晚高峰秒开 1080p60fps。cf 的 cdn
+  则看运气
 </Callout>
 
 <Callout variant="warning">
-  如果用hysteria会时不时变卡，建议vps设置自动在凌晨重启
+  如果用 hysteria 会时不时变卡，建议 vps 设置自动在凌晨重启
 </Callout>
 
-[hysteria一键搭建](https://github.com/emptysuns/Hi_Hysteria)
+[hysteria 一键搭建](https://github.com/emptysuns/Hi_Hysteria)
 
-下面是加了cdn的结果
+下面是加了 cdn 的结果
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230525/image.5rkudgvs3rk0.png"
-  caption="cf-cdn优化后的速度（速度在一直增加，峰值跑到200m不是问题）"
+  caption="cf-cdn 优化后的速度（速度在一直增加，峰值跑到 200m 不是问题）"
 />
 
 没有优化的话速度简直不能看。
 
 ## 前言
 
-推荐使用hysteria（区别于ws+tls+cdn，这个协议不能添加也不需要添加cdn）。
+推荐使用 hysteria（区别于 ws+tls+cdn，这个协议不能添加也不需要添加 cdn）。
 
-[hysteria一键搭建](https://github.com/emptysuns/Hi_Hysteria)
+[hysteria 一键搭建](https://github.com/emptysuns/Hi_Hysteria)
 
-如要添加cdn则需要：
-1、`vps`，我用的是免费的亚马逊云香港服务器ec2（2c1g）
-2、一个域名，可以到[namesilo(点击购买域名)](https://www.namesilo.com/domain/search-domains?rid=e824566hn)，`.xyz`域名只需要0.99刀一年，第二年重新换一个就可以。支持支付宝付费，还不用实名，送邮箱域名和隐私保护。
-3、`cloudflare`账号（没有的账号的，去`谷歌`搜索然后注册）
-4、cf ip自选工具[点击查看](https://github.com/XIU2/CloudflareSpeedTest)
+如要添加 cdn 则需要：
+1、`vps`，我用的是免费的亚马逊云香港服务器 ec2（2c1g）
+2、一个域名，可以到[namesilo(点击购买域名)](https://www.namesilo.com/domain/search-domains?rid=e824566hn)，`.xyz` 域名只需要 0.99 刀一年，第二年重新换一个就可以。支持支付宝付费，还不用实名，送邮箱域名和隐私保护。
+3、`cloudflare` 账号（没有的账号的，去 `谷歌` 搜索然后注册）
+4、cf ip 自选工具[点击查看](https://github.com/XIU2/CloudflareSpeedTest)
 5、 [Easy install latest or LTS linux kernel and enable BBR or BBR plus](https://github.com/jinwyp/one_click_script)
 [BBR vs BBRplus vs BBR2 一般网络速度对比](https://roov.org/2020/03/bbr-bbrplus-bbr2/#toc_3)
 
-默认已经搭建v2ray，没有搭建的可以查看[这里](https://github.com/233boy/v2ray)
+默认已经搭建 v2ray，没有搭建的可以查看[这里](https://github.com/233boy/v2ray)
 
-## 域名添加a记录到vps的ip
+## 域名添加 a 记录到 vps 的 ip
 
-因为我们要用到`cloudflare`的`cdn`，所以买到域名之后直接把`nameserver`（NS）改成`cloudflare`提供的`NS`。
+因为我们要用到 `cloudflare` 的 `cdn`，所以买到域名之后直接把 `nameserver`（NS）改成 `cloudflare` 提供的 `NS`。
 
-需要在`cloudflare`账号中添加你的域名，`cf`会给你`NS`，然后到域名供应商的设置页面更换域名的`NS`。
+需要在 `cloudflare` 账号中添加你的域名，`cf` 会给你 `NS`，然后到域名供应商的设置页面更换域名的 `NS`。
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230525/image.68re7eh8w2k0.webp"
-  caption="cloudflare提供的NS"
+  caption="cloudflare 提供的 NS"
 />
 
-如果是在`namesilo`买的，更换`NS`的入口还比较隐蔽，点击看下图可以查看入口。
+如果是在 `namesilo` 买的，更换 `NS` 的入口还比较隐蔽，点击看下图可以查看入口。
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230525/image.6yhg5c0hr6w0.webp"
-  caption="namesilo NS更换入口"
+  caption="namesilo NS 更换入口"
 />
 
-之后自定义一个二级域名，例如`forv2ray.example.com`，添加`A`记录到你的`vps ip`。并且开启`cdn`（如出现下图`代理状态`的图标，则开启成功。或需要等一段时间才能生效）
+之后自定义一个二级域名，例如 `forv2ray.example.com`，添加 `A` 记录到你的 `vps ip`。并且开启 `cdn`（如出现下图 `代理状态` 的图标，则开启成功。或需要等一段时间才能生效）
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230525/image.4kwet6hmt6e0.webp"
-  caption="cloudflare添加A记录"
+  caption="cloudflare 添加 A 记录"
 />
 
 之后把证书加密模式改成完全（full）
@@ -89,21 +90,21 @@ import ImageGrid from '@/components/image-grid.astro'
   caption="把证书加密模式改成完全（full）"
 />
 
-这个时候可以`ping`一下你的二级域名，或者测一下`v2ray`的速度了，不过应该很慢。
+这个时候可以 `ping` 一下你的二级域名，或者测一下 `v2ray` 的速度了，不过应该很慢。
 
-证书的话我是脚本自动生成的，当然也可以到cf设置 -> SSL/TLS -> 源服务器生成。
+证书的话我是脚本自动生成的，当然也可以到 cf 设置 -> SSL/TLS -> 源服务器生成。
 
-## 筛选适合的cloudflare ip
+## 筛选适合的 cloudflare ip
 
-[ip筛选工具](https://github.com/XIU2/CloudflareSpeedTest)
+[ip 筛选工具](https://github.com/XIU2/CloudflareSpeedTest)
 
-下载后打开运行，记得关掉你的梯子，然后将最快的ip填写到你的`v2ray`客户端的地址（addres）位置。
+下载后打开运行，记得关掉你的梯子，然后将最快的 ip 填写到你的 `v2ray` 客户端的地址（addres）位置。
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230525/image.5k737u1z06c0.webp"
-  caption="更改v2ray设置"
+  caption="更改 v2ray 设置"
 />
 
-其中的伪装域名填写你在`cf`添加`A`记录到`vps IP`的二级域名。
+其中的伪装域名填写你在 `cf` 添加 `A` 记录到 `vps IP` 的二级域名。
 
 这个时候你就可以去测速了（或需要等待一段时间生效）

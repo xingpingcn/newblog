@@ -1,10 +1,10 @@
 ---
-title: 'docker学习笔记'
-description: '通过学习docker-compose将hysteria2通过bridge模式提供服务'
+title: 'docker 学习笔记'
+description: '通过学习 docker-compose 将 hysteria2 通过 bridge 模式提供服务'
 date: 2023-04-01
 tags: []
 keywords:
-  ['bridge模式 container容器 hysteria2 docker nginx proxy_pass docker配置']
+  ['bridge 模式 container 容器 hysteria2 docker nginx proxy_pass docker 配置']
 authors: ['xingpingcn']
 ---
 
@@ -12,23 +12,23 @@ import Callout from '@/components/callout.astro'
 import Figure from '@/components/figure.astro'
 import ImageGrid from '@/components/image-grid.astro'
 
-这是一篇通过配置hysteria2学习docker-compose的笔记
+这是一篇通过配置 hysteria2 学习 docker-compose 的笔记
 
 ## 前言
 
-用官方的docker和配置3分钟就搭好了，但是想试试通过bridge和通过nginx反代来实现（最后没有实验），于是就开始了折腾，，，
+用官方的 docker 和配置 3 分钟就搭好了，但是想试试通过 bridge 和通过 nginx 反代来实现（最后没有实验），于是就开始了折腾，，，
 
-## docker的network模式
+## docker 的 network 模式
 
-docker会隔离文件、网络、进程，而网络的隔离程度分为4种：
+docker 会隔离文件、网络、进程，而网络的隔离程度分为 4 种：
 
 - `host` 这个相当于和主机共用一个网络
 - `none` 容器不需要内部和外部网络
 - `container` 似乎是容器内的网络，和主机分离。
-- `bridge` 命令`docker network create`的默认模式，连接到该网络的容器可以互相连通，而且可以暴露端口给主机和主机通讯。客户端通过`主机ip:port`访问。
+- `bridge` 命令 `docker network create` 的默认模式，连接到该网络的容器可以互相连通，而且可以暴露端口给主机和主机通讯。客户端通过 `主机ip:port` 访问。
 
 <Callout variant="tip" title="NOTE">
-docker默认创建除`container`的三个网络。可以通过`docker network ls`查看。
+docker 默认创建除 `container` 的三个网络。可以通过 `docker network ls` 查看。
 
 </Callout>
 
@@ -42,8 +42,8 @@ cf668a8174a8   host          host      local
 ```
 
 <Callout variant="tip" title="NOTE">
-值得注意的是，docker默认创建一个名为docker0的网口用于连接主机和容器。通过`ip link`查看
-进入hy2容器执行`ip link`命令可以看到，hy2的网卡（`eth0`）是和主机上的`veth6f76815`虚拟网卡连接（240:241）
+值得注意的是，docker 默认创建一个名为 docker0 的网口用于连接主机和容器。通过 `ip link` 查看
+进入 hy2 容器执行 `ip link` 命令可以看到，hy2 的网卡（`eth0`）是和主机上的 `veth6f76815` 虚拟网卡连接（240:241）
 
 </Callout>
 
@@ -72,9 +72,9 @@ root@445:/bin/hy2# docker exec -it hy2 /bin/bash
 1cb800f27bd1:/#
 ```
 
-## 配置hy2的yaml
+## 配置 hy2 的 yaml
 
-官方的`yaml`是使用的`host`模式，我现在要创建一个名为`nginx-proxy`的网络并且在配置文件中更改。
+官方的 `yaml` 是使用的 `host` 模式，我现在要创建一个名为 `nginx-proxy` 的网络并且在配置文件中更改。
 
 ```yaml
 version: '3.9'
@@ -100,17 +100,17 @@ volumes:
   acme:
 ```
 
-这样我以为就可以通过访问`10808`端口科学上网了。但是ping不通，，，
+这样我以为就可以通过访问 `10808` 端口科学上网了。但是 ping 不通，，，
 
-经过努力的排查，找到了`docker inspect`命令，发现容器被分配的`IP`是空的，，，
+经过努力的排查，找到了 `docker inspect` 命令，发现容器被分配的 `IP` 是空的，，，
 
-原来还需要手动通过输入`docker network connect`来连接，，，我看`nginx`是自动连接的，不知道对应的yaml怎么写。
+原来还需要手动通过输入 `docker network connect` 来连接，，，我看 `nginx` 是自动连接的，不知道对应的 yaml 怎么写。
 
-结果还是是ping不通，，，
+结果还是是 ping 不通，，，
 
-用`iptables -t nat -nvL --line-number`查看发现，`Chain DOCKER`里也有容器IP的`DNAT`了，为什么还是不行。
+用 `iptables -t nat -nvL --line-number` 查看发现，`Chain DOCKER` 里也有容器 IP 的 `DNAT` 了，为什么还是不行。
 
-不细心眼力不好还发现不了，是暴露端口的时候默认暴露tcp，，，。结合hy2文档也知道hy2是基于udp的，然后更改配置
+不细心眼力不好还发现不了，是暴露端口的时候默认暴露 tcp，，，。结合 hy2 文档也知道 hy2 是基于 udp 的，然后更改配置
 
 ```yaml
 services:
@@ -122,7 +122,7 @@ services:
 
 成功！
 
-但是关闭连接的时候就会出错再也连不上，通过日志发现，原来关闭的时候通过`tcp`沟通的。
+但是关闭连接的时候就会出错再也连不上，通过日志发现，原来关闭的时候通过 `tcp` 沟通的。
 
 最终的配置文档应该像这样的
 
@@ -135,10 +135,10 @@ services:
     ...
 ```
 
-最后删除多余的NAT，和设置新的NAT，并备份iptables
+最后删除多余的 NAT，和设置新的 NAT，并备份 iptables
 
 <Callout variant="warning" title="warning">
-`iptables-save -f /etc/iptables/rules.v4`适用于Debian，其他系统可能会恢复不了`iptables`
+`iptables-save -f /etc/iptables/rules.v4` 适用于 Debian，其他系统可能会恢复不了 `iptables`
 
 </Callout>
 
@@ -150,18 +150,18 @@ systemctl restart iptables
 ```
 
 <Callout variant="warning" title="warning">
-如果使用`ufw`，则修改以下文件。重启`ufw`的时候不会删除`iptables`已经有的规则，也就是说重复重启`ufw`会添加多条相同的规则，需要手动删除。
+如果使用 `ufw`，则修改以下文件。重启 `ufw` 的时候不会删除 `iptables` 已经有的规则，也就是说重复重启 `ufw` 会添加多条相同的规则，需要手动删除。
 
 ```bash
 net/ipv4/ip_forward=1
 ```
 
 <Callout variant="warning" title="warning">
-注意！必须在前一个filter block最后，即COMMIT之后添加！
+注意！必须在前一个 filter block 最后，即 COMMIT 之后添加！
 
 最后只放行那个要转发的端口！
 
-例如`ufw allow 12345`，而不是`ufw allow 20000-50000`
+例如 `ufw allow 12345`，而不是 `ufw allow 20000-50000`
 
 </Callout>
 
@@ -208,11 +208,11 @@ quic:
   maxConnReceiveWindow: 67108864
 ```
 
-## nginx初次使用
+## nginx 初次使用
 
-由于nginx运行在`docker`内，而每个`docker`都会被`network`的虚拟网关分配一个`ip`，如果nginx要反代同一`network`内的`docker container`是不是就要预先知道它的ip呢？这样做其实也可以，但是如果机器重启就会出问题，因为重启后每个容器的ip会被重新分配，分配的规则我猜测是根据启动顺序来决定的。更优雅的方式是直接使用`container`的别名作为`ip`。
+由于 nginx 运行在 `docker` 内，而每个 `docker` 都会被 `network` 的虚拟网关分配一个 `ip`，如果 nginx 要反代同一 `network` 内的 `docker container` 是不是就要预先知道它的 ip 呢？这样做其实也可以，但是如果机器重启就会出问题，因为重启后每个容器的 ip 会被重新分配，分配的规则我猜测是根据启动顺序来决定的。更优雅的方式是直接使用 `container` 的别名作为 `ip`。
 
-例如在同一网络内有两个`container`，别名分别为`nginx_test`和`api`，则`nginx_test`的反代配置应该是类似于这样的。
+例如在同一网络内有两个 `container`，别名分别为 `nginx_test` 和 `api`，则 `nginx_test` 的反代配置应该是类似于这样的。
 
 ```bash
 server {
@@ -224,7 +224,7 @@ server {
 }
 ```
 
-以上情况只是适用于nginx通过`docker`部署的情况。而我用的是直接安装在主机的方式，反代的容器需要暴露端口到`localhost`。
+以上情况只是适用于 nginx 通过 `docker` 部署的情况。而我用的是直接安装在主机的方式，反代的容器需要暴露端口到 `localhost`。
 
 ```yaml
 services:
@@ -235,20 +235,20 @@ services:
     ...
 ```
 
-这样子，使用`ip:10808`就不能访问了，必须在nginx那里反代`proxy_pass http://127.0.0.1:3000;`通过`ip:443`访问
+这样子，使用 `ip:10808` 就不能访问了，必须在 nginx 那里反代 `proxy_pass http://127.0.0.1:3000;` 通过 `ip:443` 访问
 
 <Callout variant="warning" title="WARNING">
 hy2 并不支持和 nginx 共享 443 端口，所以需要自己用 acme 申请证书，然后在 hy2 的配置中填写 tls
 
 </Callout>
 
-### nginx安装和证书自动申请
+### nginx 安装和证书自动申请
 
 意外地发现需要结合多个教程才能搞定，记录一下备忘
 
-有两种方法，一种是acme.sh，一种是Certbot，后者更加方便，但是过程中做了什么我不知道，前者需要手动的地方更多，但是你会知道证书放在了哪里。
+有两种方法，一种是 acme.sh，一种是 Certbot，后者更加方便，但是过程中做了什么我不知道，前者需要手动的地方更多，但是你会知道证书放在了哪里。
 
-可以先设置软连接。注意路径，第一个为默认的nginx配置路径，第二个为你要软连接的路径。
+可以先设置软连接。注意路径，第一个为默认的 nginx 配置路径，第二个为你要软连接的路径。
 
 ```bash
 ln -s /etc/nginx/nginx.conf /home/nginx/nginx.conf
@@ -256,7 +256,7 @@ ln -s /etc/nginx/nginx.conf /home/nginx/nginx.conf
 
 #### acme.sh
 
-先在`conf`中写好域名，`acme.sh`会根据配置帮你申请域名
+先在 `conf` 中写好域名，`acme.sh` 会根据配置帮你申请域名
 
 ```properties
 server {
@@ -265,13 +265,13 @@ server {
 }
 ```
 
-安装`acme.sh`后，`重新`打开一个终端，输入以下命令；需要域名先指向你的vps
+安装 `acme.sh` 后，`重新` 打开一个终端，输入以下命令；需要域名先指向你的 vps
 
 ```bash
 acme.sh --issue  -d  domain.com --nginx /home/nginx/nginx.conf
 ```
 
-这里有个可以不用`nginx`的方法，如果使用的是华为云，可以运行以下命令。原理就是利用api自动添加txt记录。如果需要更多支持的dns请点击[这里](https://github.com/acmesh-official/acme.sh/wiki/dnsapi)，基本上包含了主流dns服务器了。
+这里有个可以不用 `nginx` 的方法，如果使用的是华为云，可以运行以下命令。原理就是利用 api 自动添加 txt 记录。如果需要更多支持的 dns 请点击[这里](https://github.com/acmesh-official/acme.sh/wiki/dnsapi)，基本上包含了主流 dns 服务器了。
 
 ```bash
 export HUAWEICLOUD_Username=""
@@ -289,9 +289,9 @@ acme.sh --install-cert -d domain.com \
 --reloadcmd     "nginx -s reload"
 ```
 
-第一个命令是申请证书，证书会放在`acme.sh`自己脚本所在的目录，所以后面要使用`--install-cert`安装。这个并不会修改`conf`，所以要手动配置。
+第一个命令是申请证书，证书会放在 `acme.sh` 自己脚本所在的目录，所以后面要使用 `--install-cert` 安装。这个并不会修改 `conf`，所以要手动配置。
 
-再打开`conf`，填写`443`端口，之后就会在过期前30天自动更新
+再打开 `conf`，填写 `443` 端口，之后就会在过期前 30 天自动更新
 
 ```properties
 server{
@@ -326,15 +326,15 @@ sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbott
 ```
 
-之后conf中填写好`443`端口
+之后 conf 中填写好 `443` 端口
 
 使用 certbot 获取 SSL 证书：`sudo certbot --nginx`
 
-`sudo vim ./push`查看更改。重启`nginx`
+`sudo vim ./push` 查看更改。重启 `nginx`
 
-### 重启nginx
+### 重启 nginx
 
-有两个，前者确定不会重启`nginx`，后者应该会。
+有两个，前者确定不会重启 `nginx`，后者应该会。
 
 ```bash
 nginx -s reload

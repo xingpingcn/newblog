@@ -1,6 +1,6 @@
 ---
-import { getCollection } from 'astro:content'
 import { getPostLinkTarget } from '@/lib/data-utils'
+import { getCollection } from 'astro:content'
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog')

@@ -1,5 +1,5 @@
 ---
-title: '解决升级umamiv2.11时出现的P3009错误'
+title: '解决升级 umamiv2.11 时出现的 P3009 错误'
 description: '--- 鉴于中文互联网上关于这个问题的内容很少，我还是水一篇吧'
 date: 2023-04-01
 tags: []
@@ -17,15 +17,15 @@ import ImageGrid from '@/components/image-grid.astro'
 
 ## 前言
 
-先放issue
+先放 issue
 
 [p3009 issue](https://github.com/umami-software/umami/issues/2645#issuecomment-2080419741)
 
-我是在vercel上部署的，所以issue里面提到的用py或者shell去迁移数据库的方法我是实现不了的，只能在build阶段就把问题解决。
+我是在 vercel 上部署的，所以 issue 里面提到的用 py 或者 shell 去迁移数据库的方法我是实现不了的，只能在 build 阶段就把问题解决。
 
 ## 解决方法
 
-在`package.json`找到
+在 `package.json` 找到
 
 ```js
 "build-db": "npm-run-all copy-db-files build-db-client",
@@ -44,13 +44,13 @@ import ImageGrid from '@/components/image-grid.astro'
 
 还是再写多一点
 
-打开vercel日志，之后打开GitHub
+打开 vercel 日志，之后打开 GitHub
 
 <ImageGrid
   images={[
     {
       src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20240427/image.6m3p8x2h30.webp',
-      caption: 'vercel日志',
+      caption: 'vercel 日志',
     },
     {
       src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20240427/image.4qr4gat6tr.webp',

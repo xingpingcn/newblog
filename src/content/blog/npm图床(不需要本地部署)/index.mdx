@@ -1,9 +1,9 @@
 ---
-title: 'npm图床（不需要本地部署）'
-description: '不在本地部署npm图床通过cdn加速html、jpg等资源'
+title: 'npm 图床（不需要本地部署）'
+description: '不在本地部署 npm 图床通过 cdn 加速 html、jpg 等资源'
 date: 2023-04-01
 tags: ['npm']
-keywords: ['npm', '图床', '远程图片', 'html加速', 'cdn']
+keywords: ['npm', '图床', '远程图片', 'html 加速', 'cdn']
 authors: ['xingpingcn']
 ---
 
@@ -11,39 +11,39 @@ import Callout from '@/components/callout.astro'
 import Figure from '@/components/figure.astro'
 import ImageGrid from '@/components/image-grid.astro'
 
-本篇意在建立一个上传到GitHub repo自动发布package到npm空间的npm图床
+本篇意在建立一个上传到 GitHub repo 自动发布 package 到 npm 空间的 npm 图床
 
 ## 前言
 
-本篇为`picture-bed-using-freecdn`脚本的教程之一。脚本意在提高静态博客的cdn稳定性。
+本篇为 `picture-bed-using-freecdn` 脚本的教程之一。脚本意在提高静态博客的 cdn 稳定性。
 
 [picture-bed-using-freecdn](https://github.com/xingpingcn/picture-bed-use-freecdn)
 
-脚本的另一篇使用教程在这里[ [使用freecdn-js提高hexo博客的cdn稳定性]](/使用freecdn-js提高hexo博客的cdn稳定性)
+脚本的另一篇使用教程在这里[ [使用 freecdn-js 提高 hexo 博客的 cdn 稳定性]](/使用freecdn-js提高hexo博客的cdn稳定性)
 
-## 建立用于储存图片等静态资源的npm图床
+## 建立用于储存图片等静态资源的 npm 图床
 
-可以放置js、css、图片（最好带上hash）等不经常变动的资源。
+可以放置 js、css、图片（最好带上 hash）等不经常变动的资源。
 
 ### 准备工作
 
 <Callout variant="note">
-  准备工作网上有很多教程，这里不重复造轮子。请搜索“npm图床”
+  准备工作网上有很多教程，这里不重复造轮子。请搜索“npm 图床”
 </Callout>
 
 需要：
 
-- npm账号，创建一个`token`；
-- GitHub账号：创建一个repo，并在repo的`setting`创建一个名为`NPM_TOKEN`的secrets，值为上面的`token`。
+- npm 账号，创建一个 `token`；
+- GitHub 账号：创建一个 repo，并在 repo 的 `setting` 创建一个名为 `NPM_TOKEN` 的 secrets，值为上面的 `token`。
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20231001/image.2zlsco3s1iu0.png"
-  caption="添加NPM_TOKEN"
+  caption="添加 NPM_TOKEN"
 />
 
-### 创建package.json
+### 创建 package.json
 
-该文件指定了要上传的图床的名字和图床版本（不需要事先在npm空间创建一个空的package）；其中名字不能和现有的package重复，所以写的尽量长。
+该文件指定了要上传的图床的名字和图床版本（不需要事先在 npm 空间创建一个空的 package）；其中名字不能和现有的 package 重复，所以写的尽量长。
 
 ```json
 {
@@ -54,13 +54,13 @@ import ImageGrid from '@/components/image-grid.astro'
 }
 ```
 
-看好名称写就行，`version`尽量和我一样就行。
+看好名称写就行，`version` 尽量和我一样就行。
 
-### 创建GitHub action
+### 创建 GitHub action
 
-`GitHub action`可以在你把文件push或者release到repo时自动执行自定义命令，这里我们让他自动把我们push的图片发布到npm空间，使资源能通过npm cdn访问。
+`GitHub action` 可以在你把文件 push 或者 release 到 repo 时自动执行自定义命令，这里我们让他自动把我们 push 的图片发布到 npm 空间，使资源能通过 npm cdn 访问。
 
-在reop的上方点击`Action`，然后点击`new workflow`，之后点击`set up a workflow yourself `，名字随便（我这里是npm-publish.yml），之后填入以下信息：
+在 reop 的上方点击 `Action`，然后点击 `new workflow`，之后点击 `set up a workflow yourself `，名字随便（我这里是 npm-publish.yml），之后填入以下信息：
 
 ```yaml
 name: npm-publish
@@ -102,19 +102,19 @@ jobs:
           git push
 ```
 
-其中的`master`要换成你`branch`（分支）的名字。`NPM_TOKEN`就是最开始在secrets填写的`token`，因此名字要对应上。`email`和`user_name`可以随便写。
+其中的 `master` 要换成你 `branch`（分支）的名字。`NPM_TOKEN` 就是最开始在 secrets 填写的 `token`，因此名字要对应上。`email` 和 `user_name` 可以随便写。
 
 ### 上传图片
 
-使用图床工具或者手动上传到GitHub repo就能自动发布到npm空间，可以看到npm包的版本`version`变化了（npm不支持覆盖发布，所以版本一定会变化），同时`.json`文件里面的版本也变化了，这得益于GitHub action。
+使用图床工具或者手动上传到 GitHub repo 就能自动发布到 npm 空间，可以看到 npm 包的版本 `version` 变化了（npm 不支持覆盖发布，所以版本一定会变化），同时 `.json` 文件里面的版本也变化了，这得益于 GitHub action。
 
-这里推荐一个图床工具吧，只用于GitHub的，比较轻量，使用浏览器就行。
+这里推荐一个图床工具吧，只用于 GitHub 的，比较轻量，使用浏览器就行。
 
-[PicX图床工具官方文档](https://picx-docs.xpoet.cn)
+[PicX 图床工具官方文档](https://picx-docs.xpoet.cn)
 
 ### 使用图片
 
-提供几个国内能用的npm cdn
+提供几个国内能用的 npm cdn
 
 ```yaml
 https://npm.onmicrosoft.cn/,
@@ -137,13 +137,14 @@ https://jsd.onmicrosoft.cn/npm/p-hosting-for-xp@1.0.15/20230525/logo%20(2).ln5ua
 ```
 
 <Callout variant="tip">
-  freecdn-js可以把资源的响应头中的`mime`改成`text/html`（而不是原来的text/plain），从而能够让浏览器渲染网页。我写的脚本支持自动把用于写作博客.md文件转换为对应的html
-  cdn列表。见前言
+  freecdn-js 可以把资源的响应头中的 `mime` 改成 `text/html`（而不是原来的
+  text/plain），从而能够让浏览器渲染网页。我写的脚本支持自动把用于写作博客.md
+  文件转换为对应的 html cdn 列表。见前言
 </Callout>
 
-## 建立用于储存html静态资源的npm图床
+## 建立用于储存 html 静态资源的 npm 图床
 
-同样图床可以储存html文件。我是在本地编译好博客然后发布到GitHub repo的，因而在push之后依然可以在action中把html发布到npm空间。
+同样图床可以储存 html 文件。我是在本地编译好博客然后发布到 GitHub repo 的，因而在 push 之后依然可以在 action 中把 html 发布到 npm 空间。
 
 ```json
 {
@@ -157,22 +158,23 @@ https://jsd.onmicrosoft.cn/npm/p-hosting-for-xp@1.0.15/20230525/logo%20(2).ln5ua
 }
 ```
 
-这里的`package.json`多了一个`files`的`key`，表示只发布html文件到npm空间。`files`是一个列表（array），和.gitignore文件的写作规则一样。
+这里的 `package.json` 多了一个 `files` 的 `key`，表示只发布 html 文件到 npm 空间。`files` 是一个列表（array），和.gitignore 文件的写作规则一样。
 
-这里的action中的`.yml`文件和储存图片的repo的`.yml`一样，但是要删去`npm version patch`这行。
+这里的 action 中的 `.yml` 文件和储存图片的 repo 的 `.yml` 一样，但是要删去 `npm version patch` 这行。
 
-`npm version patch`的作用是更新version，在本地发布html之前（hexo d），在命令行输入`npm version patch`就能更新本地的`package.json`中的version（换而言之，在更新version之前，本地的`package.json`和`.yml`内容和`目录`要和GitHub repo的一致，然后push更新了version之后的`.json`之后，让action自动部署，发布html到npm空间）
+`npm version patch` 的作用是更新 version，在本地发布 html 之前（hexo d），在命令行输入 `npm version patch` 就能更新本地的 `package.json` 中的 version（换而言之，在更新 version 之前，本地的 `package.json` 和 `.yml` 内容和 `目录` 要和 GitHub repo 的一致，然后 push 更新了 version 之后的 `.json` 之后，让 action 自动部署，发布 html 到 npm 空间）
 
 <Callout variant="warning">
-  如果用我的命令行上传博客会多次push本地文件，但是只在push
-  html之前会更新version，那么之后的push会因为没有更新version而action部署失败，但是事实上没有什么影响
+  如果用我的命令行上传博客会多次 push 本地文件，但是只在 push html 之前会更新
+  version，那么之后的 push 会因为没有更新 version 而 action
+  部署失败，但是事实上没有什么影响
 </Callout>
 
 ## 脚本的使用
 
-脚本链接见前言。如果你要使用npm空间，要在`config.py`中写上你的npm包名，用于查询最新的version。
+脚本链接见前言。如果你要使用 npm 空间，要在 `config.py` 中写上你的 npm 包名，用于查询最新的 version。
 
-<Callout variant="warning">同样需要注意替换你的branch</Callout>
+<Callout variant="warning">同样需要注意替换你的 branch</Callout>
 
 ```bash
     f:

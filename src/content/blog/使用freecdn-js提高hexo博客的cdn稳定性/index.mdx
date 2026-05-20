@@ -1,15 +1,15 @@
 ---
-title: '使用freecdn-js提高hexo博客的cdn稳定性（接入透明模式）'
-description: '根据md文件内的cdn链接（图片等并不在本地）自动生成cdn列表，若图片、js、html等文件cdn失效则尝试连接列表内的其他cdn，并接入透明模式'
+title: '使用 freecdn-js 提高 hexo 博客的 cdn 稳定性（接入透明模式）'
+description: '根据 md 文件内的 cdn 链接（图片等并不在本地）自动生成 cdn 列表，若图片、js、html 等文件 cdn 失效则尝试连接列表内的其他 cdn，并接入透明模式'
 date: 2023-04-01
 tags: ['volantis']
 keywords:
   [
     '透明模式',
-    '提高免费cdn稳定性',
+    '提高免费 cdn 稳定性',
     'freecdn',
     'cdn.jsdelivr.net',
-    '实时切换到合适的CDN',
+    '实时切换到合适的 CDN',
     '远程图片',
   ]
 authors: ['xingpingcn']
@@ -19,17 +19,17 @@ import Callout from '@/components/callout.astro'
 import Figure from '@/components/figure.astro'
 import ImageGrid from '@/components/image-grid.astro'
 
-由于`cdn.jsdelivr.net`在国内不太稳定，替代的`jsd.cdn.zzko.cn`稳定性稍好，但是也不是100%稳定，因而需要一个脚本实时切换到合适的CDN。[freecdn-js](https://github.com/EtherDream/freecdn)能实现这个需求。freecdn-js是纯前端的，使用`service worker`，只需要插入一段`js`代码就可以，因此改造成本很低。但是我的文件（图片、js等）储存在GitHub图床，而`freecdn-js`本身需要被加速的文件的`hash`值，因此需要自己写脚本处理下载图片并计算。因为图片等文件的cdn链接是直接写在`.md`文件中的，所以写了一个正则脚本来提取cdn的链接。
+由于 `cdn.jsdelivr.net` 在国内不太稳定，替代的 `jsd.cdn.zzko.cn` 稳定性稍好，但是也不是 100%稳定，因而需要一个脚本实时切换到合适的 CDN。[freecdn-js](https://github.com/EtherDream/freecdn)能实现这个需求。freecdn-js 是纯前端的，使用 `service worker`，只需要插入一段 `js` 代码就可以，因此改造成本很低。但是我的文件（图片、js 等）储存在 GitHub 图床，而 `freecdn-js` 本身需要被加速的文件的 `hash` 值，因此需要自己写脚本处理下载图片并计算。因为图片等文件的 cdn 链接是直接写在 `.md` 文件中的，所以写了一个正则脚本来提取 cdn 的链接。
 
 ## 脚本使用方法
 
-[cdn链接处理脚本](https://github.com/xingpingcn/picture-bed-using-freecdn)
+[cdn 链接处理脚本](https://github.com/xingpingcn/picture-bed-using-freecdn)
 
-我写的脚本发布在GitHub上，匹配了`![img](url)`、`{%link%}`、`{%image%}`、`headimg`四个`tag`。脚本请到GitHub下载。
+我写的脚本发布在 GitHub 上，匹配了 `![img](url)`、`{%link%}`、`{%image%}`、`headimg` 四个 `tag`。脚本请到 GitHub 下载。
 
-可以屏蔽相关`cdn`（更改host或用v2rayN路由屏蔽）测试`freecdn-js`是否能切换备用cdn。
+可以屏蔽相关 `cdn`（更改 host 或用 v2rayN 路由屏蔽）测试 `freecdn-js` 是否能切换备用 cdn。
 
-扩展教程在这里：[使用npm空间存放图片和html并利用cdn加速](https://xingpingcn.top/npm%E5%9B%BE%E5%BA%8A%EF%BC%88%E4%B8%8D%E9%9C%80%E8%A6%81%E6%9C%AC%E5%9C%B0%E9%83%A8%E7%BD%B2%EF%BC%89.html)
+扩展教程在这里：[使用 npm 空间存放图片和 html 并利用 cdn 加速](https://xingpingcn.top/npm%E5%9B%BE%E5%BA%8A%EF%BC%88%E4%B8%8D%E9%9C%80%E8%A6%81%E6%9C%AC%E5%9C%B0%E9%83%A8%E7%BD%B2%EF%BC%89.html)
 
 需要的包版本
 
@@ -39,15 +39,15 @@ import ImageGrid from '@/components/image-grid.astro'
     freecdn   0.3.1
 ```
 
-<Callout variant="note">以下引用GitHub上的README.md文件</Callout>
+<Callout variant="note">以下引用 GitHub 上的 README.md 文件</Callout>
 
 [README.md](https://github.com/xingpingcn/picture-bed-using-freecdn)
 
-## Windows的大坑！
+## Windows 的大坑！
 
 <Callout variant="warning">此为大坑！务必阅读</Callout>
 
-如果利用Windows来写博客，那么提交`git`的时候会出现`LF will be replaced by CRLF the next time Git touches it`的提示，`CR`（回车）就是`\r`，`LF`（换行）就是`\n`，Windows平台默认换行符就是`CRLF`(`\r\n`)，此变换会导致本地文件的`hash`和存放在npm或者git空间的文件的`hash`不一致；需要运行以下命令行:
+如果利用 Windows 来写博客，那么提交 `git` 的时候会出现 `LF will be replaced by CRLF the next time Git touches it` 的提示，`CR`（回车）就是 `\r`，`LF`（换行）就是 `\n`，Windows 平台默认换行符就是 `CRLF`(`\r\n`)，此变换会导致本地文件的 `hash` 和存放在 npm 或者 git 空间的文件的 `hash` 不一致；需要运行以下命令行:
 
 ```bash
 #提交检出均不转换
@@ -55,27 +55,29 @@ git config --global core.autocrlf false
 ```
 
 <Callout variant="note">
-  适用于Windows系统，且只在Windows上开发的情况。在提交、检出时不会对`CRLF`/`LF`换行符进行转换
+  适用于 Windows 系统，且只在 Windows 上开发的情况。在提交、检出时不会对
+  `CRLF`/`LF` 换行符进行转换
 </Callout>
 
 ## 接入透明模式【可选】
 
 <Callout variant="warning" title="建议暂时不配置">
-经过一段时间的观察，透明模式会起到严重的“减速”作用，FCP延后非常多。
-本来想试试http2服务器一次性推送freecdn.js和相关的txt的，结果发现`chrome`从106版本就不支持http2服务器推送了。谷歌给出的替代方案是使用`103 early hints`，但是`nginx`现在还不支持。谷歌给出的另一个代替方案是传统的`link rel=preload`。`link rel=preload`确实可以在一次性推送freecdn.js和相关的txt，但是在安装了`Service Worker`之后依然会再次加载freecdn.js和相关的txt，结果就是速度没变，流量还浪费不少。又或者是我设置的问题，，，
+经过一段时间的观察，透明模式会起到严重的“减速”作用，FCP 延后非常多。
+本来想试试 http2 服务器一次性推送 freecdn.js 和相关的 txt 的，结果发现 `chrome` 从 106 版本就不支持 http2 服务器推送了。谷歌给出的替代方案是使用 `103 early hints`，但是 `nginx` 现在还不支持。谷歌给出的另一个代替方案是传统的 `link rel=preload`。`link rel=preload` 确实可以在一次性推送 freecdn.js 和相关的 txt，但是在安装了 `Service Worker` 之后依然会再次加载 freecdn.js 和相关的 txt，结果就是速度没变，流量还浪费不少。又或者是我设置的问题，，，
 
 </Callout>
 
 ### 配置透明模式
 
-freecdn透明模式的优势和`配置文件`看下面的链接
+freecdn 透明模式的优势和 `配置文件` 看下面的链接
 
-[freecdn透明模式](https://github.com/EtherDream/freecdn/tree/master/docs/transparent-mode)
+[freecdn 透明模式](https://github.com/EtherDream/freecdn/tree/master/docs/transparent-mode)
 
-博客使用[render.com](https://render.com)托管静态资源；因为freecdn的透明模式仅仅提供了`nginx`配置，而且`render`刚刚好也支持`docker`，那就直接用[nginx-docker](https://hub.docker.com/_/nginx)吧。
+博客使用[render.com](https://render.com)托管静态资源；因为 freecdn 的透明模式仅仅提供了 `nginx` 配置，而且 `render` 刚刚好也支持 `docker`，那就直接用[nginx-docker](https://hub.docker.com/_/nginx)吧。
 
 <Callout variant="tip">
-  render.com免费提供每月100g流量、750小时实例时间、500min构建时间、0.1`cpu`和512m`RAM`
+  render.com 免费提供每月 100g 流量、750 小时实例时间、500min 构建时间、0.1`cpu`
+  和 512m`RAM`
 </Callout>
 
 <Callout variant="warning">
@@ -85,7 +87,7 @@ freecdn透明模式的优势和`配置文件`看下面的链接
   more](https://render.com/docs/free#spinning-down-on-idle)
 </Callout>
 
-首先在你的博客根目录下的`source`创建`Dockerfile`文件。（生成博客的时候会把`source`内的文件移动到将要被上传到repo的文件夹内）
+首先在你的博客根目录下的 `source` 创建 `Dockerfile` 文件。（生成博客的时候会把 `source` 内的文件移动到将要被上传到 repo 的文件夹内）
 
 ```yaml
 FROM nginx
@@ -95,7 +97,7 @@ COPY ./nginx.conf /etc/nginx/nginx.conf
 EXPOSE 443
 ```
 
-然后下载freecdn的两个`配置文件`，`freecdn-boot.conf`和`nginx.conf`，同样放在博客根目录，只需要改动`nginx.conf`。
+然后下载 freecdn 的两个 `配置文件`，`freecdn-boot.conf` 和 `nginx.conf`，同样放在博客根目录，只需要改动 `nginx.conf`。
 
 ```yaml
 events {
@@ -136,9 +138,9 @@ http {
 }
 ```
 
-br和gzip压缩在render平台自动开启，见官网[docs](https://render.com/docs/native-runtimes)。
+br 和 gzip 压缩在 render 平台自动开启，见官网[docs](https://render.com/docs/native-runtimes)。
 
-上传到GitHub reop（hexo d）后，在render.com创建一个`web service`，然后选择你的repo部署就可以了。
+上传到 GitHub reop（hexo d）后，在 render.com 创建一个 `web service`，然后选择你的 repo 部署就可以了。
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20231009/image.5xld6kv7rco0.png"
@@ -147,18 +149,18 @@ br和gzip压缩在render平台自动开启，见官网[docs](https://render.com/
 
 ### 白嫖到底！
 
-由于免费的render web service会在15分钟之内没有连接访问的情况下断开，并在下一次访问之后重启启动，而重新启动需要较长时间；因此用cf worker去定时访问网站。
+由于免费的 render web service 会在 15 分钟之内没有连接访问的情况下断开，并在下一次访问之后重启启动，而重新启动需要较长时间；因此用 cf worker 去定时访问网站。
 
-需要一个cf账号，没有的先去[注册](https://dash.cloudflare.com/)
+需要一个 cf 账号，没有的先去[注册](https://dash.cloudflare.com/)
 
-点击左侧的`worker and page`，创建一个worker，这个时候不能改动代码，先确认创建。之后点击`触发器`标签，并找到`Cron 触发器`，填入`3/13 * * * *`，这行代码表示在每个小时过3分钟之后触发一次定时器，然后每过13分钟再触发一次（如果和`每个小时过3分钟`这一条件冲突，则重置触发器，即在每个小时过3分钟之后再次触发，如此反复）。设置效果如下图所示
+点击左侧的 `worker and page`，创建一个 worker，这个时候不能改动代码，先确认创建。之后点击 `触发器` 标签，并找到 `Cron 触发器`，填入 `3/13 * * * *`，这行代码表示在每个小时过 3 分钟之后触发一次定时器，然后每过 13 分钟再触发一次（如果和 `每个小时过 3 分钟` 这一条件冲突，则重置触发器，即在每个小时过 3 分钟之后再次触发，如此反复）。设置效果如下图所示
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20231010/image.39t23jxed3q0.png"
   caption="image"
 />
 
-之后编辑worker。点击`快速编辑`，写入以下代码
+之后编辑 worker。点击 `快速编辑`，写入以下代码
 
 ```js
 export default {
@@ -170,4 +172,4 @@ export default {
 }
 ```
 
-`async scheduled`表时当触发器触发时运行代码（题外话：这是不是可以当作一个免费的攻击服务器？？），`fetch`代表访问你的网站的资源，`await`似乎是必需的，因为没有`await`的话在render的log里面看不到`worker`的访问记录。
+`async scheduled` 表时当触发器触发时运行代码（题外话：这是不是可以当作一个免费的攻击服务器？？），`fetch` 代表访问你的网站的资源，`await` 似乎是必需的，因为没有 `await` 的话在 render 的 log 里面看不到 `worker` 的访问记录。

@@ -37,6 +37,6 @@ assert.match(
 
 assert.match(
   aboutPage,
-  /本站建于2023-04/,
+  /本站建于 2023-04/,
   'about notes should preserve the original site creation note',
 )

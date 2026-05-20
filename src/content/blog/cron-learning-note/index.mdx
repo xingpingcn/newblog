@@ -1,9 +1,9 @@
 ---
-title: 'cron笔记'
-description: 'cron笔记，包含cron不执行shell脚本的解决办法'
+title: 'cron 笔记'
+description: 'cron 笔记，包含 cron 不执行 shell 脚本的解决办法'
 date: 2023-04-01
 tags: []
-keywords: ['cron不执行shell脚本']
+keywords: ['cron 不执行 shell 脚本']
 authors: ['xingpingcn']
 ---
 
@@ -11,9 +11,9 @@ import Callout from '@/components/callout.astro'
 import Figure from '@/components/figure.astro'
 import ImageGrid from '@/components/image-grid.astro'
 
-cron笔记，包含cron不执行shell脚本的解决办法
+cron 笔记，包含 cron 不执行 shell 脚本的解决办法
 
-也许shell脚本本身可以执行，但是cron中不能执行，需要像下面这样设置
+也许 shell 脚本本身可以执行，但是 cron 中不能执行，需要像下面这样设置
 
 ```text
 SHELL=/bin/bash
@@ -34,25 +34,25 @@ cd /pathto
 docker-compose up >> $LOGS_FILE 2>&1
 ```
 
-最后设置到cron
+最后设置到 cron
 
 ```bash
 crontab /pathto/cron-for-run-per-1h.cron
 ```
 
 <Callout variant="warning" title="warning">
-使用此命令会覆盖之前所有的cron任务
+使用此命令会覆盖之前所有的 cron 任务
 
 </Callout>
 
-如果你不想覆盖之前的，那么就`/etc/cron.d`中新建文件，然后写进去。
+如果你不想覆盖之前的，那么就 `/etc/cron.d` 中新建文件，然后写进去。
 
 <Callout variant="warning" title="warning">
-cron的话基本必有一个`?`，它仅可存在于`dayofmouth`或者`dayofweek`
+cron 的话基本必有一个 `?`，它仅可存在于 `dayofmouth` 或者 `dayofweek`
 
 </Callout>
 
-个人docker配置备份
+个人 docker 配置备份
 
 ```docker
 FROM python:3.11

@@ -1,9 +1,9 @@
 ---
-title: '让在vpc中的aws lambda函数不通过nat获得访问互联网的能力'
-description: '分析在vpc中的aws lambda函数不通过nat获得访问互联网的能力的几种方法的优缺点'
+title: '让在 vpc 中的 aws lambda 函数不通过 nat 获得访问互联网的能力'
+description: '分析在 vpc 中的 aws lambda 函数不通过 nat 获得访问互联网的能力的几种方法的优缺点'
 date: 2023-04-01
 tags: []
-keywords: ['lambda', '不通过nat', '在vpc', '访问互联网']
+keywords: ['lambda', '不通过 nat', '在 vpc', '访问互联网']
 authors: ['xingpingcn']
 ---
 
@@ -11,58 +11,58 @@ import Callout from '@/components/callout.astro'
 import Figure from '@/components/figure.astro'
 import ImageGrid from '@/components/image-grid.astro'
 
-如果在使用aws lambda中，你的lambda函数需要访问aws的其他服务，例如EFS、RDS，那么大概率需要将你的lambda和efs放置在同一vpc中（不在同一vpc的情况下你可以使用endpoint），这个时候即使你的lambda是在公开子网（public subnet）中也是是没有访问互联网的能力的，这是因为你的lambda只有子网的ip10.0.0.0，流量路由到互联网网关的时候会被网关丢弃，因为你没有配置公网ip。本文会给出几个解决方案，并分析优缺点。
+如果在使用 aws lambda 中，你的 lambda 函数需要访问 aws 的其他服务，例如 EFS、RDS，那么大概率需要将你的 lambda 和 efs 放置在同一 vpc 中（不在同一 vpc 的情况下你可以使用 endpoint），这个时候即使你的 lambda 是在公开子网（public subnet）中也是是没有访问互联网的能力的，这是因为你的 lambda 只有子网的 ip10.0.0.0，流量路由到互联网网关的时候会被网关丢弃，因为你没有配置公网 ip。本文会给出几个解决方案，并分析优缺点。
 
-因为aws的文档大部分是英文，中文文档都是机翻，所以有些专有名词的翻译就很别扭，所以干脆直接用英文。
+因为 aws 的文档大部分是英文，中文文档都是机翻，所以有些专有名词的翻译就很别扭，所以干脆直接用英文。
 
 ## 前言
 
-正如前面所说，你的`lambda函数`所在的`vpc`需要配置`公网ip`才能拥有访问互联网的能力。你可能会说，为什么我平时用的lambda不需要加入vpc呢？
+正如前面所说，你的 `lambda函数` 所在的 `vpc` 需要配置 `公网ip` 才能拥有访问互联网的能力。你可能会说，为什么我平时用的 lambda 不需要加入 vpc 呢？
 
 这是因为：
 
-1. 你的lambda没有手动配置vpc。如果你的lambda没有手动配置vpc，那么aws会把你的lambda放进aws自己管理的vpc中，在该vpc中拥有公网ip，你的lambda可以访问互联网，但是你的lambda函数并不能访问该vpc下的其他aws服务（当然不能，难道你还能访问aws他自己的私有服务吗）
-1. 你的lambda并没有使用到其他aws服务。要使用其他aws服务，则该服务一定是要加入到你自己的vpc中的，例如你要把信息写进`json`文件并持久化，你需要s3或者EFS；例如你要访问ec2实例或RDS数据库。如果只是临时写入文件则可以在`/tmp`目录下写入，lambda运行结束则会被清空，不能持久化。
+1. 你的 lambda 没有手动配置 vpc。如果你的 lambda 没有手动配置 vpc，那么 aws 会把你的 lambda 放进 aws 自己管理的 vpc 中，在该 vpc 中拥有公网 ip，你的 lambda 可以访问互联网，但是你的 lambda 函数并不能访问该 vpc 下的其他 aws 服务（当然不能，难道你还能访问 aws 他自己的私有服务吗）
+1. 你的 lambda 并没有使用到其他 aws 服务。要使用其他 aws 服务，则该服务一定是要加入到你自己的 vpc 中的，例如你要把信息写进 `json` 文件并持久化，你需要 s3 或者 EFS；例如你要访问 ec2 实例或 RDS 数据库。如果只是临时写入文件则可以在 `/tmp` 目录下写入，lambda 运行结束则会被清空，不能持久化。
 
 <br />
 
-要让lambda拥有同时访问互联网和vpc下的服务的能力，首先你要有公网ip，另外你的lambda能访问vpc下的服务。
+要让 lambda 拥有同时访问互联网和 vpc 下的服务的能力，首先你要有公网 ip，另外你的 lambda 能访问 vpc 下的服务。
 
 我查阅了网上提到的几种方法，并总结下来
 
 存在的解决方案有：
 
-1. 配置`nat网关`。
-1. 配置`endpoint`。将你的程序解耦，分为两个lambda函数，一个用于访问互联网，另一个访问aws服务，二者通过endpoint进行通讯。
-1. 通过`API gateway`。同样地，你的程序需要解耦，其中用于访问aws服务的lambda被主lambda函数通过API调用。
-1. 通过aws lambda `api`。使用aws sdk（python使用`boto3`），通过[invoke](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/lambda/client/invoke.html)方法同步或异步调用另一个lambda。
+1. 配置 `nat网关`。
+1. 配置 `endpoint`。将你的程序解耦，分为两个 lambda 函数，一个用于访问互联网，另一个访问 aws 服务，二者通过 endpoint 进行通讯。
+1. 通过 `API gateway`。同样地，你的程序需要解耦，其中用于访问 aws 服务的 lambda 被主 lambda 函数通过 API 调用。
+1. 通过 aws lambda `api`。使用 aws sdk（python 使用 `boto3`），通过[invoke](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/lambda/client/invoke.html)方法同步或异步调用另一个 lambda。
 
 ## 解决方案
 
-### 配置nat网关
+### 配置 nat 网关
 
 这是官方推荐的方法。
 
 #### 如何配置
 
-新建一个vpc，选择带有公网子网和私有子网的模板，然后勾选nat网关就可以。在可视化界面中你可以看到私有子网通过路由表（route table）将流量路由到nat网关。你把你的lambda和aws服务放进私有子网内，你的lambda就拥有了同时访问互联网和vpc下的aws服务的能力。路由表会根据`destination`帮你处理好一切。
+新建一个 vpc，选择带有公网子网和私有子网的模板，然后勾选 nat 网关就可以。在可视化界面中你可以看到私有子网通过路由表（route table）将流量路由到 nat 网关。你把你的 lambda 和 aws 服务放进私有子网内，你的 lambda 就拥有了同时访问互联网和 vpc 下的 aws 服务的能力。路由表会根据 `destination` 帮你处理好一切。
 
 #### 优缺点
 
-最简单也最贵。单单是一个nat网关开着它就要30美元一个月，转发的流量还需要另外收费。不清楚公网ip是否另外收费
+最简单也最贵。单单是一个 nat 网关开着它就要 30 美元一个月，转发的流量还需要另外收费。不清楚公网 ip 是否另外收费
 
-### 配置endpoint
+### 配置 endpoint
 
-aws设置endpoint的目的是为了让处于不同的vpc下的服务不通过互联网而通过aws的内部网络相互通讯，从而减少安全风险。
+aws 设置 endpoint 的目的是为了让处于不同的 vpc 下的服务不通过互联网而通过 aws 的内部网络相互通讯，从而减少安全风险。
 
 #### 如何配置
 
-利用这个特性，你可以在将需要访问互联网的lambda放在aws他自己管理的vpc中（在创建lambda的时候默认会放进该vpc），将另一个lambda放到你的vpc中，该lambda函数用于访问同vpc下的aws服务，例如RDS。前者lambda通过endpoint访问后者。
+利用这个特性，你可以在将需要访问互联网的 lambda 放在 aws 他自己管理的 vpc 中（在创建 lambda 的时候默认会放进该 vpc），将另一个 lambda 放到你的 vpc 中，该 lambda 函数用于访问同 vpc 下的 aws 服务，例如 RDS。前者 lambda 通过 endpoint 访问后者。
 
-值得注意的是，`endpoint`是安装在服务消费者（`service consumers`）上的，在上面的例子中，假设我是希望能访问互联网的lambda访问处于自定义vpc中的lambda，读取RDS数据并发送邮件。在这里，服务消费者是访问互联网的lambda，服务提供者（`service providers`）是处于自定义vpc中的lambda，前面提到，`endpoint`应该被安装在服务消费者——也就是访问互联网的lambda中，但是，该lambda是放在aws自己管理的vpc中的，我们没有权限去创建一个`endpoint`，只能改变思路，就像下面的图所示，把处于自定义vpc中的lambda作为服务消费者，读取数据库，之后通过`endpoint`调用vpc外面的lambda。
+值得注意的是，`endpoint` 是安装在服务消费者（`service consumers`）上的，在上面的例子中，假设我是希望能访问互联网的 lambda 访问处于自定义 vpc 中的 lambda，读取 RDS 数据并发送邮件。在这里，服务消费者是访问互联网的 lambda，服务提供者（`service providers`）是处于自定义 vpc 中的 lambda，前面提到，`endpoint` 应该被安装在服务消费者——也就是访问互联网的 lambda 中，但是，该 lambda 是放在 aws 自己管理的 vpc 中的，我们没有权限去创建一个 `endpoint`，只能改变思路，就像下面的图所示，把处于自定义 vpc 中的 lambda 作为服务消费者，读取数据库，之后通过 `endpoint` 调用 vpc 外面的 lambda。
 
 <Callout variant="tip" title="NOTE">
-在你的lambda中，可以通过编程的方式使用aws sdk（python是`boto3`）链接endpoint。sdk通常是发送一个`http请求`来调用`endpoint`。
+在你的 lambda 中，可以通过编程的方式使用 aws sdk（python 是 `boto3`）链接 endpoint。sdk 通常是发送一个 `http请求` 来调用 `endpoint`。
 
 </Callout>
 
@@ -74,56 +74,56 @@ aws设置endpoint的目的是为了让处于不同的vpc下的服务不通过互
 #### 优缺点
 
 - 优点
-  - 费用比nat低
-  - 由于解耦，程序逻辑更加清晰，并且能提高复用率。如果你使用RDS，需要使用`RDS proxy`来复用同一个数据库连接。
+  - 费用比 nat 低
+  - 由于解耦，程序逻辑更加清晰，并且能提高复用率。如果你使用 RDS，需要使用 `RDS proxy` 来复用同一个数据库连接。
     <br />
 
 - 缺点
   - 高延迟+双重冷（热）启动
-  - 受到lambda的并发限制。免费账号只有10个并发，如果你要多次读写数据库则速度会很慢
+  - 受到 lambda 的并发限制。免费账号只有 10 个并发，如果你要多次读写数据库则速度会很慢
 
-### 通过API gateway
+### 通过 API gateway
 
-`API gateway`的最佳用途应该是用来写`REST api`，你可以通过`API gateway`调用lambda函数
+`API gateway` 的最佳用途应该是用来写 `REST api`，你可以通过 `API gateway` 调用 lambda 函数
 
 #### 如何配置
 
-编写两个lambda，其中用于访问aws服务的lambda设置`API gateway`触发器（`trigger`），因而用于访问互联网的lambda可以通过发送`http请求`到该url而调用另一个lambda，进而访问aws服务。
+编写两个 lambda，其中用于访问 aws 服务的 lambda 设置 `API gateway` 触发器（`trigger`），因而用于访问互联网的 lambda 可以通过发送 `http请求` 到该 url 而调用另一个 lambda，进而访问 aws 服务。
 
 <Figure
   src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/image.9gwbnsgq5f.webp"
-  caption="设置API gateway触发器（trigger）"
+  caption="设置 API gateway 触发器（trigger）"
 />
 
 #### 优缺点
 
 - 优点
   - 有免费额度
-  - 不用设置endpoint
-  - 可以使用`http`来调用，调用起来更加方便
-  - 由于解耦，程序逻辑更加清晰，并且能提高复用率。如果你使用RDS，需要使用RDS proxy来复用同一个数据库连接。
+  - 不用设置 endpoint
+  - 可以使用 `http` 来调用，调用起来更加方便
+  - 由于解耦，程序逻辑更加清晰，并且能提高复用率。如果你使用 RDS，需要使用 RDS proxy 来复用同一个数据库连接。
     <br />
 
 - 缺点
   - 高延迟+双重冷（热）启动
-  - 受到lambda的并发限制。免费账号只有10个并发，如果你要多次读写数据库则速度会很慢
+  - 受到 lambda 的并发限制。免费账号只有 10 个并发，如果你要多次读写数据库则速度会很慢
 
-### 通过aws lambda api
+### 通过 aws lambda api
 
-和其他aws服务一样，lambda也有自己的api。其中就包括调用lambda函数的`invoke`方法。
+和其他 aws 服务一样，lambda 也有自己的 api。其中就包括调用 lambda 函数的 `invoke` 方法。
 
 #### 如何配置
 
-如果你使用`python`，详见[invoke](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/lambda/client/invoke.html)
+如果你使用 `python`，详见[invoke](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/lambda/client/invoke.html)
 
 #### 优缺点
 
 - 优点
-  - api本身免费，运行的lambda有免费额度
-  - 由于解耦，程序逻辑更加清晰，并且能提高复用率。如果你使用RDS，需要使用RDS proxy来复用同一个数据库连接。
+  - api 本身免费，运行的 lambda 有免费额度
+  - 由于解耦，程序逻辑更加清晰，并且能提高复用率。如果你使用 RDS，需要使用 RDS proxy 来复用同一个数据库连接。
     <br />
 
 - 缺点
-  - 只能通过aws sdk使用，否则你要自行编写认证程序
+  - 只能通过 aws sdk 使用，否则你要自行编写认证程序
   - 高延迟+双重冷（热）启动
-  - 受到lambda的并发限制。免费账号只有10个并发，如果你要多次读写数据库则速度会很慢
+  - 受到 lambda 的并发限制。免费账号只有 10 个并发，如果你要多次读写数据库则速度会很慢
