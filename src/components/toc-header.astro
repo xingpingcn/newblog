@@ -95,6 +95,7 @@ const { headings } = Astro.props
 
 <script>
   const INITIAL_OVERVIEW_TEXT = 'Overview'
+  const COMMENTS_SECTION_TEXT = '评论区'
   const HEADER_OFFSET = 102 + 36
   const PROGRESS_CIRCLE_RADIUS = 10
   const PROGRESS_CIRCLE_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_CIRCLE_RADIUS
@@ -140,9 +141,19 @@ const { headings } = Astro.props
 
   class HeadingRegions {
     static build() {
+      const contentContainer = document.querySelector<HTMLElement>(
+        '[data-article-content]',
+      )
+
+      if (!contentContainer) {
+        state.headings = []
+        state.regions = []
+        return
+      }
+
       state.headings = Array.from(
-        document.querySelectorAll<HTMLElement>(
-          '.prose h2, .prose h3, .prose h4, .prose h5, .prose h6',
+        contentContainer.querySelectorAll<HTMLElement>(
+          'h2, h3, h4, h5, h6',
         ),
       )
 
@@ -151,12 +162,13 @@ const { headings } = Astro.props
         return
       }
 
+      const contentEnd = contentContainer.offsetTop + contentContainer.offsetHeight
       state.regions = state.headings.map((heading, index) => {
         const nextHeading = state.headings[index + 1]
         return {
           id: heading.id,
           start: heading.offsetTop,
-          end: nextHeading ? nextHeading.offsetTop : document.body.scrollHeight,
+          end: nextHeading ? nextHeading.offsetTop : contentEnd,
         }
       })
     }
@@ -219,11 +231,19 @@ const { headings } = Astro.props
 
       state.listElement.querySelectorAll('.mobile-toc-item').forEach((item) => {
         const tocItem = item as HTMLElement
+        tocItem.classList.remove('text-foreground')
+      })
+
+      if (this.isCommentsSectionActive()) {
+        this.updateCurrentSectionText([])
+        return
+      }
+
+      state.listElement.querySelectorAll('.mobile-toc-item').forEach((item) => {
+        const tocItem = item as HTMLElement
         const headingId = tocItem.dataset.headingId
         if (headingId && headingIds.includes(headingId)) {
           tocItem.classList.add('text-foreground')
-        } else {
-          tocItem.classList.remove('text-foreground')
         }
       })
 
@@ -236,6 +256,11 @@ const { headings } = Astro.props
 
     static updateCurrentSectionText(headingIds: string[]) {
       if (!state.currentSectionText) return
+
+      if (this.isCommentsSectionActive()) {
+        state.currentSectionText.textContent = COMMENTS_SECTION_TEXT
+        return
+      }
 
       let textToShow = INITIAL_OVERVIEW_TEXT
 
@@ -252,6 +277,18 @@ const { headings } = Astro.props
       }
 
       state.currentSectionText.textContent = textToShow
+    }
+
+    static isCommentsSectionActive() {
+      const comments = document.getElementById('comments')
+      if (!comments) return false
+
+      const viewportTop = window.scrollY + HEADER_OFFSET
+      const viewportBottom = window.scrollY + window.innerHeight
+      const commentsTop = comments.offsetTop
+      const commentsBottom = commentsTop + comments.offsetHeight
+
+      return commentsTop <= viewportBottom && commentsBottom >= viewportTop
     }
 
     static scrollToActive(activeHeadingId: string) {
@@ -315,8 +352,14 @@ const { headings } = Astro.props
     static update() {
       if (!state.progressCircle) return
 
+      const contentContainer = document.querySelector<HTMLElement>(
+        '[data-article-content]',
+      )
+      const contentEnd = contentContainer
+        ? contentContainer.offsetTop + contentContainer.offsetHeight
+        : document.documentElement.scrollHeight
       const scrollableDistance =
-        document.documentElement.scrollHeight - window.innerHeight
+        Math.max(contentEnd - window.innerHeight, 0)
       const scrollProgress =
         scrollableDistance > 0
           ? Math.min(Math.max(window.scrollY / scrollableDistance, 0), 1)

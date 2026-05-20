@@ -23,6 +23,25 @@ export const SITE: Site = {
       websiteId: '10ffb03e-dc4f-4298-92cc-c99b01b0fa63',
     },
   },
+  comments: {
+    title: '评论',
+    giscus: {
+      repo: 'xingpingcn/website.comments',
+      repoId: 'R_kgDOJYoQOQ',
+      category: 'Announcements',
+      categoryId: 'DIC_kwDOJYoQOc4CV4bw',
+      mapping: 'pathname',
+      strict: '0',
+      reactionsEnabled: '1',
+      emitMetadata: '0',
+      inputPosition: 'top',
+      lang: 'zh-CN',
+      theme: {
+        light: 'light',
+        dark: 'dark',
+      },
+    },
+  },
   friends: {
     api: 'https://raw.githubusercontent.com/xingpingcn/friends/output/v2/data.json',
     repo: 'xingpingcn/friends',

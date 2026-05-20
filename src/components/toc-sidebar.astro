@@ -174,9 +174,19 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
 
   class HeadingRegions {
     static build() {
+      const contentContainer = document.querySelector<HTMLElement>(
+        '[data-article-content]',
+      )
+
+      if (!contentContainer) {
+        state.headings = []
+        state.regions = []
+        return
+      }
+
       state.headings = Array.from(
-        document.querySelectorAll<HTMLElement>(
-          '.prose h2, .prose h3, .prose h4, .prose h5, .prose h6',
+        contentContainer.querySelectorAll<HTMLElement>(
+          'h2, h3, h4, h5, h6',
         ),
       )
 
@@ -185,12 +195,13 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
         return
       }
 
+      const contentEnd = contentContainer.offsetTop + contentContainer.offsetHeight
       state.regions = state.headings.map((heading, index) => {
         const nextHeading = state.headings[index + 1]
         return {
           id: heading.id,
           start: heading.offsetTop,
-          end: nextHeading ? nextHeading.offsetTop : document.body.scrollHeight,
+          end: nextHeading ? nextHeading.offsetTop : contentEnd,
         }
       })
     }

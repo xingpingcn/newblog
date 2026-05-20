@@ -17,6 +17,25 @@ export type Site = {
       websiteId: string
     }
   }
+  comments: {
+    title: string
+    giscus: {
+      repo: string
+      repoId: string
+      category: string
+      categoryId: string
+      mapping: string
+      strict: string
+      reactionsEnabled: string
+      emitMetadata: string
+      inputPosition: string
+      lang: string
+      theme: {
+        light: string
+        dark: string
+      }
+    }
+  }
   friends: {
     api: string
     repo: string
