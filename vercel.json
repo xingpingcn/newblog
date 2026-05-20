@@ -30,6 +30,66 @@
       "permanent": false
     },
     {
+      "source": "/hexo折腾",
+      "destination": "/hexo-blog-tweaks/hexo折腾",
+      "permanent": true
+    },
+    {
+      "source": "/hexo折腾.html",
+      "destination": "/hexo-blog-tweaks/hexo折腾",
+      "permanent": true
+    },
+    {
+      "source": "/为hexo博客添加自适应图片占位图",
+      "destination": "/hexo-blog-tweaks/为hexo博客添加自适应图片占位图",
+      "permanent": true
+    },
+    {
+      "source": "/为hexo博客添加自适应图片占位图.html",
+      "destination": "/hexo-blog-tweaks/为hexo博客添加自适应图片占位图",
+      "permanent": true
+    },
+    {
+      "source": "/使用freecdn-js提高hexo博客的cdn稳定性",
+      "destination": "/hexo-blog-tweaks/使用freecdn-js提高hexo博客的cdn稳定性",
+      "permanent": true
+    },
+    {
+      "source": "/使用freecdn-js提高hexo博客的cdn稳定性.html",
+      "destination": "/hexo-blog-tweaks/使用freecdn-js提高hexo博客的cdn稳定性",
+      "permanent": true
+    },
+    {
+      "source": "/为volantis添加cdn加速",
+      "destination": "/hexo-blog-tweaks/为volantis添加cdn加速",
+      "permanent": true
+    },
+    {
+      "source": "/为volantis添加cdn加速.html",
+      "destination": "/hexo-blog-tweaks/为volantis添加cdn加速",
+      "permanent": true
+    },
+    {
+      "source": "/npm图床(不需要本地部署)",
+      "destination": "/hexo-blog-tweaks/npm图床不需要本地部署",
+      "permanent": true
+    },
+    {
+      "source": "/npm图床(不需要本地部署).html",
+      "destination": "/hexo-blog-tweaks/npm图床不需要本地部署",
+      "permanent": true
+    },
+    {
+      "source": "/npm图床不需要本地部署",
+      "destination": "/hexo-blog-tweaks/npm图床不需要本地部署",
+      "permanent": true
+    },
+    {
+      "source": "/npm图床不需要本地部署.html",
+      "destination": "/hexo-blog-tweaks/npm图床不需要本地部署",
+      "permanent": true
+    },
+    {
       "source": "/enhanced-FaaS-in-cn.html",
       "destination": "/enhanced-faas-in-cn.html",
       "permanent": false

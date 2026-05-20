@@ -1,0 +1,31 @@
+---
+title: 'Hexo 博客折腾'
+description: '整理旧 Hexo/Volantis 博客折腾相关记录，包括主题问题、图片占位、CDN 稳定性、Volantis 加速和 npm 图床。'
+date: 2023-06-20
+tags: ['hexo', 'volantis']
+keywords:
+  ['Hexo', 'Volantis', '博客折腾', 'CDN', '图片占位', 'npm 图床', 'freecdn-js']
+authors: ['xingpingcn']
+coverImage: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/20230420/image.5hpz9c2gz240.png'
+---
+
+import Callout from '@/components/callout.astro'
+
+这组文章是旧 Hexo/Volantis 博客时期的折腾记录，主要围绕主题修补、图片占位、CDN 稳定性和静态资源托管展开。
+
+<Callout variant="warning" title="兼容性提醒">
+  这些文章主要记录旧 Hexo/Volantis
+  站点的主题改造方法，部分内容可能已经不适用于本站当前使用的 Astro
+  主题。原因是当前站点的路由、组件、图片处理、代码高亮和构建流程已经从 Hexo
+  主题配置与 Volantis 模板文件迁移到 Astro 内容集合、MDX 组件和 Vite
+  构建链路；文中涉及的 `hexo-theme-volantis` 文件路径、标签插件、懒加载脚本、CDN
+  注入方式和生成产物结构，未必能直接套用到现在的网站。
+</Callout>
+
+按时间和依赖关系整理如下：
+
+1. [使用 volantis 中遇到的坑](/hexo-blog-tweaks/hexo折腾)
+2. [为 hexo 博客添加自适应图片占位图（配合 lazyload）](/hexo-blog-tweaks/为hexo博客添加自适应图片占位图)
+3. [使用 freecdn-js 提高 hexo 博客的 cdn 稳定性（接入透明模式）](/hexo-blog-tweaks/使用freecdn-js提高hexo博客的cdn稳定性)
+4. [优化部署在 github page 的 hexo-volantis 的国内访问速度（dom、图片、js、css 等）](/hexo-blog-tweaks/为volantis添加cdn加速)
+5. [npm 图床（不需要本地部署）](/hexo-blog-tweaks/npm图床不需要本地部署)

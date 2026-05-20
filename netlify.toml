@@ -52,6 +52,90 @@
   headers = { X-From = "Netlify" }
 
 [[redirects]]
+  from = "/hexo折腾"
+  to = "/hexo-blog-tweaks/hexo折腾"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/hexo折腾.html"
+  to = "/hexo-blog-tweaks/hexo折腾"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/为hexo博客添加自适应图片占位图"
+  to = "/hexo-blog-tweaks/为hexo博客添加自适应图片占位图"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/为hexo博客添加自适应图片占位图.html"
+  to = "/hexo-blog-tweaks/为hexo博客添加自适应图片占位图"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/使用freecdn-js提高hexo博客的cdn稳定性"
+  to = "/hexo-blog-tweaks/使用freecdn-js提高hexo博客的cdn稳定性"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/使用freecdn-js提高hexo博客的cdn稳定性.html"
+  to = "/hexo-blog-tweaks/使用freecdn-js提高hexo博客的cdn稳定性"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/为volantis添加cdn加速"
+  to = "/hexo-blog-tweaks/为volantis添加cdn加速"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/为volantis添加cdn加速.html"
+  to = "/hexo-blog-tweaks/为volantis添加cdn加速"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/npm图床(不需要本地部署)"
+  to = "/hexo-blog-tweaks/npm图床不需要本地部署"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/npm图床(不需要本地部署).html"
+  to = "/hexo-blog-tweaks/npm图床不需要本地部署"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/npm图床不需要本地部署"
+  to = "/hexo-blog-tweaks/npm图床不需要本地部署"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
+  from = "/npm图床不需要本地部署.html"
+  to = "/hexo-blog-tweaks/npm图床不需要本地部署"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
+[[redirects]]
   from = "/enhanced-FaaS-in-cn.html"
   to = "/enhanced-faas-in-cn.html"
   status = 302

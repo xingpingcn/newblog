@@ -2,6 +2,7 @@
 title: '优化部署在 github page 的 hexo-volantis 的国内访问速度（dom、图片、js、css 等）'
 description: '部署在 github page 的 volantis 国内访问太慢 cdn 加速 图床 cdn 加速 弄完之后确实快了许多'
 date: 2023-04-01
+order: 4
 tags: ['volantis']
 keywords:
   [
@@ -30,7 +31,7 @@ import ImageGrid from '@/components/image-grid.astro'
 <Callout variant="tip">进阶的设置请看以下文章</Callout>
 
 - [提升部署在 vercel 或 netlify 的网站在中国的访问速度和稳定性](/enhanced-faas-in-cn)
-- [使用 freecdn-js 提高 hexo 博客的 cdn 稳定性](/使用freecdn-js提高hexo博客的cdn稳定性)
+- [使用 freecdn-js 提高 hexo 博客的 cdn 稳定性](/hexo-blog-tweaks/使用freecdn-js提高hexo博客的cdn稳定性)
 - [免费通过 NS1 利用监控宝平台实现实时基于不同运营商的故障转移](/免费通过ns1利用监控宝平台实现实时基于不同运营商的故障转移)
 
 ## 寻找访问慢的根源
@@ -70,7 +71,7 @@ import ImageGrid from '@/components/image-grid.astro'
 
 ## 使用 `cdn.jsdmirror.com` 替代 `cdn.jsdelivr.net` 进行 cdn 加速 `css` 和 `js`
 
-[进阶设置 / 使用 freecdn-js](https://xingpingcn.top/使用freecdn-js提高hexo博客的cdn稳定性.html)
+[进阶设置 / 使用 freecdn-js](/hexo-blog-tweaks/使用freecdn-js提高hexo博客的cdn稳定性)
 
 主题默认配置用的 `cdn.jsdelivr.net` 现在似乎不会突然抽筋了，但是依然很慢，`cdn.jsdmirror.com` 是一个免费面向中国境内外的高速 `jsdelivr` 镜像站，访问速度很快，可以作为理想的替代方案。
 
