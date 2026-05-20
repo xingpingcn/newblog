@@ -123,19 +123,12 @@
 .site-header-motion {
   display: block;
   transform: translateY(0);
-  transition:
-    transform 300ms ease,
-    margin-bottom 300ms ease,
-    padding 300ms ease,
-    margin-inline 300ms ease;
+  transition: transform 300ms ease;
 }
 
 .site-page-header {
   --site-header-motion-height: 4rem;
   transition:
-    width 300ms ease,
-    max-width 300ms ease,
-    margin 300ms ease,
     border-radius 300ms ease,
     background-color 180ms ease,
     box-shadow 180ms ease;
@@ -164,12 +157,10 @@
   -webkit-backdrop-filter: blur(16px) saturate(1.35);
   backdrop-filter: blur(16px) saturate(1.35);
   transition:
-    padding 300ms ease,
     border-color 150ms ease,
     border-radius 300ms ease,
     background-color 150ms ease,
-    box-shadow 150ms ease,
-    max-width 300ms ease;
+    box-shadow 150ms ease;
 }
 
 .site-header-motion.not-top .site-header-inner {
@@ -184,16 +175,11 @@
 }
 
 .site-header-brand {
-  transition: margin-inline-start 300ms ease;
+  transition: transform 300ms ease;
 }
 
 .site-header-motion.not-top .site-header-brand {
-  margin-inline-start: 0.25rem;
-}
-
-.site-header-actions,
-.site-header-nav {
-  transition: gap 300ms ease;
+  transform: translateX(0.25rem);
 }
 
 .site-header-menu {
@@ -251,8 +237,7 @@
   padding: 0.375rem 0.125rem;
   transition:
     color 180ms ease,
-    background-color 180ms ease,
-    padding 300ms ease;
+    background-color 180ms ease;
 }
 
 .site-header-nav-link:hover,
@@ -288,8 +273,6 @@
   transition:
     background-color 180ms ease,
     border-radius 300ms ease,
-    margin 300ms ease,
-    max-width 300ms ease,
     backdrop-filter 180ms ease,
     transform 300ms ease;
 }

@@ -149,10 +149,12 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
   class SiteHeaderMotion extends HTMLElement {
     private controller?: AbortController
     private resizeObserver?: ResizeObserver
+    private updateAnimationFrame = 0
 
     connectedCallback() {
       this.controller?.abort()
       this.controller = new AbortController()
+      this.updateAnimationFrame = 0
       const pageHeader = this.closest<HTMLElement>('.site-page-header')
       const menu = this.querySelector<HTMLElement>('.site-header-menu')
       const menuTrigger = this.querySelector<HTMLButtonElement>(
@@ -167,11 +169,9 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
         menuTrigger?.setAttribute('aria-expanded', String(isOpen))
       }
 
-      const syncMotionHeight = () => {
-        pageHeader?.style.setProperty(
-          '--site-header-motion-height',
-          `${this.offsetHeight}px`,
-        )
+      const syncMotionHeight = (height: number) => {
+        if (!Number.isFinite(height) || height <= 0) return
+        pageHeader?.style.setProperty('--site-header-motion-height', `${height}px`)
       }
 
       const update = () => {
@@ -196,15 +196,31 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
         if (!isHeaderVisible) {
           setMenuOpen(false)
         }
-        syncMotionHeight()
 
         if (Math.abs(scrollDelta) > 8) {
           previousScrollY = currentScrollY
         }
       }
 
+      const scheduleUpdate = () => {
+        if (this.updateAnimationFrame) return
+        this.updateAnimationFrame = requestAnimationFrame(() => {
+          this.updateAnimationFrame = 0
+          update()
+        })
+      }
+
       update()
-      this.resizeObserver = new ResizeObserver(syncMotionHeight)
+      this.resizeObserver = new ResizeObserver((entries) => {
+        const entry = entries[0]
+        const borderBoxSize = entry?.borderBoxSize
+        const firstBorderBoxSize = Array.isArray(borderBoxSize)
+          ? borderBoxSize[0]
+          : borderBoxSize
+        syncMotionHeight(
+          firstBorderBoxSize?.blockSize ?? entry?.contentRect.height ?? 0,
+        )
+      })
       this.resizeObserver.observe(this)
 
       menuTrigger?.addEventListener(
@@ -250,11 +266,11 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
         { signal: this.controller.signal },
       )
 
-      window.addEventListener('scroll', update, {
+      window.addEventListener('scroll', scheduleUpdate, {
         passive: true,
         signal: this.controller.signal,
       })
-      window.addEventListener('resize', update, {
+      window.addEventListener('resize', scheduleUpdate, {
         passive: true,
         signal: this.controller.signal,
       })
@@ -263,6 +279,10 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
     disconnectedCallback() {
       this.controller?.abort()
       this.resizeObserver?.disconnect()
+      if (this.updateAnimationFrame) {
+        cancelAnimationFrame(this.updateAnimationFrame)
+        this.updateAnimationFrame = 0
+      }
     }
   }
 
