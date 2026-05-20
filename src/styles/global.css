@@ -127,10 +127,7 @@
   padding-top: 0;
   margin-inline: 0;
   transform: translateY(0);
-  transition:
-    padding 300ms ease,
-    margin-inline 300ms ease,
-    transform 300ms ease;
+  transition: transform 300ms ease;
 }
 
 .site-page-header {
@@ -164,35 +161,33 @@
   background-color: transparent;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  transition:
-    padding 300ms ease,
-    max-width 300ms ease,
-    border-color 150ms ease,
-    border-radius 300ms ease,
-    box-shadow 150ms ease;
+  transition: border-radius 300ms ease;
 }
 
-.site-header-inner::before {
+.site-header-shell {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
+  border: 1px solid transparent;
   border-radius: inherit;
   background-color: color-mix(in oklab, var(--background) 72%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(1.35);
   backdrop-filter: blur(16px) saturate(1.35);
   transition:
+    border-color 150ms ease,
     background-color 150ms ease,
     box-shadow 150ms ease;
+  pointer-events: none;
 }
 
 .site-header-motion.not-top .site-header-inner {
-  border-color: var(--border);
   border-radius: 1rem;
   box-shadow: none;
 }
 
-.site-header-motion.not-top .site-header-inner::before {
+.site-header-motion.not-top .site-header-shell {
+  border-color: var(--border);
   background-color: color-mix(in oklab, var(--background) 76%, transparent);
   box-shadow:
     0 0 0 1px color-mix(in oklab, var(--foreground) 5%, transparent),
@@ -201,7 +196,11 @@
 
 .site-header-brand {
   margin-inline-start: 0;
-  transition: margin-inline-start 300ms ease;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .site-header-motion.not-top .site-header-brand {
@@ -346,15 +345,31 @@
     width: min(44rem, calc(100vw - 1rem));
     max-width: none;
     margin-inline: auto;
-    border: 1px solid var(--border);
+    isolation: isolate;
+    border: 1px solid transparent;
     border-radius: 1rem;
+    background-color: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .site-page-header.not-top:not([data-header-hidden])::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    top: 0.5rem;
+    z-index: -1;
+    border: 1px solid var(--border);
+    border-radius: inherit;
     background-color: color-mix(in oklab, var(--background) 76%, transparent);
     -webkit-backdrop-filter: blur(16px) saturate(1.35);
     backdrop-filter: blur(16px) saturate(1.35);
     box-shadow:
       0 0 0 1px color-mix(in oklab, var(--foreground) 5%, transparent),
       0 10px 24px color-mix(in oklab, var(--foreground) 8%, transparent);
-    overflow: visible;
+    pointer-events: none;
   }
 
   .site-page-header.not-top:not([data-header-hidden]) .site-header-motion {
@@ -363,7 +378,15 @@
 
   .site-page-header.not-top:not([data-header-hidden]) .site-header-inner {
     border-color: transparent;
-    border-radius: 1rem 1rem 0 0;
+    border-radius: 0;
+    background-color: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+
+  .site-page-header.not-top:not([data-header-hidden])
+    .site-header-shell {
     background-color: transparent;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -374,7 +397,7 @@
     background-color: transparent;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    border-radius: 0 0 1rem 1rem;
+    border-radius: 0;
   }
 
   .site-page-header[data-header-hidden] {
@@ -435,6 +458,7 @@
   .site-header-motion,
   .site-page-header,
   .site-header-inner,
+  .site-header-shell,
   .site-header-brand,
   .site-header-actions,
   .site-header-nav,

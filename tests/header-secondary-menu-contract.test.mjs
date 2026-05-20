@@ -14,6 +14,12 @@ assert.match(
 )
 
 assert.match(
+  consts,
+  /href:\s*['"]https:\/\/stats\.xingpingcn\.top\/share\/XoDdV8TeKUUp8E8f\/xingpingcn['"][\s\S]*?label:\s*['"]统计['"][\s\S]*?external:\s*true/,
+  'public Umami statistics should be registered as an external navigation link',
+)
+
+assert.match(
   header,
   /标签:\s*['"]lucide:tags['"]/,
   'tags should have a matching icon in the header menu',
@@ -21,8 +27,20 @@ assert.match(
 
 assert.match(
   header,
+  /统计:\s*['"]lucide:chart-no-axes-column-increasing['"]/,
+  'public statistics should have a matching icon in the header menu',
+)
+
+assert.match(
+  header,
   /secondaryNavLabels\s*=\s*new Set\(\[[^\]]*['"]标签['"][^\]]*\]\)/,
   'tags should render in the secondary header menu',
+)
+
+assert.match(
+  header,
+  /secondaryNavLabels\s*=\s*new Set\(\[[^\]]*['"]统计['"][^\]]*\]\)/,
+  'public statistics should render in the secondary header menu',
 )
 
 const menuPanelBlock =

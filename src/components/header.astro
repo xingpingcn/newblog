@@ -17,12 +17,13 @@ const navIconMap: Record<string, string> = {
   首页: 'lucide:home',
   作者: 'lucide:users',
   标签: 'lucide:tags',
+  统计: 'lucide:chart-no-axes-column-increasing',
   友链: 'lucide:heart-handshake',
   开往: 'lucide:train-front',
   关于: 'lucide:circle-user-round',
 }
 
-const secondaryNavLabels = new Set(['作者', '标签', '关于'])
+const secondaryNavLabels = new Set(['作者', '标签', '统计', '关于'])
 const primaryNavLinks = NAV_LINKS.filter(
   (item) => !secondaryNavLabels.has(item.label),
 )
@@ -38,6 +39,7 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
       className,
     ]}
   >
+    <span class="site-header-shell" aria-hidden="true"></span>
     <Link
       href="/"
       aria-label="首页"
@@ -149,6 +151,8 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
   class SiteHeaderMotion extends HTMLElement {
     private controller?: AbortController
     private resizeObserver?: ResizeObserver
+    private headerAnimationId = 0
+    private headerAnimations: Animation[] = []
     private updateAnimationFrame = 0
 
     connectedCallback() {
@@ -156,14 +160,22 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
       this.controller = new AbortController()
       this.updateAnimationFrame = 0
       const pageHeader = this.closest<HTMLElement>('.site-page-header')
+      const inner = this.querySelector<HTMLElement>('.site-header-inner')
+      const shell = this.querySelector<HTMLElement>('.site-header-shell')
+      const brand = this.querySelector<HTMLElement>('.site-header-brand')
+      const actions = this.querySelector<HTMLElement>('.site-header-actions')
       const menu = this.querySelector<HTMLElement>('.site-header-menu')
       const menuTrigger = this.querySelector<HTMLButtonElement>(
         '[data-site-header-menu-trigger]',
+      )
+      const prefersReducedMotion = window.matchMedia(
+        '(prefers-reduced-motion: reduce)',
       )
 
       let previousScrollY = window.scrollY
       let isHeaderVisible = true
       let motionHeight = 0
+      let isHeaderStateReady = false
 
       const setMenuOpen = (isOpen: boolean) => {
         menu?.dataset && (menu.dataset.open = String(isOpen))
@@ -181,6 +193,114 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
         )
       }
 
+      const applyHeaderState = (isNotTop: boolean) => {
+        this.classList.toggle('not-top', isNotTop)
+        pageHeader?.classList.toggle('not-top', isNotTop)
+      }
+
+      const resetHeaderAnimation = () => {
+        for (const element of [shell, brand, actions]) {
+          if (!element) continue
+          element.style.transformOrigin = ''
+          element.style.willChange = ''
+        }
+      }
+
+      const cancelHeaderAnimations = () => {
+        this.headerAnimationId += 1
+        for (const animation of this.headerAnimations) {
+          animation.cancel()
+        }
+        this.headerAnimations = []
+        resetHeaderAnimation()
+      }
+
+      const animateRect = (
+        element: HTMLElement | null,
+        fromRect: DOMRectReadOnly,
+        toRect: DOMRectReadOnly,
+        { scaleX = false }: { scaleX?: boolean } = {},
+      ) => {
+        if (!element || prefersReducedMotion.matches || toRect.width <= 0) {
+          return undefined
+        }
+
+        const deltaX = fromRect.left - toRect.left
+        const deltaY = fromRect.top - toRect.top
+        const widthScale = scaleX ? fromRect.width / toRect.width : 1
+        const shouldAnimate =
+          Math.abs(deltaX) > 0.5 ||
+          Math.abs(deltaY) > 0.5 ||
+          Math.abs(widthScale - 1) > 0.002
+
+        if (!shouldAnimate) return undefined
+
+        element.style.transformOrigin = 'top left'
+        element.style.willChange = 'transform'
+
+        return element.animate(
+          [
+            {
+              transform: `translate(${deltaX}px, ${deltaY}px) scaleX(${widthScale})`,
+            },
+            { transform: 'translate(0, 0) scaleX(1)' },
+          ],
+          {
+            duration: 300,
+            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            fill: 'both',
+          },
+        )
+      }
+
+      const animateHeaderState = (isNotTop: boolean) => {
+        if (!inner || prefersReducedMotion.matches) {
+          cancelHeaderAnimations()
+          applyHeaderState(isNotTop)
+          return
+        }
+
+        const fromShellRect = (shell ?? inner).getBoundingClientRect()
+        const fromBrandRect = brand?.getBoundingClientRect()
+        const fromActionsRect = actions?.getBoundingClientRect()
+        cancelHeaderAnimations()
+        applyHeaderState(isNotTop)
+        const toShellRect = (shell ?? inner).getBoundingClientRect()
+        const toBrandRect = brand?.getBoundingClientRect()
+        const toActionsRect = actions?.getBoundingClientRect()
+        const animations = [
+          animateRect(shell ?? inner, fromShellRect, toShellRect, {
+            scaleX: true,
+          }),
+          fromBrandRect && toBrandRect
+            ? animateRect(brand, fromBrandRect, toBrandRect)
+            : undefined,
+          fromActionsRect && toActionsRect
+            ? animateRect(actions, fromActionsRect, toActionsRect)
+            : undefined,
+        ].filter((animation): animation is Animation => Boolean(animation))
+
+        if (animations.length === 0) {
+          resetHeaderAnimation()
+          return
+        }
+
+        const animationId = ++this.headerAnimationId
+        this.headerAnimations = animations
+        Promise.all(
+          animations.map((animation) =>
+            animation.finished.catch(() => undefined),
+          ),
+        ).then(() => {
+          if (this.headerAnimationId !== animationId) return
+          for (const animation of animations) {
+            animation.cancel()
+          }
+          this.headerAnimations = []
+          resetHeaderAnimation()
+        })
+      }
+
       const update = () => {
         const currentScrollY = window.scrollY
         const isNotTop = currentScrollY > 20
@@ -196,9 +316,14 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
           isHeaderVisible = true
         }
 
-        this.classList.toggle('not-top', isNotTop)
+        if (!isHeaderStateReady) {
+          applyHeaderState(isNotTop)
+          isHeaderStateReady = true
+        } else if (this.classList.contains('not-top') !== isNotTop) {
+          animateHeaderState(isNotTop)
+        }
+
         this.dataset.show = String(isHeaderVisible)
-        pageHeader?.classList.toggle('not-top', isNotTop)
         pageHeader?.toggleAttribute('data-header-hidden', !isHeaderVisible)
         if (!isHeaderVisible) {
           setMenuOpen(false)
@@ -286,6 +411,10 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
     disconnectedCallback() {
       this.controller?.abort()
       this.resizeObserver?.disconnect()
+      for (const animation of this.headerAnimations) {
+        animation.cancel()
+      }
+      this.headerAnimations = []
       if (this.updateAnimationFrame) {
         cancelAnimationFrame(this.updateAnimationFrame)
         this.updateAnimationFrame = 0

@@ -36,8 +36,11 @@ assert(
 )
 
 assert(
-  !header.includes('animateHeaderState') && !header.includes('animateRect'),
-  'header shrink should use the oxue-style class + CSS transition pattern, not a FLIP animation',
+  header.includes('animateHeaderState') &&
+    header.includes('animateRect') &&
+    header.includes('getBoundingClientRect') &&
+    header.includes('.site-header-shell'),
+  'header shrink should use one-shot FLIP measurement for the wide-to-compact transition',
 )
 
 assert(
@@ -56,28 +59,90 @@ assert(headerCssStart >= 0, 'global.css should contain site header styles')
 assert(headerCssEnd > headerCssStart, 'site header styles should appear before component layer')
 
 const headerCss = css.slice(headerCssStart, headerCssEnd)
+const headerInnerBlock =
+  headerCss.match(/\.site-header-inner\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+const headerMotionBlock =
+  headerCss.match(/\.site-header-motion\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+const headerBrandBlock =
+  headerCss.match(/\.site-header-brand\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+const headerShellBlock =
+  headerCss.match(/\.site-header-shell\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+const headerInnerNotTopBlock =
+  headerCss.match(
+    /\.site-header-motion\.not-top\s+\.site-header-inner\s*\{[\s\S]*?\n\}/,
+  )?.[0] ?? ''
+const headerShellNotTopBlock =
+  headerCss.match(
+    /\.site-header-motion\.not-top\s+\.site-header-shell\s*\{[\s\S]*?\n\}/,
+  )?.[0] ?? ''
 const mobileTocBlock =
   headerCss.match(/\.mobile-toc-header\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+const compactMobileHeaderBlock =
+  headerCss.match(
+    /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const compactMobileHeaderInnerBlock =
+  headerCss.match(
+    /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s+\.site-header-inner\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const compactMobileHeaderShellBlock =
+  headerCss.match(
+    /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)::before\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const compactMobileHeaderBackdropBlock =
+  headerCss.match(
+    /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s+\.site-header-shell\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const compactMobileTocBlock =
+  headerCss.match(
+    /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s+\.mobile-toc-header\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
 
 assert(
-  /\.site-header-motion\s*\{[\s\S]*?transition:[\s\S]*?padding 300ms ease[\s\S]*?margin-inline 300ms ease[\s\S]*?transform 300ms ease/.test(
-    headerCss,
-  ),
-  'outer header motion should transition padding, margin-inline, and transform like oxue',
+  !/transition:[\s\S]*?padding 300ms ease[\s\S]*?margin-inline 300ms ease[\s\S]*?transform 300ms ease/.test(
+    headerMotionBlock,
+  ) && /transition:\s*transform 300ms ease/.test(headerMotionBlock),
+  'outer header motion should only transition transform; FLIP handles width and spacing changes',
 )
 
 assert(
-  /\.site-header-inner\s*\{[\s\S]*?transition:[\s\S]*?padding 300ms ease[\s\S]*?border-color 150ms ease[\s\S]*?background-color 150ms ease[\s\S]*?box-shadow 150ms ease/.test(
-    headerCss,
-  ),
-  'inner header should transition compact padding and capsule chrome like oxue',
+  !/transition:[\s\S]*?(?:padding|max-width)/.test(headerInnerBlock),
+  'inner header should not transition padding or max-width; wide home shrink must not do per-frame layout animation',
 )
 
 assert(
-  /\.site-header-brand\s*\{[\s\S]*?transition:\s*margin-inline-start 300ms ease/.test(
-    headerCss,
+  /transition:\s*border-radius 300ms ease/.test(headerInnerBlock) &&
+    /transition:[\s\S]*?border-color 150ms ease[\s\S]*?background-color 150ms ease[\s\S]*?box-shadow 150ms ease/.test(
+      headerShellBlock,
+    ) &&
+    header.includes('animation.cancel()'),
+  'inner header should transition only border radius; FLIP shell owns capsule paint and cleans up animations',
+)
+
+assert(
+  /border:\s*1px solid transparent/.test(headerShellBlock) &&
+    /border-color:\s*var\(--border\)/.test(headerShellNotTopBlock) &&
+    !/border-color:\s*var\(--border\)/.test(headerInnerNotTopBlock),
+  'FLIP shell should own the animated border so text and controls are not scaled',
+)
+
+assert(
+  !/transition:[\s\S]*?(?:border-color|box-shadow)/.test(
+    headerInnerBlock,
   ),
-  'brand should slide inward through margin-inline-start like oxue',
+  'inner header should not transition paint that belongs to the FLIP shell',
+)
+
+assert(
+  !/transition:\s*margin-inline-start/.test(headerBrandBlock) &&
+    !/transition:\s*all/.test(headerBrandBlock) &&
+    /transition:[\s\S]*?color 150ms ease[\s\S]*?background-color 150ms ease[\s\S]*?border-color 150ms ease[\s\S]*?box-shadow 150ms ease/.test(
+      headerBrandBlock,
+    ) &&
+    header.includes('const brand =') &&
+    header.includes('const actions =') &&
+    header.includes('scaleX: true'),
+  'FLIP should move brand/actions without scaling text or transitioning layout spacing',
 )
 
 assert(
@@ -125,10 +190,69 @@ assert(
 )
 
 assert(
-  /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s+\.mobile-toc-header\s*\{[\s\S]*?border-radius:\s*0 0 1rem 1rem/.test(
-    headerCss,
-  ),
-  'mobile article TOC should keep its original compact-header animation boundary',
+  Boolean(compactMobileTocBlock),
+  'mobile article TOC should keep an explicit compact-header style block',
+)
+
+assert(
+  /isolation:\s*isolate/.test(compactMobileHeaderBlock) &&
+    /background-color:\s*transparent/.test(compactMobileHeaderBlock) &&
+    /-webkit-backdrop-filter:\s*none/.test(compactMobileHeaderBlock) &&
+    /backdrop-filter:\s*none/.test(compactMobileHeaderBlock) &&
+    /box-shadow:\s*none/.test(compactMobileHeaderBlock) &&
+    /top:\s*0\.5rem/.test(
+      compactMobileHeaderShellBlock,
+    ) &&
+    /border:\s*1px solid var\(--border\)/.test(
+      compactMobileHeaderShellBlock,
+    ) &&
+    /border-radius:\s*inherit/.test(compactMobileHeaderShellBlock) &&
+    /-webkit-backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      compactMobileHeaderShellBlock,
+    ) &&
+    /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      compactMobileHeaderShellBlock,
+    ) &&
+    /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
+      compactMobileHeaderShellBlock,
+    ) &&
+    /box-shadow:[\s\S]*0 10px 24px/.test(
+      compactMobileHeaderShellBlock,
+    ) &&
+    /pointer-events:\s*none/.test(
+      compactMobileHeaderShellBlock,
+    ),
+  'compact mobile article header should draw one lowered blurred rounded shell around nav and TOC without moving content',
+)
+
+assert(
+  !/-webkit-backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      compactMobileHeaderBlock,
+    ) &&
+    !/backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      compactMobileHeaderBlock,
+    ),
+  'compact mobile article header should not blur from the layout element itself',
+)
+
+assert(
+  /background-color:\s*transparent/.test(compactMobileHeaderInnerBlock) &&
+    /border-color:\s*transparent/.test(compactMobileHeaderInnerBlock) &&
+    /border-radius:\s*0/.test(compactMobileHeaderInnerBlock) &&
+    /box-shadow:\s*none/.test(compactMobileHeaderInnerBlock) &&
+    /background-color:\s*transparent/.test(compactMobileHeaderBackdropBlock) &&
+    /box-shadow:\s*none/.test(compactMobileHeaderBackdropBlock) &&
+    /-webkit-backdrop-filter:\s*none/.test(compactMobileHeaderBackdropBlock) &&
+    /backdrop-filter:\s*none/.test(compactMobileHeaderBackdropBlock),
+  'compact mobile article header should not draw a second rounded blurred nav capsule',
+)
+
+assert(
+  /background-color:\s*transparent/.test(compactMobileTocBlock) &&
+    /-webkit-backdrop-filter:\s*none/.test(compactMobileTocBlock) &&
+    /backdrop-filter:\s*none/.test(compactMobileTocBlock) &&
+    /border-radius:\s*0/.test(compactMobileTocBlock),
+  'compact mobile article TOC should live inside the single blurred shell without its own corner layer',
 )
 
 assert(

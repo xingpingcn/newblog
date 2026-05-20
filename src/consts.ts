@@ -63,6 +63,11 @@ export const NAV_LINKS: SocialLink[] = [
     label: '标签',
   },
   {
+    href: 'https://stats.xingpingcn.top/share/XoDdV8TeKUUp8E8f/xingpingcn',
+    label: '统计',
+    external: true,
+  },
+  {
     href: '/friends',
     label: '友链',
   },
