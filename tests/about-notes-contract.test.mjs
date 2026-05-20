@@ -13,6 +13,24 @@ assert.match(aboutPage, /<h2>记事<\/h2>/, 'about page should include notes')
 
 assert.match(
   aboutPage,
+  /import GiscusComments from '@\/components\/giscus-comments\.astro'/,
+  'about page should import the shared comments component',
+)
+
+assert.match(
+  aboutPage,
+  /<GiscusComments\s+\/>/,
+  'about page should render the shared comments section',
+)
+
+assert.doesNotMatch(
+  aboutPage,
+  /toc-header|toc-sidebar|TOCHeader|TOCSidebar/,
+  'about page should not add an article table of contents',
+)
+
+assert.match(
+  aboutPage,
   /2026-05-19/,
   'about notes should include the Astro migration timeline date',
 )

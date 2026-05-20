@@ -1,5 +1,6 @@
 ---
 import Breadcrumbs from '@/components/breadcrumbs.astro'
+import GiscusComments from '@/components/giscus-comments.astro'
 import Link from '@/components/link.astro'
 import PageHead from '@/components/page-head.astro'
 import ProfileCard from '@/components/profile-card.astro'
@@ -127,4 +128,5 @@ const author = authors.find((item) => item.id === 'xingpingcn') ?? authors[0]
       </div>
     </div>
   </section>
+  <GiscusComments />
 </Layout>
