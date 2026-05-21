@@ -332,6 +332,19 @@
   background-color: transparent;
 }
 
+.mobile-stack-details::details-content {
+  interpolate-size: allow-keywords;
+  overflow: hidden;
+  block-size: 0;
+  transition:
+    block-size 220ms ease,
+    content-visibility 220ms ease allow-discrete;
+}
+
+.mobile-stack-details[open]::details-content {
+  block-size: auto;
+}
+
 .site-page-header.not-top .mobile-subposts-header,
 .site-page-header.not-top .mobile-toc-header {
   background-color: color-mix(in oklab, var(--background) 76%, transparent);

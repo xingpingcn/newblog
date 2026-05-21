@@ -10,6 +10,10 @@ const subpostsHeader = await readFile(
   new URL('src/components/subposts-header.astro', root),
   'utf8',
 )
+const tocHeader = await readFile(
+  new URL('src/components/toc-header.astro', root),
+  'utf8',
+)
 
 const updateBlock = header.match(/const update = \(\) => \{[\s\S]*?\n      \}/)?.[0]
 assert(updateBlock, 'header motion should define a scroll update function')
@@ -113,6 +117,14 @@ const hiddenStackShellBlock =
 const hiddenStackRowsBlock =
   headerCss.match(
     /\.site-page-header\[data-header-hidden\]:has\(\.mobile-subposts-header\):has\(\s*\.mobile-toc-header\s*\)\s+:is\(\.mobile-subposts-header,\s*\.mobile-toc-header\)\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const mobileDetailsAnimationBlock =
+  headerCss.match(
+    /\.mobile-stack-details::details-content\s*\{[\s\S]*?\n\}/,
+  )?.[0] ?? ''
+const mobileDetailsOpenAnimationBlock =
+  headerCss.match(
+    /\.mobile-stack-details\[open\]::details-content\s*\{[\s\S]*?\n\}/,
   )?.[0] ?? ''
 
 assert(
@@ -319,6 +331,64 @@ assert(
     !mobileTocBlock.includes('position: relative') &&
     !mobileTocBlock.includes('z-index'),
   'header performance fix should not add new mobile TOC positioning or variables',
+)
+
+assert.match(
+  layout,
+  /<header class="site-page-header sticky top-0 z-50">\s*<Header[\s\S]*?<slot name="subposts-navigation" \/>[\s\S]*?<slot name="table-of-contents" \/>/,
+  'mobile article header should avoid divide-y borders while keeping subposts above the article TOC',
+)
+
+assert(
+  !layout.includes('divide-y'),
+  'mobile article header should not use Tailwind divide-y borders between subpost and TOC rows',
+)
+
+assert(
+  /interpolate-size:\s*allow-keywords/.test(mobileDetailsAnimationBlock) &&
+    /overflow:\s*hidden/.test(mobileDetailsAnimationBlock) &&
+    /block-size:\s*0/.test(mobileDetailsAnimationBlock) &&
+    /transition:[\s\S]*block-size 220ms ease[\s\S]*content-visibility 220ms ease allow-discrete/.test(
+      mobileDetailsAnimationBlock,
+    ) &&
+    /block-size:\s*auto/.test(mobileDetailsOpenAnimationBlock),
+  'mobile subpost and TOC details panels should animate open and closed instead of snapping',
+)
+
+assert.match(
+  tocHeader,
+  /<details class="group mobile-stack-details">/,
+  'mobile TOC details should use the shared animated details class',
+)
+
+assert.match(
+  subpostsHeader,
+  /<details class="group mobile-stack-details">/,
+  'mobile subposts details should use the shared animated details class',
+)
+
+assert.match(
+  tocHeader,
+  /state\.detailsElement\.open\s*=\s*false[\s\S]*?state\.detailsElement\.removeAttribute\('open'\)/,
+  'mobile TOC item clicks should close animated details panels through removeAttribute',
+)
+
+assert.match(
+  subpostsHeader,
+  /state\.detailsElement\.open\s*=\s*false[\s\S]*?state\.detailsElement\.removeAttribute\('open'\)/,
+  'mobile subpost item clicks should close animated details panels through removeAttribute',
+)
+
+assert.match(
+  tocHeader,
+  /state\.detailsElement\.addEventListener\(\s*'toggle'[\s\S]*?TOCHeaderScrollMask\.update[\s\S]*?\{\s*passive:\s*true\s*\}/,
+  'mobile TOC toggle handler should remain passive while refreshing scroll masks after the animation starts',
+)
+
+assert.match(
+  subpostsHeader,
+  /state\.detailsElement\.addEventListener\(\s*'toggle'[\s\S]*?SubpostsHeaderScrollMask\.update[\s\S]*?\{\s*passive:\s*true\s*\}/,
+  'mobile subposts toggle handler should remain passive while refreshing scroll masks after the animation starts',
 )
 
 assert.match(
