@@ -373,7 +373,7 @@
 
   .site-page-header.not-top:not([data-header-hidden]) .site-header-inner {
     border-color: transparent;
-    border-radius: 0;
+    border-radius: 1rem;
     background-color: transparent;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -382,11 +382,13 @@
 
   .site-page-header.not-top:not([data-header-hidden])
     .site-header-shell {
-    border-color: transparent;
+    border-color: var(--border);
     background-color: color-mix(in oklab, var(--background) 76%, transparent);
     -webkit-backdrop-filter: blur(16px) saturate(1.35);
     backdrop-filter: blur(16px) saturate(1.35);
-    box-shadow: none;
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--foreground) 5%, transparent),
+      0 10px 24px color-mix(in oklab, var(--foreground) 8%, transparent);
   }
 
   .site-page-header.not-top:not([data-header-hidden])

@@ -221,10 +221,10 @@ assert(
 assert(
   /background-color:\s*transparent/.test(compactMobileHeaderInnerBlock) &&
     /border-color:\s*transparent/.test(compactMobileHeaderInnerBlock) &&
-    /border-radius:\s*0/.test(compactMobileHeaderInnerBlock) &&
+    /border-radius:\s*1rem/.test(compactMobileHeaderInnerBlock) &&
     /box-shadow:\s*none/.test(compactMobileHeaderInnerBlock) &&
-    /border-color:\s*transparent/.test(compactMobileHeaderBackdropBlock) &&
-    /box-shadow:\s*none/.test(compactMobileHeaderBackdropBlock) &&
+    /border-color:\s*var\(--border\)/.test(compactMobileHeaderBackdropBlock) &&
+    /box-shadow:[\s\S]*0 10px 24px/.test(compactMobileHeaderBackdropBlock) &&
     /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
       compactMobileHeaderBackdropBlock,
     ) &&
@@ -234,7 +234,7 @@ assert(
     /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
       compactMobileHeaderBackdropBlock,
     ),
-  'compact mobile article nav should keep a flat blurred layer without a visible outer border',
+  'compact mobile article nav should keep its rounded blurred capsule without the larger wrapper',
 )
 
 assert(
