@@ -197,7 +197,7 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
         pageHeader?.style.setProperty('--site-header-motion-height', `${height}px`)
         pageHeader?.style.setProperty(
           '--site-header-motion-hide-offset',
-          `${-(height + 8)}px`,
+          `${-height}px`,
         )
       }
 
@@ -207,6 +207,7 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
       ) => {
         this.classList.toggle('not-top', isNotTop)
         pageHeader?.classList.toggle('not-top', isNotTop)
+        syncMotionHeight(this.getBoundingClientRect().height)
         this.dataset.show = String(isVisible)
         pageHeader?.toggleAttribute('data-header-hidden', !isVisible)
         if (!isVisible) {
@@ -394,12 +395,8 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
       update()
       this.resizeObserver = new ResizeObserver((entries) => {
         const entry = entries[0]
-        const borderBoxSize = entry?.borderBoxSize
-        const firstBorderBoxSize = Array.isArray(borderBoxSize)
-          ? borderBoxSize[0]
-          : borderBoxSize
         syncMotionHeight(
-          firstBorderBoxSize?.blockSize ?? entry?.contentRect.height ?? 0,
+          this.getBoundingClientRect().height || entry?.contentRect.height || 0,
         )
       })
       this.resizeObserver.observe(this)

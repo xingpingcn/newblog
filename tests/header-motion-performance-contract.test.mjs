@@ -39,6 +39,15 @@ assert(
 )
 
 assert(
+  header.includes('this.resizeObserver.observe(this)') &&
+    header.includes('this.getBoundingClientRect().height') &&
+    header.includes('syncMotionHeight(this.getBoundingClientRect().height)') &&
+    header.includes('`${-height}px`') &&
+    !header.includes('`${-(height + 8)}px`'),
+  'header hidden offset should use the measured outer nav height exactly so hidden article nav rows sit flush at the viewport top',
+)
+
+assert(
   header.includes('motionHeight') &&
     header.includes('Math.abs(height - motionHeight) < 0.5'),
   'header height observer should avoid rewriting CSS variables for unchanged heights',
@@ -110,13 +119,17 @@ const compactMobileSubpostsBlock =
   headerCss.match(
     /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s+\.mobile-subposts-header\s*\{[\s\S]*?\n  \}/,
   )?.[0] ?? ''
-const hiddenStackShellBlock =
+const hiddenArticleShellBlock =
   headerCss.match(
-    /\.site-page-header\[data-header-hidden\]:has\(\.mobile-subposts-header\):has\(\s*\.mobile-toc-header\s*\)::before\s*\{[\s\S]*?\n  \}/,
+    /\.site-page-header\[data-header-hidden\]:has\(\s*:is\(\.mobile-subposts-header,\s*\.mobile-toc-header\)\s*\)::before\s*\{[\s\S]*?\n  \}/,
   )?.[0] ?? ''
 const hiddenStackRowsBlock =
   headerCss.match(
     /\.site-page-header\[data-header-hidden\]:has\(\.mobile-subposts-header\):has\(\s*\.mobile-toc-header\s*\)\s+:is\(\.mobile-subposts-header,\s*\.mobile-toc-header\)\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const hiddenArticleRowsBlock =
+  headerCss.match(
+    /\.site-page-header\[data-header-hidden\]\s+:is\(\.mobile-subposts-header,\s*\.mobile-toc-header\)\s*\{[\s\S]*?\n  \}/,
   )?.[0] ?? ''
 const hiddenSingleTocBlock =
   headerCss.match(
@@ -319,35 +332,47 @@ assert(
 )
 
 assert(
-  /border-radius:\s*1rem/.test(hiddenStackShellBlock) &&
-    /top:\s*0/.test(hiddenStackShellBlock) &&
-    /bottom:\s*var\(--site-header-motion-height,\s*4rem\)/.test(
-      hiddenStackShellBlock,
+  Boolean(hiddenArticleShellBlock) &&
+    /border-radius:\s*0/.test(hiddenArticleShellBlock) &&
+    /top:\s*0/.test(hiddenArticleShellBlock) &&
+    /bottom:\s*calc\(-1 \* var\(--site-header-motion-hide-offset,\s*-4\.5rem\)\)/.test(
+      hiddenArticleShellBlock,
     ) &&
     /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
-      hiddenStackShellBlock,
+      hiddenArticleShellBlock,
     ) &&
     /-webkit-backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
-      hiddenStackShellBlock,
+      hiddenArticleShellBlock,
     ) &&
     /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
-      hiddenStackShellBlock,
+      hiddenArticleShellBlock,
     ) &&
-    /box-shadow:[\s\S]*0 10px 24px/.test(hiddenStackShellBlock) &&
-    !/border:\s*1px solid var\(--border\)/.test(hiddenStackShellBlock) &&
+    /box-shadow:[\s\S]*0 10px 24px/.test(hiddenArticleShellBlock) &&
+    /transition:\s*border-radius 300ms ease/.test(hiddenArticleShellBlock) &&
+    !/border:\s*1px solid var\(--border\)/.test(hiddenArticleShellBlock) &&
+    /border-radius:\s*0/.test(hiddenArticleRowsBlock) &&
     /background-color:\s*transparent/.test(hiddenStackRowsBlock) &&
     /-webkit-backdrop-filter:\s*none/.test(hiddenStackRowsBlock) &&
     /backdrop-filter:\s*none/.test(hiddenStackRowsBlock) &&
     /border-radius:\s*0/.test(hiddenStackRowsBlock),
-  'hidden mobile subpost and TOC controls should share one rounded shell instead of splitting into two bars',
+  'hidden mobile subpost and TOC controls should fill the viewport width with a square top-aligned shell',
 )
 
 assert(
   Boolean(hiddenSingleTocBlock) &&
-    /box-shadow:[\s\S]*0 10px 24px/.test(hiddenSingleTocBlock) &&
+    /border-radius:\s*0/.test(hiddenSingleTocBlock) &&
+    /background-color:\s*transparent/.test(hiddenSingleTocBlock) &&
+    /-webkit-backdrop-filter:\s*none/.test(hiddenSingleTocBlock) &&
+    /backdrop-filter:\s*none/.test(hiddenSingleTocBlock) &&
+    /transform:\s*translateY\(var\(--site-header-motion-hide-offset,\s*-4\.5rem\)\)/.test(
+      headerCss,
+    ) &&
+    !/transform:\s*translateY\(/.test(
+      hiddenSingleTocBlock,
+    ) &&
     !/border:\s*1px solid var\(--border\)/.test(hiddenSingleTocBlock) &&
     !/border-(?:top|bottom):\s*1px/.test(hiddenSingleTocBlock),
-  'hidden mobile single-TOC controls should keep an outer shadow when the main nav is collapsed',
+  'hidden mobile single-TOC controls should become square, full-width, top-aligned, and shadowed when the main nav is collapsed',
 )
 
 assert(
@@ -358,13 +383,13 @@ assert(
 )
 
 assert(
-  /\.site-page-header\[data-header-hidden\]\s+:is\([^)]*\.mobile-toc-header[^)]*\.mobile-subposts-header[^)]*\)\s*\{[\s\S]*?transform:\s*translateY\(calc\(-1 \* var\(--site-header-motion-height, 4rem\)\)\)/.test(
+  /\.site-page-header\[data-header-hidden\]\s+:is\([^)]*\.mobile-toc-header[^)]*\.mobile-subposts-header[^)]*\)\s*\{[\s\S]*?transform:\s*translateY\(var\(--site-header-motion-hide-offset,\s*-4\.5rem\)\)/.test(
     headerCss,
   ) ||
-    /\.site-page-header\[data-header-hidden\]\s+:is\([^)]*\.mobile-subposts-header[^)]*\.mobile-toc-header[^)]*\)\s*\{[\s\S]*?transform:\s*translateY\(calc\(-1 \* var\(--site-header-motion-height, 4rem\)\)\)/.test(
+    /\.site-page-header\[data-header-hidden\]\s+:is\([^)]*\.mobile-subposts-header[^)]*\.mobile-toc-header[^)]*\)\s*\{[\s\S]*?transform:\s*translateY\(var\(--site-header-motion-hide-offset,\s*-4\.5rem\)\)/.test(
       headerCss,
     ),
-  'mobile article TOC and subpost controls should share the hidden-header transform',
+  'mobile article TOC and subpost controls should share the full hidden-header transform so the stack stays top-aligned',
 )
 
 assert(

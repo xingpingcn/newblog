@@ -147,7 +147,7 @@
 .site-page-header[data-header-hidden]
   :is(.mobile-subposts-header, .mobile-toc-header) {
   pointer-events: auto;
-  transform: translateY(calc(-1 * var(--site-header-motion-height, 4rem)));
+  transform: translateY(var(--site-header-motion-hide-offset, -4.5rem));
 }
 
 .site-header-motion.not-top {
@@ -323,6 +323,7 @@
   transform: translateY(0);
   transition:
     background-color 180ms ease,
+    border-radius 300ms ease,
     backdrop-filter 180ms ease,
     transform 300ms ease;
 }
@@ -490,33 +491,36 @@
 
   .site-page-header[data-header-hidden]
     :is(.mobile-subposts-header, .mobile-toc-header) {
-    border-radius: 1rem;
+    border-radius: 0;
+  }
+
+  .site-page-header[data-header-hidden]:has(
+      :is(.mobile-subposts-header, .mobile-toc-header)
+    )::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    bottom: calc(-1 * var(--site-header-motion-hide-offset, -4.5rem));
+    z-index: -1;
+    border-radius: 0;
+    background-color: color-mix(in oklab, var(--background) 76%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(1.35);
+    backdrop-filter: blur(16px) saturate(1.35);
+    box-shadow: 0 10px 24px
+      color-mix(in oklab, var(--foreground) 8%, transparent);
+    transition: border-radius 300ms ease;
+    pointer-events: none;
   }
 
   .site-page-header[data-header-hidden]:not(:has(.mobile-subposts-header)):has(
       .mobile-toc-header
     )
     .mobile-toc-header {
-    box-shadow: 0 10px 24px
-      color-mix(in oklab, var(--foreground) 8%, transparent);
-  }
-
-  .site-page-header[data-header-hidden]:has(.mobile-subposts-header):has(
-      .mobile-toc-header
-    )::before {
-    content: '';
-    position: absolute;
-    inset-inline: 0;
-    top: 0;
-    bottom: var(--site-header-motion-height, 4rem);
-    z-index: -1;
-    border-radius: 1rem;
-    background-color: color-mix(in oklab, var(--background) 76%, transparent);
-    -webkit-backdrop-filter: blur(16px) saturate(1.35);
-    backdrop-filter: blur(16px) saturate(1.35);
-    box-shadow: 0 10px 24px
-      color-mix(in oklab, var(--foreground) 8%, transparent);
-    pointer-events: none;
+    background-color: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-radius: 0;
   }
 
   .site-page-header[data-header-hidden]:has(.mobile-subposts-header):has(
