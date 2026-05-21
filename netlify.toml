@@ -137,14 +137,14 @@
 
 [[redirects]]
   from = "/enhanced-FaaS-in-cn.html"
-  to = "/enhanced-faas-in-cn.html"
-  status = 302
+  to = "/enhanced-faas-in-cn/"
+  status = 301
   force = true
   headers = { X-From = "Netlify" }
 
 [[redirects]]
   from = "/免费通过NS1利用监控宝平台实现实时基于不同运营商的故障转移.html"
-  to = "/免费通过ns1利用监控宝平台实现实时基于不同运营商的故障转移.html"
-  status = 302
+  to = "/免费通过ns1利用监控宝平台实现实时基于不同运营商的故障转移/"
+  status = 301
   force = true
   headers = { X-From = "Netlify" }

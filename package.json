@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "npm run sync:image-metadata && astro dev",
     "start": "npm run dev",
-    "build": "npm run sync:image-metadata && astro check && astro build && pagefind --site dist --glob \"**/index.html\"",
+    "build": "npm run sync:image-metadata && astro check && astro build && pagefind --site dist --glob \"**/index.html\" && npm run generate:html-redirects",
     "preview": "astro preview",
     "astro": "astro",
     "test:search": "node tests/search-contract.test.mjs",
     "test:format-cjk": "node tests/format-cjk-spacing.test.mjs",
     "sync:image-metadata": "node scripts/sync-image-metadata.mjs",
+    "generate:html-redirects": "node scripts/generate-html-redirects.mjs",
     "prettier": "prettier --write **/*.{ts,tsx,css,astro,md,mdx} --ignore-path .gitignore",
     "format:cjk": "node scripts/format-cjk-spacing.mjs",
     "format": "npm run prettier && npm run format:cjk"

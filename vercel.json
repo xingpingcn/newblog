@@ -91,13 +91,13 @@
     },
     {
       "source": "/enhanced-FaaS-in-cn.html",
-      "destination": "/enhanced-faas-in-cn.html",
-      "permanent": false
+      "destination": "/enhanced-faas-in-cn/",
+      "permanent": true
     },
     {
       "source": "/免费通过NS1利用监控宝平台实现实时基于不同运营商的故障转移.html",
-      "destination": "/免费通过ns1利用监控宝平台实现实时基于不同运营商的故障转移.html",
-      "permanent": false
+      "destination": "/免费通过ns1利用监控宝平台实现实时基于不同运营商的故障转移/",
+      "permanent": true
     }
   ]
 }
