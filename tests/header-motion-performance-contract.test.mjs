@@ -122,6 +122,14 @@ const mobileArticleNavSeparatorBlock =
   headerCss.match(
     /\.site-page-header:has\(:is\(\.mobile-subposts-header,\s*\.mobile-toc-header\)\)\s+\.site-header-motion\s*\{[\s\S]*?\n  \}/,
   )?.[0] ?? ''
+const mobileStackSummaryBlock =
+  headerCss.match(/\.mobile-stack-summary\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+const mobileStackSummaryMarkerBlock =
+  headerCss.match(
+    /\.mobile-stack-summary::-webkit-details-marker\s*\{[\s\S]*?\n\}/,
+  )?.[0] ?? ''
+const mobileStackSummaryInnerBlock =
+  headerCss.match(/\.mobile-stack-summary-inner\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
 const mobileDetailsAnimationBlock =
   headerCss.match(
     /\.mobile-stack-details::details-content\s*\{[\s\S]*?\n\}/,
@@ -364,6 +372,16 @@ assert(
 )
 
 assert(
+  /list-style:\s*none/.test(mobileStackSummaryBlock) &&
+    /min-height:\s*2\.75rem/.test(mobileStackSummaryBlock) &&
+    /display:\s*none/.test(mobileStackSummaryMarkerBlock) &&
+    /height:\s*2\.75rem/.test(mobileStackSummaryInnerBlock) &&
+    /min-height:\s*2\.75rem/.test(mobileStackSummaryInnerBlock) &&
+    /box-sizing:\s*border-box/.test(mobileStackSummaryInnerBlock),
+  'mobile subpost and TOC summary rows should share the same fixed row height',
+)
+
+assert(
   /interpolate-size:\s*allow-keywords/.test(mobileDetailsAnimationBlock) &&
     /overflow:\s*hidden/.test(mobileDetailsAnimationBlock) &&
     /block-size:\s*0/.test(mobileDetailsAnimationBlock) &&
@@ -392,9 +410,21 @@ assert.match(
 )
 
 assert.match(
+  tocHeader,
+  /<summary class="mobile-stack-summary flex w-full cursor-pointer items-center justify-between">[\s\S]*?<div class="mobile-toc-header-inner mobile-stack-summary-inner mx-auto flex w-full max-w-3xl items-center px-4 py-3">/,
+  'mobile TOC summary should use the shared row sizing classes',
+)
+
+assert.match(
   subpostsHeader,
   /<details class="group mobile-stack-details">/,
   'mobile subposts details should use the shared animated details class',
+)
+
+assert.match(
+  subpostsHeader,
+  /<summary class="mobile-stack-summary flex w-full cursor-pointer items-center justify-between">[\s\S]*?<div class="mobile-stack-summary-inner mx-auto flex w-full max-w-3xl items-center px-4 py-3">/,
+  'mobile subposts summary should use the shared row sizing classes',
 )
 
 assert.match(

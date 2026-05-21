@@ -332,6 +332,21 @@
   background-color: transparent;
 }
 
+.mobile-stack-summary {
+  min-height: 2.75rem;
+  list-style: none;
+}
+
+.mobile-stack-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-stack-summary-inner {
+  box-sizing: border-box;
+  height: 2.75rem;
+  min-height: 2.75rem;
+}
+
 .mobile-stack-details::details-content {
   interpolate-size: allow-keywords;
   overflow: hidden;
