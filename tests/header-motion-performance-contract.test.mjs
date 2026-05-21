@@ -303,6 +303,10 @@ assert(
 
 assert(
   /border-radius:\s*1rem/.test(hiddenStackShellBlock) &&
+    /top:\s*0/.test(hiddenStackShellBlock) &&
+    /bottom:\s*var\(--site-header-motion-height,\s*4rem\)/.test(
+      hiddenStackShellBlock,
+    ) &&
     /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
       hiddenStackShellBlock,
     ) &&

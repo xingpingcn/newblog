@@ -472,8 +472,8 @@
     content: '';
     position: absolute;
     inset-inline: 0;
-    top: 0.5rem;
-    bottom: calc(var(--site-header-motion-height, 4rem) - 0.5rem);
+    top: 0;
+    bottom: var(--site-header-motion-height, 4rem);
     z-index: -1;
     border-radius: 1rem;
     background-color: color-mix(in oklab, var(--background) 76%, transparent);
