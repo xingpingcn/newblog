@@ -118,6 +118,10 @@ const hiddenStackRowsBlock =
   headerCss.match(
     /\.site-page-header\[data-header-hidden\]:has\(\.mobile-subposts-header\):has\(\s*\.mobile-toc-header\s*\)\s+:is\(\.mobile-subposts-header,\s*\.mobile-toc-header\)\s*\{[\s\S]*?\n  \}/,
   )?.[0] ?? ''
+const hiddenSingleTocBlock =
+  headerCss.match(
+    /\.site-page-header\[data-header-hidden\]:not\(:has\(\.mobile-subposts-header\)\):has\(\s*\.mobile-toc-header\s*\)\s+\.mobile-toc-header\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
 const mobileArticleNavSeparatorBlock =
   headerCss.match(
     /\.site-page-header:has\(:is\(\.mobile-subposts-header,\s*\.mobile-toc-header\)\)\s+\.site-header-motion\s*\{[\s\S]*?\n  \}/,
@@ -336,6 +340,14 @@ assert(
     /backdrop-filter:\s*none/.test(hiddenStackRowsBlock) &&
     /border-radius:\s*0/.test(hiddenStackRowsBlock),
   'hidden mobile subpost and TOC controls should share one rounded shell instead of splitting into two bars',
+)
+
+assert(
+  Boolean(hiddenSingleTocBlock) &&
+    /box-shadow:[\s\S]*0 10px 24px/.test(hiddenSingleTocBlock) &&
+    !/border:\s*1px solid var\(--border\)/.test(hiddenSingleTocBlock) &&
+    !/border-(?:top|bottom):\s*1px/.test(hiddenSingleTocBlock),
+  'hidden mobile single-TOC controls should keep an outer shadow when the main nav is collapsed',
 )
 
 assert(

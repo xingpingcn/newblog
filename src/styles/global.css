@@ -493,6 +493,14 @@
     border-radius: 1rem;
   }
 
+  .site-page-header[data-header-hidden]:not(:has(.mobile-subposts-header)):has(
+      .mobile-toc-header
+    )
+    .mobile-toc-header {
+    box-shadow: 0 10px 24px
+      color-mix(in oklab, var(--foreground) 8%, transparent);
+  }
+
   .site-page-header[data-header-hidden]:has(.mobile-subposts-header):has(
       .mobile-toc-header
     )::before {
