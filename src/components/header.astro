@@ -168,6 +168,14 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
       const menuTrigger = this.querySelector<HTMLButtonElement>(
         '[data-site-header-menu-trigger]',
       )
+      const getMobileArticleNavItems = () =>
+        pageHeader
+          ? [
+              ...pageHeader.querySelectorAll<HTMLElement>(
+                '.mobile-stack-summary-inner > *',
+              ),
+            ]
+          : []
       const prefersReducedMotion = window.matchMedia(
         '(prefers-reduced-motion: reduce)',
       )
@@ -193,13 +201,26 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
         )
       }
 
-      const applyHeaderState = (isNotTop: boolean) => {
+      const applyHeaderDisplayState = (
+        isNotTop: boolean,
+        isVisible: boolean,
+      ) => {
         this.classList.toggle('not-top', isNotTop)
         pageHeader?.classList.toggle('not-top', isNotTop)
+        this.dataset.show = String(isVisible)
+        pageHeader?.toggleAttribute('data-header-hidden', !isVisible)
+        if (!isVisible) {
+          setMenuOpen(false)
+        }
       }
 
       const resetHeaderAnimation = () => {
-        for (const element of [shell, brand, actions]) {
+        for (const element of [
+          shell,
+          brand,
+          actions,
+          ...getMobileArticleNavItems(),
+        ]) {
           if (!element) continue
           element.style.transformOrigin = ''
           element.style.willChange = ''
@@ -253,21 +274,44 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
         )
       }
 
-      const animateHeaderState = (isNotTop: boolean) => {
+      const animateMobileArticleNavState = (
+        beforeArticleNavRects: Map<HTMLElement, DOMRectReadOnly>,
+        afterArticleNavRects: Map<HTMLElement, DOMRectReadOnly>,
+      ) =>
+        [...beforeArticleNavRects]
+          .map(([element, fromRect]) => {
+            const toRect = afterArticleNavRects.get(element)
+            return toRect ? animateRect(element, fromRect, toRect) : undefined
+          })
+          .filter((animation): animation is Animation => Boolean(animation))
+
+      const animateHeaderState = (isNotTop: boolean, isVisible: boolean) => {
         if (!inner || prefersReducedMotion.matches) {
           cancelHeaderAnimations()
-          applyHeaderState(isNotTop)
+          applyHeaderDisplayState(isNotTop, isVisible)
           return
         }
 
         const fromShellRect = (shell ?? inner).getBoundingClientRect()
         const fromBrandRect = brand?.getBoundingClientRect()
         const fromActionsRect = actions?.getBoundingClientRect()
+        const beforeArticleNavRects = new Map(
+          getMobileArticleNavItems().map((element) => [
+            element,
+            element.getBoundingClientRect(),
+          ]),
+        )
         cancelHeaderAnimations()
-        applyHeaderState(isNotTop)
+        applyHeaderDisplayState(isNotTop, isVisible)
         const toShellRect = (shell ?? inner).getBoundingClientRect()
         const toBrandRect = brand?.getBoundingClientRect()
         const toActionsRect = actions?.getBoundingClientRect()
+        const afterArticleNavRects = new Map(
+          getMobileArticleNavItems().map((element) => [
+            element,
+            element.getBoundingClientRect(),
+          ]),
+        )
         const animations = [
           animateRect(shell ?? inner, fromShellRect, toShellRect, {
             scaleX: true,
@@ -278,6 +322,10 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
           fromActionsRect && toActionsRect
             ? animateRect(actions, fromActionsRect, toActionsRect)
             : undefined,
+          ...animateMobileArticleNavState(
+            beforeArticleNavRects,
+            afterArticleNavRects,
+          ),
         ].filter((animation): animation is Animation => Boolean(animation))
 
         if (animations.length === 0) {
@@ -307,26 +355,27 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
         const scrollDelta = currentScrollY - previousScrollY
         const isScrollingDown = scrollDelta > 8
         const isScrollingUp = scrollDelta < -8
+        let nextHeaderVisible = isHeaderVisible
 
         if (currentScrollY < 350) {
-          isHeaderVisible = true
+          nextHeaderVisible = true
         } else if (isScrollingDown) {
-          isHeaderVisible = false
+          nextHeaderVisible = false
         } else if (isScrollingUp) {
-          isHeaderVisible = true
+          nextHeaderVisible = true
         }
+
+        const isHeaderVisibilityChanged = isHeaderVisible !== nextHeaderVisible
+        isHeaderVisible = nextHeaderVisible
 
         if (!isHeaderStateReady) {
-          applyHeaderState(isNotTop)
+          applyHeaderDisplayState(isNotTop, isHeaderVisible)
           isHeaderStateReady = true
-        } else if (this.classList.contains('not-top') !== isNotTop) {
-          animateHeaderState(isNotTop)
-        }
-
-        this.dataset.show = String(isHeaderVisible)
-        pageHeader?.toggleAttribute('data-header-hidden', !isHeaderVisible)
-        if (!isHeaderVisible) {
-          setMenuOpen(false)
+        } else if (
+          this.classList.contains('not-top') !== isNotTop ||
+          isHeaderVisibilityChanged
+        ) {
+          animateHeaderState(isNotTop, isHeaderVisible)
         }
 
         if (Math.abs(scrollDelta) > 8) {

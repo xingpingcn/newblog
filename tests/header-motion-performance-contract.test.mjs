@@ -122,6 +122,10 @@ const mobileArticleNavSeparatorBlock =
   headerCss.match(
     /\.site-page-header:has\(:is\(\.mobile-subposts-header,\s*\.mobile-toc-header\)\)\s+\.site-header-motion\s*\{[\s\S]*?\n  \}/,
   )?.[0] ?? ''
+const mobileArticleStackDividerBlock =
+  headerCss.match(
+    /\.site-page-header:has\(\.mobile-subposts-header\):has\(\s*\.mobile-toc-header\s*\)\s+\.mobile-toc-header\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
 const mobileStackSummaryBlock =
   headerCss.match(/\.mobile-stack-summary\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
 const mobileStackSummaryMarkerBlock =
@@ -130,6 +134,9 @@ const mobileStackSummaryMarkerBlock =
   )?.[0] ?? ''
 const mobileStackSummaryInnerBlock =
   headerCss.match(/\.mobile-stack-summary-inner\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+const mobileStackSummaryChildrenBlock =
+  headerCss.match(/\.mobile-stack-summary-inner\s*>\s*\*\s*\{[\s\S]*?\n\}/)
+    ?.[0] ?? ''
 const mobileDetailsAnimationBlock =
   headerCss.match(
     /\.mobile-stack-details::details-content\s*\{[\s\S]*?\n\}/,
@@ -137,6 +144,12 @@ const mobileDetailsAnimationBlock =
 const mobileDetailsOpenAnimationBlock =
   headerCss.match(
     /\.mobile-stack-details\[open\]::details-content\s*\{[\s\S]*?\n\}/,
+  )?.[0] ?? ''
+const mobileStackPanelBlock =
+  headerCss.match(/\.mobile-stack-panel\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+const mobileStackPanelOpenBlock =
+  headerCss.match(
+    /\.mobile-stack-details\[open\]\s+\.mobile-stack-panel\s*\{[\s\S]*?\n\}/,
   )?.[0] ?? ''
 
 assert(
@@ -343,6 +356,22 @@ assert(
 )
 
 assert(
+  header.includes('animateMobileArticleNavState') &&
+    header.includes("'.mobile-stack-summary-inner > *'") &&
+    header.includes('beforeArticleNavRects') &&
+    header.includes('afterArticleNavRects'),
+  'mobile article nav text and icons should get FLIP animation when header state changes move them',
+)
+
+assert(
+  header.includes('const applyHeaderDisplayState') &&
+    header.includes('isHeaderVisibilityChanged') &&
+    header.includes('animateHeaderState(isNotTop, isHeaderVisible)') &&
+    header.includes('applyHeaderDisplayState(isNotTop, isHeaderVisible)'),
+  'header hide/show should use the same animation path as top/compact transitions',
+)
+
+assert(
   !headerCss.includes('--site-header-toc-hide-offset') &&
     !mobileTocBlock.includes('position: relative') &&
     !mobileTocBlock.includes('z-index'),
@@ -368,11 +397,16 @@ assert(
 )
 
 assert(
-  !/border-bottom:\s*1px/.test(compactMobileSubpostsBlock) &&
+  Boolean(mobileArticleStackDividerBlock) &&
+    /box-shadow:\s*inset 0 1px 0 var\(--border\)/.test(
+      mobileArticleStackDividerBlock,
+    ) &&
+    !/border-(?:top|bottom):\s*1px/.test(mobileArticleStackDividerBlock) &&
+    !/border-bottom:\s*1px/.test(compactMobileSubpostsBlock) &&
     !/border-top:\s*1px/.test(compactMobileTocBlock) &&
     !/border-top:\s*1px/.test(hiddenStackRowsBlock) &&
     !/border-bottom:\s*1px/.test(hiddenStackRowsBlock),
-  'mobile subpost and TOC rows should not get their own separator line between each other',
+  'mobile subpost and TOC rows should use one internal inset divider without changing row height',
 )
 
 assert(
@@ -386,6 +420,18 @@ assert(
 )
 
 assert(
+  /transition:[\s\S]*?color 180ms ease[\s\S]*?opacity 180ms ease[\s\S]*?transform 300ms ease/.test(
+    mobileStackSummaryChildrenBlock,
+  ) &&
+    /will-change:\s*transform/.test(mobileStackSummaryChildrenBlock) &&
+    !/transition:\s*all/.test(mobileStackSummaryChildrenBlock) &&
+    /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.mobile-stack-summary-inner\s*>\s*\*/.test(
+      headerCss,
+    ),
+  'mobile article nav summary text and icons should explicitly transition transform and respect reduced motion',
+)
+
+assert(
   /interpolate-size:\s*allow-keywords/.test(mobileDetailsAnimationBlock) &&
     /overflow:\s*hidden/.test(mobileDetailsAnimationBlock) &&
     /block-size:\s*0/.test(mobileDetailsAnimationBlock) &&
@@ -394,6 +440,22 @@ assert(
     ) &&
     /block-size:\s*auto/.test(mobileDetailsOpenAnimationBlock),
   'mobile subpost and TOC details panels should animate open and closed instead of snapping',
+)
+
+assert(
+  /opacity:\s*0/.test(mobileStackPanelBlock) &&
+    /transform:\s*translateY\(-0\.375rem\)/.test(mobileStackPanelBlock) &&
+    /transition:[\s\S]*opacity 180ms ease[\s\S]*transform 220ms ease/.test(
+      mobileStackPanelBlock,
+    ) &&
+    /will-change:\s*transform,\s*opacity/.test(mobileStackPanelBlock) &&
+    !/transition:\s*all/.test(mobileStackPanelBlock) &&
+    /opacity:\s*1/.test(mobileStackPanelOpenBlock) &&
+    /transform:\s*translateY\(0\)/.test(mobileStackPanelOpenBlock) &&
+    /@media \(prefers-reduced-motion:\s*reduce\)[\s\S]*\.mobile-stack-panel/.test(
+      headerCss,
+    ),
+  'mobile TOC and subpost panel contents should animate their own enter and exit motion',
 )
 
 assert.match(
@@ -415,6 +477,12 @@ assert.match(
 
 assert.match(
   tocHeader,
+  /className="mobile-toc-header-panel mobile-stack-panel mx-auto max-w-3xl"/,
+  'mobile TOC panel should use the shared content enter and exit animation class',
+)
+
+assert.match(
+  tocHeader,
   /<summary class="mobile-stack-summary flex w-full cursor-pointer items-center justify-between">[\s\S]*?<div class="mobile-toc-header-inner mobile-stack-summary-inner mx-auto flex w-full max-w-3xl items-center px-4 py-3">/,
   'mobile TOC summary should use the shared row sizing classes',
 )
@@ -423,6 +491,12 @@ assert.match(
   subpostsHeader,
   /<details class="group mobile-stack-details">/,
   'mobile subposts details should use the shared animated details class',
+)
+
+assert.match(
+  subpostsHeader,
+  /className="mobile-stack-panel mx-auto max-w-3xl"/,
+  'mobile subposts panel should use the shared content enter and exit animation class',
 )
 
 assert.match(
