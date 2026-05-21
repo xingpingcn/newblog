@@ -82,6 +82,8 @@ const headerShellNotTopBlock =
   )?.[0] ?? ''
 const mobileTocBlock =
   headerCss.match(/\.mobile-toc-header\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+const mobileSubpostsBlock =
+  headerCss.match(/\.mobile-subposts-header\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
 const compactMobileHeaderBlock =
   headerCss.match(
     /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s*\{[\s\S]*?\n  \}/,
@@ -101,6 +103,34 @@ const compactMobileHeaderBackdropBlock =
 const compactMobileTocBlock =
   headerCss.match(
     /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s+\.mobile-toc-header\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const compactMobileSubpostsBlock =
+  headerCss.match(
+    /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s+\.mobile-subposts-header\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const compactMobileSubpostsWithTocBlock =
+  headerCss.match(
+    /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s+\.mobile-subposts-header:has\(~\s+\.mobile-toc-header\)\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const compactMobileTocAfterSubpostsBlock =
+  headerCss.match(
+    /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s+\.mobile-subposts-header\s*~\s*\.mobile-toc-header\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const hiddenMobileTocBlock =
+  headerCss.match(
+    /\.site-page-header\[data-header-hidden\]\s+\.mobile-toc-header\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const hiddenMobileSubpostsBlock =
+  headerCss.match(
+    /\.site-page-header\[data-header-hidden\]\s+\.mobile-subposts-header\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const hiddenMobileSubpostsWithTocBlock =
+  headerCss.match(
+    /\.site-page-header\[data-header-hidden\]\s+\.mobile-subposts-header:has\(~\s+\.mobile-toc-header\)\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
+const hiddenMobileTocAfterSubpostsBlock =
+  headerCss.match(
+    /\.site-page-header\[data-header-hidden\]\s+\.mobile-subposts-header\s*~\s*\.mobile-toc-header\s*\{[\s\S]*?\n  \}/,
   )?.[0] ?? ''
 
 assert(
@@ -200,6 +230,16 @@ assert(
 )
 
 assert(
+  /border-radius:\s*1rem/.test(mobileTocBlock) &&
+    /overflow:\s*hidden/.test(mobileTocBlock) &&
+    /border-radius 300ms ease/.test(mobileTocBlock) &&
+    /border-radius:\s*1rem/.test(mobileSubpostsBlock) &&
+    /overflow:\s*hidden/.test(mobileSubpostsBlock) &&
+    /border-radius 300ms ease/.test(mobileSubpostsBlock),
+  'mobile TOC and subpost controls should keep their own rounded clipping layer',
+)
+
+assert(
   /background-color:\s*transparent/.test(compactMobileHeaderBlock) &&
     /-webkit-backdrop-filter:\s*none/.test(compactMobileHeaderBlock) &&
     /backdrop-filter:\s*none/.test(compactMobileHeaderBlock) &&
@@ -247,8 +287,39 @@ assert(
     /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
       compactMobileTocBlock,
     ) &&
-    /border-radius:\s*0/.test(compactMobileTocBlock),
-  'compact mobile article TOC should keep a flat blurred bar without a rounded wrapper',
+    /border-radius:\s*1rem/.test(compactMobileTocBlock),
+  'compact mobile article TOC should keep its own rounded blurred bar without the larger wrapper',
+)
+
+assert(
+  Boolean(compactMobileSubpostsBlock) &&
+    /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
+      compactMobileSubpostsBlock,
+    ) &&
+    /-webkit-backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      compactMobileSubpostsBlock,
+    ) &&
+    /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      compactMobileSubpostsBlock,
+    ) &&
+    /border-radius:\s*1rem/.test(compactMobileSubpostsBlock),
+  'compact mobile subpost controls should keep their own rounded blurred bar',
+)
+
+assert(
+  /border-radius:\s*1rem 1rem 0 0/.test(
+    compactMobileSubpostsWithTocBlock,
+  ) &&
+    /border-radius:\s*0 0 1rem 1rem/.test(
+      compactMobileTocAfterSubpostsBlock,
+    ) &&
+    /border-radius:\s*1rem 1rem 0 0/.test(
+      hiddenMobileSubpostsWithTocBlock,
+    ) &&
+    /border-radius:\s*0 0 1rem 1rem/.test(
+      hiddenMobileTocAfterSubpostsBlock,
+    ),
+  'mobile subpost and TOC controls should compose into one rounded stack when both exist',
 )
 
 assert(
@@ -256,6 +327,12 @@ assert(
     headerCss,
   ),
   'mobile article TOC should keep the original hidden-header layout reset',
+)
+
+assert(
+  /border-radius:\s*1rem/.test(hiddenMobileTocBlock) &&
+    /border-radius:\s*1rem/.test(hiddenMobileSubpostsBlock),
+  'mobile TOC and subpost controls should keep rounded corners when the main header is hidden',
 )
 
 assert(
