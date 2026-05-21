@@ -306,7 +306,7 @@
   background-color: color-mix(in oklab, var(--background) 82%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(1.35);
   backdrop-filter: blur(16px) saturate(1.35);
-  border-radius: 1rem;
+  border-radius: 0;
   overflow: hidden;
   transform: translateY(0);
   transition:
@@ -320,12 +320,9 @@
   background-color: color-mix(in oklab, var(--background) 82%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(1.35);
   backdrop-filter: blur(16px) saturate(1.35);
-  border-radius: 1rem;
-  overflow: hidden;
   transform: translateY(0);
   transition:
     background-color 180ms ease,
-    border-radius 300ms ease,
     backdrop-filter 180ms ease,
     transform 300ms ease;
 }
@@ -361,6 +358,7 @@
     width: min(44rem, calc(100vw - 1rem));
     max-width: none;
     margin-inline: auto;
+    isolation: isolate;
     border: 1px solid transparent;
     border-radius: 1rem;
     background-color: transparent;
@@ -370,13 +368,28 @@
     overflow: visible;
   }
 
+  .site-page-header.not-top:not([data-header-hidden])::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    top: 0.5rem;
+    z-index: -1;
+    border-radius: inherit;
+    background-color: color-mix(in oklab, var(--background) 76%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(1.35);
+    backdrop-filter: blur(16px) saturate(1.35);
+    box-shadow: 0 10px 24px
+      color-mix(in oklab, var(--foreground) 8%, transparent);
+    pointer-events: none;
+  }
+
   .site-page-header.not-top:not([data-header-hidden]) .site-header-motion {
     margin-inline: 0;
   }
 
   .site-page-header.not-top:not([data-header-hidden]) .site-header-inner {
     border-color: transparent;
-    border-radius: 1rem;
+    border-radius: 0;
     background-color: transparent;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -385,65 +398,67 @@
 
   .site-page-header.not-top:not([data-header-hidden])
     .site-header-shell {
-    border-color: var(--border);
-    background-color: color-mix(in oklab, var(--background) 76%, transparent);
-    -webkit-backdrop-filter: blur(16px) saturate(1.35);
-    backdrop-filter: blur(16px) saturate(1.35);
-    box-shadow:
-      0 0 0 1px color-mix(in oklab, var(--foreground) 5%, transparent),
-      0 10px 24px color-mix(in oklab, var(--foreground) 8%, transparent);
+    border-color: transparent;
+    background-color: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
   }
 
   .site-page-header.not-top:not([data-header-hidden])
     .mobile-subposts-header {
-    background-color: color-mix(in oklab, var(--background) 76%, transparent);
-    -webkit-backdrop-filter: blur(16px) saturate(1.35);
-    backdrop-filter: blur(16px) saturate(1.35);
-    border-radius: 1rem;
+    background-color: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-radius: 0;
   }
 
   .site-page-header.not-top:not([data-header-hidden]) .mobile-toc-header {
-    background-color: color-mix(in oklab, var(--background) 76%, transparent);
-    -webkit-backdrop-filter: blur(16px) saturate(1.35);
-    backdrop-filter: blur(16px) saturate(1.35);
-    border-radius: 1rem;
-  }
-
-  .site-page-header.not-top:not([data-header-hidden])
-    .mobile-subposts-header:has(~ .mobile-toc-header) {
-    border-radius: 1rem 1rem 0 0;
-  }
-
-  .site-page-header.not-top:not([data-header-hidden])
-    .mobile-subposts-header
-    ~ .mobile-toc-header {
-    border-radius: 0 0 1rem 1rem;
+    background-color: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-radius: 0;
   }
 
   .site-page-header[data-header-hidden] {
     width: 100%;
     max-width: 100%;
     margin-inline: 0;
+    isolation: isolate;
     border-radius: 0;
   }
 
-  .site-page-header[data-header-hidden] .mobile-subposts-header {
+  .site-page-header[data-header-hidden]
+    :is(.mobile-subposts-header, .mobile-toc-header) {
     border-radius: 1rem;
   }
 
-  .site-page-header[data-header-hidden] .mobile-toc-header {
+  .site-page-header[data-header-hidden]:has(.mobile-subposts-header):has(
+      .mobile-toc-header
+    )::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 0.5rem;
+    bottom: calc(var(--site-header-motion-height, 4rem) - 0.5rem);
+    z-index: -1;
     border-radius: 1rem;
+    background-color: color-mix(in oklab, var(--background) 76%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(1.35);
+    backdrop-filter: blur(16px) saturate(1.35);
+    box-shadow: 0 10px 24px
+      color-mix(in oklab, var(--foreground) 8%, transparent);
+    pointer-events: none;
   }
 
-  .site-page-header[data-header-hidden]
-    .mobile-subposts-header:has(~ .mobile-toc-header) {
-    border-radius: 1rem 1rem 0 0;
-  }
-
-  .site-page-header[data-header-hidden]
-    .mobile-subposts-header
-    ~ .mobile-toc-header {
-    border-radius: 0 0 1rem 1rem;
+  .site-page-header[data-header-hidden]:has(.mobile-subposts-header):has(
+      .mobile-toc-header
+    )
+    :is(.mobile-subposts-header, .mobile-toc-header) {
+    background-color: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-radius: 0;
   }
 }
 

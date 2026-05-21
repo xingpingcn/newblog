@@ -82,8 +82,6 @@ const headerShellNotTopBlock =
   )?.[0] ?? ''
 const mobileTocBlock =
   headerCss.match(/\.mobile-toc-header\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
-const mobileSubpostsBlock =
-  headerCss.match(/\.mobile-subposts-header\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
 const compactMobileHeaderBlock =
   headerCss.match(
     /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s*\{[\s\S]*?\n  \}/,
@@ -108,29 +106,13 @@ const compactMobileSubpostsBlock =
   headerCss.match(
     /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s+\.mobile-subposts-header\s*\{[\s\S]*?\n  \}/,
   )?.[0] ?? ''
-const compactMobileSubpostsWithTocBlock =
+const hiddenStackShellBlock =
   headerCss.match(
-    /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s+\.mobile-subposts-header:has\(~\s+\.mobile-toc-header\)\s*\{[\s\S]*?\n  \}/,
+    /\.site-page-header\[data-header-hidden\]:has\(\.mobile-subposts-header\):has\(\s*\.mobile-toc-header\s*\)::before\s*\{[\s\S]*?\n  \}/,
   )?.[0] ?? ''
-const compactMobileTocAfterSubpostsBlock =
+const hiddenStackRowsBlock =
   headerCss.match(
-    /\.site-page-header\.not-top:not\(\[data-header-hidden\]\)\s+\.mobile-subposts-header\s*~\s*\.mobile-toc-header\s*\{[\s\S]*?\n  \}/,
-  )?.[0] ?? ''
-const hiddenMobileTocBlock =
-  headerCss.match(
-    /\.site-page-header\[data-header-hidden\]\s+\.mobile-toc-header\s*\{[\s\S]*?\n  \}/,
-  )?.[0] ?? ''
-const hiddenMobileSubpostsBlock =
-  headerCss.match(
-    /\.site-page-header\[data-header-hidden\]\s+\.mobile-subposts-header\s*\{[\s\S]*?\n  \}/,
-  )?.[0] ?? ''
-const hiddenMobileSubpostsWithTocBlock =
-  headerCss.match(
-    /\.site-page-header\[data-header-hidden\]\s+\.mobile-subposts-header:has\(~\s+\.mobile-toc-header\)\s*\{[\s\S]*?\n  \}/,
-  )?.[0] ?? ''
-const hiddenMobileTocAfterSubpostsBlock =
-  headerCss.match(
-    /\.site-page-header\[data-header-hidden\]\s+\.mobile-subposts-header\s*~\s*\.mobile-toc-header\s*\{[\s\S]*?\n  \}/,
+    /\.site-page-header\[data-header-hidden\]:has\(\.mobile-subposts-header\):has\(\s*\.mobile-toc-header\s*\)\s+:is\(\.mobile-subposts-header,\s*\.mobile-toc-header\)\s*\{[\s\S]*?\n  \}/,
   )?.[0] ?? ''
 
 assert(
@@ -230,22 +212,29 @@ assert(
 )
 
 assert(
-  /border-radius:\s*1rem/.test(mobileTocBlock) &&
-    /overflow:\s*hidden/.test(mobileTocBlock) &&
-    /border-radius 300ms ease/.test(mobileTocBlock) &&
-    /border-radius:\s*1rem/.test(mobileSubpostsBlock) &&
-    /overflow:\s*hidden/.test(mobileSubpostsBlock) &&
-    /border-radius 300ms ease/.test(mobileSubpostsBlock),
-  'mobile TOC and subpost controls should keep their own rounded clipping layer',
-)
-
-assert(
-  /background-color:\s*transparent/.test(compactMobileHeaderBlock) &&
+  /isolation:\s*isolate/.test(compactMobileHeaderBlock) &&
+    /background-color:\s*transparent/.test(compactMobileHeaderBlock) &&
     /-webkit-backdrop-filter:\s*none/.test(compactMobileHeaderBlock) &&
     /backdrop-filter:\s*none/.test(compactMobileHeaderBlock) &&
     /box-shadow:\s*none/.test(compactMobileHeaderBlock) &&
-    compactMobileHeaderShellBlock === '',
-  'compact mobile article header should not draw a rounded wrapper around stacked nav, TOC, and subpost controls',
+    /top:\s*0\.5rem/.test(compactMobileHeaderShellBlock) &&
+    /border-radius:\s*inherit/.test(compactMobileHeaderShellBlock) &&
+    /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
+      compactMobileHeaderShellBlock,
+    ) &&
+    /-webkit-backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      compactMobileHeaderShellBlock,
+    ) &&
+    /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      compactMobileHeaderShellBlock,
+    ) &&
+    /box-shadow:[\s\S]*0 10px 24px/.test(compactMobileHeaderShellBlock) &&
+    /pointer-events:\s*none/.test(compactMobileHeaderShellBlock) &&
+    !/border:\s*1px solid var\(--border\)/.test(
+      compactMobileHeaderShellBlock,
+    ) &&
+    !/0 0 0 1px/.test(compactMobileHeaderShellBlock),
+  'compact mobile article header should use one rounded blurred shell without the old thin outer frame',
 )
 
 assert(
@@ -261,65 +250,51 @@ assert(
 assert(
   /background-color:\s*transparent/.test(compactMobileHeaderInnerBlock) &&
     /border-color:\s*transparent/.test(compactMobileHeaderInnerBlock) &&
-    /border-radius:\s*1rem/.test(compactMobileHeaderInnerBlock) &&
+    /border-radius:\s*0/.test(compactMobileHeaderInnerBlock) &&
     /box-shadow:\s*none/.test(compactMobileHeaderInnerBlock) &&
-    /border-color:\s*var\(--border\)/.test(compactMobileHeaderBackdropBlock) &&
-    /box-shadow:[\s\S]*0 10px 24px/.test(compactMobileHeaderBackdropBlock) &&
-    /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
-      compactMobileHeaderBackdropBlock,
-    ) &&
-    /-webkit-backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
-      compactMobileHeaderBackdropBlock,
-    ) &&
-    /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
-      compactMobileHeaderBackdropBlock,
-    ),
-  'compact mobile article nav should keep its rounded blurred capsule without the larger wrapper',
+    /border-color:\s*transparent/.test(compactMobileHeaderBackdropBlock) &&
+    /background-color:\s*transparent/.test(compactMobileHeaderBackdropBlock) &&
+    /-webkit-backdrop-filter:\s*none/.test(compactMobileHeaderBackdropBlock) &&
+    /backdrop-filter:\s*none/.test(compactMobileHeaderBackdropBlock) &&
+    /box-shadow:\s*none/.test(compactMobileHeaderBackdropBlock),
+  'compact mobile article nav should not draw a separate rounded capsule inside the shared shell',
 )
 
 assert(
-  /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
-    compactMobileTocBlock,
-  ) &&
-    /-webkit-backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
-      compactMobileTocBlock,
-    ) &&
-    /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
-      compactMobileTocBlock,
-    ) &&
-    /border-radius:\s*1rem/.test(compactMobileTocBlock),
-  'compact mobile article TOC should keep its own rounded blurred bar without the larger wrapper',
+  /background-color:\s*transparent/.test(compactMobileTocBlock) &&
+    /-webkit-backdrop-filter:\s*none/.test(compactMobileTocBlock) &&
+    /backdrop-filter:\s*none/.test(compactMobileTocBlock) &&
+    /border-radius:\s*0/.test(compactMobileTocBlock),
+  'compact mobile article TOC should remain a flat transparent row inside the shared shell',
 )
 
 assert(
   Boolean(compactMobileSubpostsBlock) &&
-    /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
-      compactMobileSubpostsBlock,
-    ) &&
-    /-webkit-backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
-      compactMobileSubpostsBlock,
-    ) &&
-    /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
-      compactMobileSubpostsBlock,
-    ) &&
-    /border-radius:\s*1rem/.test(compactMobileSubpostsBlock),
-  'compact mobile subpost controls should keep their own rounded blurred bar',
+    /background-color:\s*transparent/.test(compactMobileSubpostsBlock) &&
+    /-webkit-backdrop-filter:\s*none/.test(compactMobileSubpostsBlock) &&
+    /backdrop-filter:\s*none/.test(compactMobileSubpostsBlock) &&
+    /border-radius:\s*0/.test(compactMobileSubpostsBlock),
+  'compact mobile subpost controls should remain a flat transparent row inside the shared shell',
 )
 
 assert(
-  /border-radius:\s*1rem 1rem 0 0/.test(
-    compactMobileSubpostsWithTocBlock,
-  ) &&
-    /border-radius:\s*0 0 1rem 1rem/.test(
-      compactMobileTocAfterSubpostsBlock,
+  /border-radius:\s*1rem/.test(hiddenStackShellBlock) &&
+    /background-color:\s*color-mix\(in oklab,\s*var\(--background\)\s*76%,\s*transparent\)/.test(
+      hiddenStackShellBlock,
     ) &&
-    /border-radius:\s*1rem 1rem 0 0/.test(
-      hiddenMobileSubpostsWithTocBlock,
+    /-webkit-backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      hiddenStackShellBlock,
     ) &&
-    /border-radius:\s*0 0 1rem 1rem/.test(
-      hiddenMobileTocAfterSubpostsBlock,
-    ),
-  'mobile subpost and TOC controls should compose into one rounded stack when both exist',
+    /backdrop-filter:\s*blur\(16px\)\s*saturate\(1\.35\)/.test(
+      hiddenStackShellBlock,
+    ) &&
+    /box-shadow:[\s\S]*0 10px 24px/.test(hiddenStackShellBlock) &&
+    !/border:\s*1px solid var\(--border\)/.test(hiddenStackShellBlock) &&
+    /background-color:\s*transparent/.test(hiddenStackRowsBlock) &&
+    /-webkit-backdrop-filter:\s*none/.test(hiddenStackRowsBlock) &&
+    /backdrop-filter:\s*none/.test(hiddenStackRowsBlock) &&
+    /border-radius:\s*0/.test(hiddenStackRowsBlock),
+  'hidden mobile subpost and TOC controls should share one rounded shell instead of splitting into two bars',
 )
 
 assert(
@@ -327,12 +302,6 @@ assert(
     headerCss,
   ),
   'mobile article TOC should keep the original hidden-header layout reset',
-)
-
-assert(
-  /border-radius:\s*1rem/.test(hiddenMobileTocBlock) &&
-    /border-radius:\s*1rem/.test(hiddenMobileSubpostsBlock),
-  'mobile TOC and subpost controls should keep rounded corners when the main header is hidden',
 )
 
 assert(
