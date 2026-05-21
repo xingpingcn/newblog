@@ -118,6 +118,10 @@ const hiddenStackRowsBlock =
   headerCss.match(
     /\.site-page-header\[data-header-hidden\]:has\(\.mobile-subposts-header\):has\(\s*\.mobile-toc-header\s*\)\s+:is\(\.mobile-subposts-header,\s*\.mobile-toc-header\)\s*\{[\s\S]*?\n  \}/,
   )?.[0] ?? ''
+const mobileArticleNavSeparatorBlock =
+  headerCss.match(
+    /\.site-page-header:has\(:is\(\.mobile-subposts-header,\s*\.mobile-toc-header\)\)\s+\.site-header-motion\s*\{[\s\S]*?\n  \}/,
+  )?.[0] ?? ''
 const mobileDetailsAnimationBlock =
   headerCss.match(
     /\.mobile-stack-details::details-content\s*\{[\s\S]*?\n\}/,
@@ -345,6 +349,21 @@ assert(
 )
 
 assert(
+  /border-bottom:\s*1px solid var\(--border\)/.test(
+    mobileArticleNavSeparatorBlock,
+  ),
+  'mobile article header should keep the separator between the main nav row and the article navigation rows',
+)
+
+assert(
+  !/border-bottom:\s*1px/.test(compactMobileSubpostsBlock) &&
+    !/border-top:\s*1px/.test(compactMobileTocBlock) &&
+    !/border-top:\s*1px/.test(hiddenStackRowsBlock) &&
+    !/border-bottom:\s*1px/.test(hiddenStackRowsBlock),
+  'mobile subpost and TOC rows should not get their own separator line between each other',
+)
+
+assert(
   /interpolate-size:\s*allow-keywords/.test(mobileDetailsAnimationBlock) &&
     /overflow:\s*hidden/.test(mobileDetailsAnimationBlock) &&
     /block-size:\s*0/.test(mobileDetailsAnimationBlock) &&
@@ -353,6 +372,17 @@ assert(
     ) &&
     /block-size:\s*auto/.test(mobileDetailsOpenAnimationBlock),
   'mobile subpost and TOC details panels should animate open and closed instead of snapping',
+)
+
+assert.match(
+  tocHeader,
+  /scrollContainer\.scrollTo\(\s*\{[\s\S]*?top:\s*targetScroll[\s\S]*?behavior:\s*window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches\s*\?\s*'auto'\s*:\s*'smooth'[\s\S]*?\}\s*\)/,
+  'mobile TOC should smoothly move the active item inside the opened TOC list',
+)
+
+assert(
+  !tocHeader.includes('scrollContainer.scrollTop = targetScroll'),
+  'mobile TOC should not jump the opened list text with direct scrollTop assignment',
 )
 
 assert.match(

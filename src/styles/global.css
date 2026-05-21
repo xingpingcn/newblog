@@ -367,6 +367,11 @@
     margin-inline: auto;
   }
 
+  .site-page-header:has(:is(.mobile-subposts-header, .mobile-toc-header))
+    .site-header-motion {
+    border-bottom: 1px solid var(--border);
+  }
+
   .site-page-header.not-top:not([data-header-hidden]) {
     width: min(44rem, calc(100vw - 1rem));
     max-width: none;

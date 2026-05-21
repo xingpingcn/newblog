@@ -317,7 +317,12 @@ const { headings } = Astro.props
       )
 
       if (Math.abs(targetScroll - scrollContainer.scrollTop) > 5) {
-        scrollContainer.scrollTop = targetScroll
+        scrollContainer.scrollTo({
+          top: targetScroll,
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            ? 'auto'
+            : 'smooth',
+        })
       }
     }
 
