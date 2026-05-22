@@ -18,11 +18,14 @@
     let startTimer: number | undefined
     let finishTimer: number | undefined
     let resetTimer: number | undefined
+    let fallbackTimer: number | undefined
+    let isNavigationPreparing = false
 
     const clearTimers = () => {
       window.clearTimeout(startTimer)
       window.clearTimeout(finishTimer)
       window.clearTimeout(resetTimer)
+      window.clearTimeout(fallbackTimer)
     }
 
     const isModifiedClick = (event: PointerEvent) =>
@@ -47,19 +50,44 @@
       )
     }
 
-    const start = () => {
+    const show = () => {
       window.clearTimeout(finishTimer)
       window.clearTimeout(resetTimer)
       progress.dataset.state = 'loading'
     }
 
+    const start = () => {
+      isNavigationPreparing = true
+      window.clearTimeout(fallbackTimer)
+      show()
+    }
+
     const startSoon = () => {
       window.clearTimeout(startTimer)
-      startTimer = window.setTimeout(start, 80)
+      window.clearTimeout(fallbackTimer)
+      startTimer = window.setTimeout(show, 80)
+      fallbackTimer = window.setTimeout(() => {
+        if (!isNavigationPreparing) {
+          cancel()
+        }
+      }, 900)
+    }
+
+    const cancel = () => {
+      window.clearTimeout(startTimer)
+      window.clearTimeout(fallbackTimer)
+
+      if (isNavigationPreparing) {
+        return
+      }
+
+      progress.dataset.state = 'idle'
     }
 
     const finish = () => {
       window.clearTimeout(startTimer)
+      window.clearTimeout(fallbackTimer)
+      isNavigationPreparing = false
 
       if (progress.dataset.state !== 'loading') {
         return
@@ -95,11 +123,14 @@
       { passive: true },
     )
 
+    window.addEventListener('pointercancel', cancel, { passive: true })
+    window.addEventListener('touchmove', cancel, { passive: true })
     window.addEventListener('popstate', startSoon, { passive: true })
 
     document.addEventListener('astro:before-preparation', start)
     document.addEventListener('astro:after-preparation', () => {
       window.clearTimeout(startTimer)
+      window.clearTimeout(fallbackTimer)
     })
     document.addEventListener('astro:page-load', finish)
     window.addEventListener('hashchange', finish, { passive: true })
@@ -109,6 +140,7 @@
       'pagehide',
       () => {
         clearTimers()
+        isNavigationPreparing = false
         progress.dataset.state = 'idle'
       },
       { passive: true },

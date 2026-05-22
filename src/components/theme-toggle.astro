@@ -17,6 +17,21 @@ import { Icon } from 'astro-icon/components'
 
 <script is:inline data-astro-rerun>
   ;(() => {
+    const SITE_THEME_COLORS = {
+      dark: '#121212',
+      light: '#ffffff',
+    }
+
+    function updateThemeColor(theme) {
+      const themeColor =
+        theme === 'dark' ? SITE_THEME_COLORS.dark : SITE_THEME_COLORS.light
+      document
+        .querySelectorAll('meta[name="theme-color"][data-site-theme-color]')
+        .forEach((meta) => {
+          meta.setAttribute('content', themeColor)
+        })
+    }
+
     const theme = (() => {
       const stored = localStorage?.getItem('theme') ?? ''
       if (['dark', 'light'].includes(stored)) return stored
@@ -26,11 +41,27 @@ import { Icon } from 'astro-icon/components'
     })()
 
     document.documentElement.setAttribute('data-theme', theme)
+    updateThemeColor(theme)
     window.localStorage.setItem('theme', theme)
   })()
 </script>
 
 <script>
+  const SITE_THEME_COLORS = {
+    dark: '#121212',
+    light: '#ffffff',
+  }
+
+  function updateThemeColor(theme: string | null) {
+    const themeColor =
+      theme === 'dark' ? SITE_THEME_COLORS.dark : SITE_THEME_COLORS.light
+    document
+      .querySelectorAll('meta[name="theme-color"][data-site-theme-color]')
+      .forEach((meta) => {
+        meta.setAttribute('content', themeColor)
+      })
+  }
+
   function handleToggleClick() {
     const element = document.documentElement
     const currentTheme = element.getAttribute('data-theme')
@@ -38,6 +69,7 @@ import { Icon } from 'astro-icon/components'
 
     element.classList.add('[&_*]:transition-none')
     element.setAttribute('data-theme', newTheme)
+    updateThemeColor(newTheme)
     window.getComputedStyle(element).getPropertyValue('opacity')
 
     requestAnimationFrame(() => {
@@ -62,6 +94,7 @@ import { Icon } from 'astro-icon/components'
     element.classList.add('[&_*]:transition-none')
     window.getComputedStyle(element).getPropertyValue('opacity')
     element.setAttribute('data-theme', storedTheme)
+    updateThemeColor(storedTheme)
 
     requestAnimationFrame(() => {
       element.classList.remove('[&_*]:transition-none')

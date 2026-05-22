@@ -60,6 +60,24 @@ assert.match(
 
 assert.match(
   progress,
+  /const cancel = \(\) => \{/,
+  'progress component should cancel optimistic pointer feedback when no navigation starts',
+)
+
+assert.match(
+  progress,
+  /pointercancel/,
+  'progress component should cancel touch feedback when a mobile gesture is cancelled',
+)
+
+assert.match(
+  progress,
+  /touchmove/,
+  'progress component should cancel touch feedback when a mobile link press turns into scrolling',
+)
+
+assert.match(
+  progress,
   /popstate/,
   'progress component should provide feedback for browser back and forward',
 )
