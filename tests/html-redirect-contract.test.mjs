@@ -19,6 +19,10 @@ async function readProjectFile(path) {
 
 const redirectCases = [
   {
+    from: 'about.html',
+    to: '/about/',
+  },
+  {
     from: 'aws-lambda-access-internet-in-vpc-without-nat.html',
     to: '/aws-lambda-access-internet-in-vpc-without-nat/',
   },
@@ -34,6 +38,10 @@ const redirectCases = [
     from: '国内各个as系统.html',
     to: '/国内各个as系统/',
   },
+  {
+    from: 'search.html',
+    to: '/search/',
+  },
 ]
 
 const deploymentRedirectCases = [
@@ -44,6 +52,17 @@ const deploymentRedirectCases = [
   {
     from: '/免费通过NS1利用监控宝平台实现实时基于不同运营商的故障转移.html',
     to: '/免费通过ns1利用监控宝平台实现实时基于不同运营商的故障转移/',
+  },
+]
+
+const feedRedirectCases = [
+  {
+    from: '/rss.xml',
+    to: 'https://cf-blog.xingpingcn.top/rss.xml',
+  },
+  {
+    from: '/atom.xml',
+    to: 'https://cf-blog.xingpingcn.top/rss.xml',
   },
 ]
 
@@ -73,6 +92,38 @@ for (const { from, to } of redirectCases) {
 
 const netlify = await readProjectFile('netlify.toml')
 const vercel = JSON.parse(await readProjectFile('vercel.json'))
+
+assert.equal(
+  vercel.cleanUrls,
+  true,
+  'Vercel should redirect static .html paths to clean extensionless URLs',
+)
+
+assert.match(
+  netlify,
+  /\[build\.processing\.html\][\s\S]*?pretty_urls = true/,
+  'Netlify should enable Pretty URLs for .html to clean URL handling',
+)
+
+for (const { from, to } of feedRedirectCases) {
+  assert.match(
+    netlify,
+    new RegExp(
+      `from = "${escapeRegExp(from)}"[\\s\\S]*?to = "${escapeRegExp(to)}"[\\s\\S]*?status = 301`,
+    ),
+    `${from} should have a Netlify 301 redirect to the canonical RSS feed`,
+  )
+
+  assert(
+    vercel.redirects.some(
+      (redirect) =>
+        redirect.source === from &&
+        redirect.destination === to &&
+        redirect.permanent === true,
+    ),
+    `${from} should have a Vercel permanent redirect to the canonical RSS feed`,
+  )
+}
 
 for (const { from, to } of deploymentRedirectCases) {
   assert.match(

@@ -11,14 +11,17 @@ async function main() {
 
   for (const file of files) {
     const html = await readFile(file, 'utf8')
-    if (!html.includes(articleMarker)) continue
 
     const routePath = routePathFromIndexPage(file)
     if (routePath === '/') continue
+    if (isLegacyHtmlRedirectRoute(routePath)) continue
 
-    const title = extractTitle(html)
     addRedirectPath(pathWithoutTrailingSlash(routePath), routePath)
-    if (title) addRedirectPath(title, routePath)
+
+    if (html.includes(articleMarker)) {
+      const title = extractTitle(html)
+      if (title) addRedirectPath(title, routePath)
+    }
   }
 
   for (const [legacyPath, target] of redirectPaths) {
@@ -66,6 +69,13 @@ function addRedirectPath(source, target) {
   if (!sourcePath) return
 
   redirectPaths.set(`${sourcePath}.html`, target)
+}
+
+function isLegacyHtmlRedirectRoute(routePath) {
+  return routePath
+    .split('/')
+    .filter(Boolean)
+    .some((segment) => segment.endsWith('.html'))
 }
 
 function normalizeLegacyPath(source) {

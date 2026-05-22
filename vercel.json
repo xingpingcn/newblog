@@ -3,10 +3,16 @@
   "framework": "astro",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "cleanUrls": true,
   "redirects": [
     {
+      "source": "/rss.xml",
+      "destination": "https://cf-blog.xingpingcn.top/rss.xml",
+      "permanent": true
+    },
+    {
       "source": "/atom.xml",
-      "destination": "https://cf-blog.xingpingcn.top/atom.xml",
+      "destination": "https://cf-blog.xingpingcn.top/rss.xml",
       "permanent": true
     },
     {

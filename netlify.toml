@@ -2,9 +2,19 @@
   command = "npm run build"
   publish = "dist"
 
+[build.processing.html]
+  pretty_urls = true
+
+[[redirects]]
+  from = "/rss.xml"
+  to = "https://cf-blog.xingpingcn.top/rss.xml"
+  status = 301
+  force = true
+  headers = { X-From = "Netlify" }
+
 [[redirects]]
   from = "/atom.xml"
-  to = "https://cf-blog.xingpingcn.top/atom.xml"
+  to = "https://cf-blog.xingpingcn.top/rss.xml"
   status = 301
   force = true
   headers = { X-From = "Netlify" }
