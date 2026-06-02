@@ -8,9 +8,11 @@ import type { CollectionEntry } from 'astro:content'
 interface Props {
   author: CollectionEntry<'authors'>
   compact?: boolean
+  profileHref?: string
 }
 
-const { author, compact = false } = Astro.props
+const { author, compact = false, profileHref = `/authors/${author.id}` } =
+  Astro.props
 const { name, avatar, bio, mail, website, github, twitter, linkedin } =
   author.data
 
@@ -30,7 +32,7 @@ const socialLinks: SocialLink[] = [
       compact ? 'lg:flex-col lg:text-center' : 'sm:items-start',
     ]}
   >
-    <Link href={`/authors/${author.id}`} class="shrink-0">
+    <Link href={profileHref} class="shrink-0">
       <AvatarComponent
         client:load
         src={avatar}
