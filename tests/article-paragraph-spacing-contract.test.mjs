@@ -6,18 +6,18 @@ const typography = await readFile(new URL('src/styles/typography.css', root), 'u
 
 assert.match(
   typography,
-  /--prose-paragraph-gap:\s*3\.5rem;/,
-  'article prose should define a two-line paragraph gap based on the 1.75rem article line height',
+  /:where\(p\):not\(:where\(\.not-prose, \.not-prose \*\)\)\s*\{[\s\S]*?@apply\s+text-foreground\/80\s+my-5\s+indent-\[2em\];/,
+  'article prose paragraphs should keep the normal paragraph rhythm while indenting the first line by two character widths',
+)
+
+assert.doesNotMatch(
+  typography,
+  /--prose-paragraph-gap|:where\(p\s*\+\s*p\):not\(:where\(\.not-prose, \.not-prose \*\)\)/,
+  'article prose should not force a special two-line gap between consecutive paragraphs',
 )
 
 assert.match(
   typography,
-  /:where\(p\):not\(:where\(\.not-prose, \.not-prose \*\)\)\s*\{[\s\S]*?@apply\s+text-foreground\/80\s+my-0;/,
-  'article prose paragraphs should not keep the old symmetric margin that collapses to less than two lines',
-)
-
-assert.match(
-  typography,
-  /:where\(p\s*\+\s*p\):not\(:where\(\.not-prose, \.not-prose \*\)\)\s*\{[\s\S]*?@apply\s+mt-\[var\(--prose-paragraph-gap\)\];/,
-  'consecutive article prose paragraphs should be separated by exactly two blank text lines',
+  /indent-\[2em\]/,
+  'article prose paragraphs should indent the first line by two character widths',
 )

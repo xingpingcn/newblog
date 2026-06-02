@@ -27,16 +27,10 @@
 
 @layer components {
   .prose {
-    --prose-paragraph-gap: 3.5rem;
-
     @apply text-foreground text-base leading-7;
 
     :where(p):not(:where(.not-prose, .not-prose *)) {
-      @apply text-foreground/80 my-0;
-    }
-
-    :where(p + p):not(:where(.not-prose, .not-prose *)) {
-      @apply mt-[var(--prose-paragraph-gap)];
+      @apply text-foreground/80 my-5 indent-[2em];
     }
 
     :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) {
