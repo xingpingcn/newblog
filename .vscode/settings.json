@@ -1,0 +1,14 @@
+{
+  "[markdown]": {
+    "editor.snippetSuggestions": "top",
+    "editor.suggestSelection": "first",
+    "editor.tabCompletion": "on"
+  },
+  "[mdx]": {
+    "editor.snippetSuggestions": "top",
+    "editor.suggestSelection": "first",
+    "editor.tabCompletion": "on"
+  },
+  "markdown.editor.drop.enabled": false,
+  "markdown.editor.filePaste.enabled": false
+}

@@ -13,7 +13,7 @@
     "test:format-cjk": "node tests/format-cjk-spacing.test.mjs",
     "sync:image-metadata": "node scripts/sync-image-metadata.mjs",
     "generate:html-redirects": "node scripts/generate-html-redirects.mjs",
-    "prettier": "prettier --write **/*.{ts,tsx,css,astro,md,mdx} --ignore-path .gitignore",
+    "prettier": "prettier --write \"**/*.{md,mdx}\" --ignore-path .gitignore",
     "format:cjk": "node scripts/format-cjk-spacing.mjs",
     "format": "npm run prettier && npm run format:cjk"
   },

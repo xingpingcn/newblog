@@ -6,41 +6,24 @@
 
 ## 本地开发
 
-安装依赖：
-
-```sh
-npm install
-```
-
-启动开发服务器：
-
-```sh
-npm run dev
-```
-
-本地服务地址配置为 `http://localhost:1234/`。
-
-推送内容或模板改动前，运行完整验证：
-
-```sh
-npm run build
-```
-
-格式化项目：
-
-```sh
-npm run prettier
-```
+| 场景           | 命令               | 说明                                                       |
+| -------------- | ------------------ | ---------------------------------------------------------- |
+| 安装依赖       | `npm install`      | 首次拉取仓库后运行。                                       |
+| 启动开发服务器 | `npm run dev`      | 本地服务地址配置为 `http://localhost:1234/`。              |
+| 完整验证       | `npm run build`    | 推送内容或模板改动前运行。                                 |
+| 格式化项目     | `npm run prettier` | 只运行 Prettier；需要中英文空格整理时用 `npm run format`。 |
 
 ## 项目结构
 
-- `src/content/blog/`：博客文章和 subpost。
-- `src/content/authors/`：作者资料。
-- `src/components/figure.astro`：带图片说明的单图组件，支持懒加载、骨架占位和 PhotoSwipe。
-- `src/components/image-grid.astro`：多图网格组件，支持图片说明、懒加载、骨架占位和 PhotoSwipe。
-- `src/pages/friends.astro`：友链页，读取公开友链数据并展示申请说明。
-- `src/consts.ts`：站点元信息、导航链接、社交链接和搜索引擎验证 ID。
-- `scripts/migrate-hexo-blog.mjs`：只在本地使用的旧私有 Hexo 源迁移脚本。
+| 路径                              | 作用                                                        |
+| --------------------------------- | ----------------------------------------------------------- |
+| `src/content/blog/`               | 博客文章和 subpost。                                        |
+| `src/content/authors/`            | 作者资料。                                                  |
+| `src/components/figure.astro`     | 带图片说明的单图组件，支持懒加载、骨架占位和 PhotoSwipe。   |
+| `src/components/image-grid.astro` | 多图网格组件，支持图片说明、懒加载、骨架占位和 PhotoSwipe。 |
+| `src/pages/friends.astro`         | 友链页，读取公开友链数据并展示申请说明。                    |
+| `src/consts.ts`                   | 站点元信息、导航链接、社交链接和搜索引擎验证 ID。           |
+| `scripts/migrate-hexo-blog.mjs`   | 只在本地使用的旧私有 Hexo 源迁移脚本。                      |
 
 ## 写一篇文章
 
@@ -77,18 +60,20 @@ import ImageGrid from '@/components/image-grid.astro'
 
 支持的文章 frontmatter：
 
-- `title`：必填。
-- `description`：必填，显示在文章卡片和 meta description 中。
-- `date`：必填，会被解析为日期。
-- `tags`：可选字符串数组。只添加确实要展示在 `/tags` 的真实标签，不要为了 SEO 关键词乱加标签。
-- `authors`：可选字符串数组。当前作者使用 `['xingpingcn']`。
-- `coverImage`：可选远程图片 URL 或 `/public` 下的本地路径，用于文章卡片、文章头图和社交分享图。
-- `image`：可选本地图片，通过 Astro content collections 导入。
-- `keywords`：可选 SEO 关键词数组。
-- `pinned`：可选布尔值。设为 `true` 时，文章会置顶到普通文章前面。
-- `draft`：可选布尔值。设为 `true` 时，文章不会出现在生成页面中。
-- `canonicalURL`：可选 canonical URL，用于转载内容。
-- `license`：可选文章协议配置。默认展示旧博客迁移来的 `CC BY-NC-SA 4.0`；转载内容可以设为 `type: 'original'`，不展示协议块可以设为 `false`。
+| 字段           | 要求 | 说明                                                                                                                        |
+| -------------- | ---- | --------------------------------------------------------------------------------------------------------------------------- |
+| `title`        | 必填 | 文章标题。                                                                                                                  |
+| `description`  | 必填 | 显示在文章卡片和 meta description 中。                                                                                      |
+| `date`         | 必填 | 会被解析为日期。                                                                                                            |
+| `tags`         | 可选 | 字符串数组。只添加确实要展示在 `/tags` 的真实标签，不要为了 SEO 关键词乱加标签。                                            |
+| `authors`      | 可选 | 字符串数组。当前作者使用 `['xingpingcn']`。                                                                                 |
+| `coverImage`   | 可选 | 远程图片 URL 或 `/public` 下的本地路径，用于文章卡片、文章头图和社交分享图。                                                |
+| `image`        | 可选 | 本地图片，通过 Astro content collections 导入。                                                                             |
+| `keywords`     | 可选 | SEO 关键词数组。                                                                                                            |
+| `pinned`       | 可选 | 布尔值。设为 `true` 时，文章会置顶到普通文章前面。                                                                          |
+| `draft`        | 可选 | 布尔值。设为 `true` 时，文章不会出现在生成页面中。                                                                          |
+| `canonicalURL` | 可选 | canonical URL，用于转载内容。                                                                                               |
+| `license`      | 可选 | 文章协议配置。默认展示旧博客迁移来的 `CC BY-NC-SA 4.0`；转载内容可以设为 `type: 'original'`，不展示协议块可以设为 `false`。 |
 
 文章协议示例：
 
@@ -111,6 +96,46 @@ sourceUrl: 'https://example.com/original-post'
 
 1. 置顶文章在前；
 2. `date` 越新的文章越靠前。
+
+### VS Code 写作快捷方式
+
+仓库提供 `.vscode/mdx.code-snippets`，在 Markdown / MDX 文件里可以直接输入触发词后按 `Tab` 展开：
+
+| 触发词                                    | 插入内容                                     | 说明                                   |
+| ----------------------------------------- | -------------------------------------------- | -------------------------------------- |
+| `imports` / `import-writing`              | `Callout`、`Figure`、`ImageGrid` 三个 import | 放在 frontmatter 后、正文前。          |
+| `import-callout`                          | `Callout` import                             | 只需要提示块时使用。                   |
+| `import-figure`                           | `Figure` import                              | 只需要单图时使用。                     |
+| `import-imggrid`                          | `ImageGrid` import                           | 只需要多图网格时使用。                 |
+| `image` / `imggrid`                       | `<ImageGrid />`                              | 只插入组件块，不会自动重复 import。    |
+| `fig`                                     | `<Figure />`                                 | 单图组件块。                           |
+| `callout`                                 | `<Callout />`                                | 提示块，`variant` 会给候选项。         |
+| `callout-folded`                          | 默认折叠的 `<Callout />`                     | 会插入 `defaultOpen={false}`。         |
+| `g` / `gaoliang` / `高亮` / `inline-code` | `` `高亮内容` ``                             | 不用切英文输入反引号。                 |
+| `code` / `codeblock`                      | 普通代码块                                   | 可选择 `bash`、`ts`、`python` 等语言。 |
+| `code-title` / `codefile`                 | 带 `title` 的代码块                          | 适合展示文件名。                       |
+| `code-noline`                             | 关闭行号的代码块                             | 插入 `showLineNumbers=false`。         |
+| `code-collapse`                           | 可折叠行范围的代码块                         | 插入 `collapse={1-5}`。                |
+| `diff` / `codediff`                       | diff 代码块                                  | 支持 `lang="js"` 这类二级高亮。        |
+| `link`                                    | Markdown 链接                                | 插入 `[文字](URL)`。                   |
+| `quote`                                   | 引用块                                       | 插入 `> 引用内容`。                    |
+| `details`                                 | `<details>` 折叠块                           | 普通 HTML 折叠内容。                   |
+| `table`                                   | 三列表格                                     | 快速插入 Markdown 表格。               |
+| `math`                                    | 数学块                                       | 插入 `$$ ... $$`。                     |
+| `hr`                                      | 分隔线                                       | 插入 `---`。                           |
+
+VS Code 的快捷键配置是用户级配置，不会读取仓库里的 `.vscode/keybindings.json`。如果想选中文字后一键包成内联代码，需要打开 `Preferences: Open Keyboard Shortcuts (JSON)`，在用户级 `keybindings.json` 加：
+
+```json
+{
+  "key": "ctrl+alt+e",
+  "command": "editor.action.insertSnippet",
+  "when": "editorTextFocus && editorLangId =~ /^(markdown|mdx)$/",
+  "args": {
+    "snippet": "`${TM_SELECTED_TEXT:${1:高亮内容}}`"
+  }
+}
+```
 
 ## 添加 Subpost / 系列合集
 
@@ -174,14 +199,16 @@ tags: ['docker']
 
 Subpost 注意事项：
 
-- 目前只建议使用一层嵌套，避免写成 `parent/child/grandchild.mdx`。
-- Subpost 不会出现在首页、`/blog`、作者页和标签页。
-- 父文章页面会显示 subpost 数量和导航。
-- Subpost 页面会显示父文章链接、兄弟 subpost 的上一篇/下一篇、移动端 subpost 导航和桌面端 subpost 侧栏。
-- Subpost 按 `date` 升序排列；如果日期相同，则按 `order` 升序排列。
-- 如果希望手动控制系列顺序，建议让同一系列的 subpost 使用相同 `date`，再用 `order: 1`、`order: 2`、`order: 3` 排序。
-- 父文章的 `date` 决定合集入口在首页和 `/blog` 里的位置；子文章的 `date/order` 只影响同一合集内的顺序。
-- Subpost 页面会加 `noindex`，避免搜索引擎单独索引过薄的系列片段。
+| 项目         | 说明                                                                                                  |
+| ------------ | ----------------------------------------------------------------------------------------------------- |
+| 嵌套深度     | 目前只建议使用一层嵌套，避免写成 `parent/child/grandchild.mdx`。                                      |
+| 列表展示     | Subpost 不会出现在首页、`/blog`、作者页和标签页。                                                     |
+| 父文章页面   | 会显示 subpost 数量和导航。                                                                           |
+| Subpost 页面 | 会显示父文章链接、兄弟 subpost 的上一篇/下一篇、移动端 subpost 导航和桌面端 subpost 侧栏。            |
+| 默认排序     | Subpost 按 `date` 升序排列；如果日期相同，则按 `order` 升序排列。                                     |
+| 手动排序     | 建议让同一系列的 subpost 使用相同 `date`，再用 `order: 1`、`order: 2`、`order: 3` 排序。              |
+| 首页位置     | 父文章的 `date` 决定合集入口在首页和 `/blog` 里的位置；子文章的 `date/order` 只影响同一合集内的顺序。 |
+| 搜索引擎     | Subpost 页面会加 `noindex`，避免搜索引擎单独索引过薄的系列片段。                                      |
 
 ## 图片
 
@@ -208,8 +235,10 @@ import Figure from '@/components/figure.astro'
 
 Props：
 
-- `src`：必填图片 URL。
-- `caption`：可选可见图片说明，同时会作为图片 `alt` 和 PhotoSwipe 的说明文字。
+| Prop      | 要求 | 说明                                                          |
+| --------- | ---- | ------------------------------------------------------------- |
+| `src`     | 必填 | 图片 URL。                                                    |
+| `caption` | 可选 | 可见图片说明，同时会作为图片 `alt` 和 PhotoSwipe 的说明文字。 |
 
 图片尺寸由 `npm run sync:image-metadata` 自动同步到 `data/image-metadata.sqlite`，并生成 `src/generated/image-metadata.ts` 供组件使用。`npm run dev` 和 `npm run build` 会自动先同步一次；通常不需要在 MDX 里手写 `width` / `height`。
 
@@ -236,15 +265,19 @@ import ImageGrid from '@/components/image-grid.astro'
 
 网格行为：
 
-- 1 张图：1 列；
-- 2 张图：中等屏幕起为 2 列；
-- 3 张及以上：中等屏幕起为 2 列，超大屏幕起为 3 列。
+| 图片数量   | 网格行为                               |
+| ---------- | -------------------------------------- |
+| 1 张       | 1 列。                                 |
+| 2 张       | 中等屏幕起为 2 列。                    |
+| 3 张及以上 | 中等屏幕起为 2 列，超大屏幕起为 3 列。 |
 
 `Figure` 和 `ImageGrid` 都会使用：
 
-- 内容图片的 `loading="lazy"`；
-- 用于减少图片加载布局抖动的骨架占位；
-- 文章内容中点击图片时打开的 PhotoSwipe 大图预览。
+| 能力     | 说明                                           |
+| -------- | ---------------------------------------------- |
+| 懒加载   | 内容图片使用 `loading="lazy"`。                |
+| 骨架占位 | 用于减少图片加载时的布局抖动。                 |
+| 大图预览 | 文章内容中点击图片时打开 PhotoSwipe 大图预览。 |
 
 `ImageGrid` 会自动从同一组图片的 metadata 里找出按同宽展示时最高的图片比例，作为整组统一骨架高度；其他图片会在这个统一区域里填充显示。
 
@@ -295,7 +328,16 @@ friends: {
 
 只有带 `active` 标签的站点会显示在友链页。
 
-`avatar` 和 `screenshot` 都支持懒加载、骨架占位和失败占位。常见 jsDelivr URL 会自动规范化为 `cdn.jsdmirror.com`。
+| 字段          | 说明                                                 |
+| ------------- | ---------------------------------------------------- |
+| `title`       | 站点名。                                             |
+| `url`         | 站点链接。                                           |
+| `avatar`      | 头像 URL，支持懒加载、骨架占位和失败占位。           |
+| `screenshot`  | 截图 URL，支持懒加载、骨架占位和失败占位。           |
+| `description` | 站点简介。                                           |
+| `labels`      | 标签数组；只有带 `active` 标签的站点会显示在友链页。 |
+
+常见 jsDelivr URL 会自动规范化为 `cdn.jsdmirror.com`。
 
 ## 从旧私有博客迁移
 
