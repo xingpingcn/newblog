@@ -27,13 +27,13 @@ import ImageGrid from '@/components/image-grid.astro'
 
 在 `package.json` 找到
 
-```js
+```js title="package.json"
 "build-db": "npm-run-all copy-db-files build-db-client",
 ```
 
 然后改成
 
-```js
+```js title="package.json"
 "build-db": "npm-run-all copy-db-files build-db-client resolve-db",
 "resolve-db": "prisma migrate resolve --applied '05_add_visit_id'",
 ```

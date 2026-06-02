@@ -79,7 +79,7 @@ import ImageGrid from '@/components/image-grid.astro'
 
 你也可以使用自动化工具来定时更新 `ASN`。使用到的工具有 `aws lambda`（下文有介绍）和 `aws cloud bridge` 的定时器（需自行配置），例如每隔 10 更新一次。
 
-```python
+```python title="python"
 import requests
 # key为你的ns1 feed label；value为下载asn列表用到的url的一部分，一般情况下不需要修改
 asn_dict = {
@@ -157,7 +157,7 @@ for ns1_asn_label, gh_asn in asn_dict.items():
 
 </Callout>
 
-```python
+```python title="python"
 import requests
 
 status = True
@@ -198,7 +198,7 @@ res = requests.post(url,headers=headers,json=data)
 
 </Callout>
 
-```python
+```python title="python"
 import requests
 import base64
 import hashlib
@@ -304,7 +304,7 @@ def lambda_handler(event, context):
 
 `aws lambda` 填入以下代码
 
-```python
+```python title="python"
 import json
 import requests
 

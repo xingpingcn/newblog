@@ -232,6 +232,26 @@ function parseBlockHeader(raw) {
   return { variant, title }
 }
 
+function parseCodeBlockInfo(rawInfo) {
+  const languageMatch = rawInfo.match(/lang:([A-Za-z0-9_-]+)/i)
+  const rawLanguage = languageMatch ? languageMatch[1].toLowerCase() : ''
+  const title = rawInfo
+    .replace(/\s*lang:[A-Za-z0-9_-]+\s*/gi, ' ')
+    .replace(/\\/g, '/')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const language =
+    languageAliases.get(rawLanguage) || rawLanguage || (title ? 'text' : '')
+
+  return { language, title }
+}
+
+function serializeCodeFenceInfo(language, title) {
+  return [language, title ? `title=${JSON.stringify(title)}` : '']
+    .filter(Boolean)
+    .join(' ')
+}
+
 function rewriteHexoLinks(markdown, slugMap) {
   return markdown
     .replace(/\]\(\/blog\/([^)#]+)(#[^)]+)?\)/g, (_all, slug, hash = '') => {
@@ -350,10 +370,8 @@ function convertCodeBlocks(markdown) {
   return markdown.replace(
     /\{%\s*codeblock(?:\s+([^%]*?))?\s*%\}([\s\S]*?)\{%\s*endcodeblock\s*%\}/g,
     (_all, rawInfo = '', content) => {
-      const languageMatch = rawInfo.match(/lang:([A-Za-z0-9_-]+)/i)
-      const rawLanguage = languageMatch ? languageMatch[1].toLowerCase() : ''
-      const language = languageAliases.get(rawLanguage) || rawLanguage
-      return `\n\`\`\`${language}\n${content.replace(/^\n|\n$/g, '')}\n\`\`\`\n`
+      const { language, title } = parseCodeBlockInfo(rawInfo)
+      return `\n\`\`\`${serializeCodeFenceInfo(language, title)}\n${content.replace(/^\n|\n$/g, '')}\n\`\`\`\n`
     },
   )
 }

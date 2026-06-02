@@ -50,7 +50,7 @@ import ImageGrid from '@/components/image-grid.astro'
 
 我的 volantis 版本是 volantis `5.7`，主题文件设置中的 sidebar 的 `shadow`, `floatable`, `blur` 效果不生效
 
-```yaml
+```yaml title="_config.volantis.yml"
 sidebar:
   effect: [shadow, floatable, blur]
 ```
@@ -61,7 +61,7 @@ sidebar:
 
 找到代码
 
-```html
+```html title="blog/node_modules/hexo-theme-volantis/layout/_widget/blogger.ejs"
 <section
   class="widget <%- item.class %> <%- page.widget_platform %> <%- page.widget_pjax %>"
 ></section>
@@ -69,7 +69,7 @@ sidebar:
 
 可以看到 `class` 中是没有 `shadow`, `floatable`, `blur` 的，只需要我们手动添加关键词就能生效
 
-```html
+```html title="blog/node_modules/hexo-theme-volantis/layout/_widget/blogger.ejs"
 <section
   class="widget floatable <%- item.class %> <%- page.widget_platform %> <%- page.widget_pjax %> shadow blur"
 ></section>
@@ -84,7 +84,7 @@ sidebar:
 
 其他组件也是同样的方法，关键是要找到这行代码
 
-```html
+```html title="blog/node_modules/hexo-theme-volantis/layout/_widget/xxx.ejs"
 <section class="widget ..."></section>
 ```
 
@@ -121,7 +121,7 @@ height={935}
 
 打开 `\img.styl` 就可以修改圆角半径
 
-```styl
+```styl title="blog/node_modules/hexo-theme-volantis/source/css/_style/_layout/img.styl"
 .md
   img
     position: relative
@@ -161,7 +161,7 @@ height={935}
 
 只需要在 `\navbar_first.styl` 中修改 `z-index` 值为一个较小的数字。
 
-```styl
+```styl title="blog/node_modules/hexo-theme-volantis/source/css/_first"
 .l_header
   $iconW = 36px
   $iconMargin = 4px
@@ -178,7 +178,7 @@ height={935}
 
 </Callout>
 
-```yaml
+```yaml title="_config.yml示例"
 cdn:
   enable: true
   set:
@@ -186,7 +186,7 @@ cdn:
       style: https://cdn.example.com/style.css
 ```
 
-```html
+```html title="node_modules/hexo-theme-volantis/layout/_partial/head.ejs"
 <!-- 更改之前 -->
 <link rel="preload" href="<%- theme.cdn.map.css.style %>" as="style" />
 <!-- 更改之后 -->

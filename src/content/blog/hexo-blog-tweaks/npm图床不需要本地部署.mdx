@@ -46,7 +46,7 @@ import ImageGrid from '@/components/image-grid.astro'
 
 该文件指定了要上传的图床的名字和图床版本（不需要事先在 npm 空间创建一个空的 package）；其中名字不能和现有的 package 重复，所以写的尽量长。
 
-```json
+```json title="package.json"
 {
   "name": "",
   "version": "1.0.0",
@@ -63,7 +63,7 @@ import ImageGrid from '@/components/image-grid.astro'
 
 在 reop 的上方点击 `Action`，然后点击 `new workflow`，之后点击 `set up a workflow yourself `，名字随便（我这里是 npm-publish.yml），之后填入以下信息：
 
-```yaml
+```yaml title="npm-publish.yml"
 name: npm-publish
 
 on:
@@ -117,7 +117,7 @@ jobs:
 
 提供几个国内能用的 npm cdn
 
-```yaml
+```yaml title="npm cdn"
 https://npm.onmicrosoft.cn/,
 https://jsd.onmicrosoft.cn/npm/,
 https://cdn.jsdelivr.net/npm/,
@@ -126,13 +126,13 @@ https://unpkg.com/
 
 使用格式为：
 
-```yaml
+```yaml title="npm cdn"
 https://{cdn}/{npm_name}@{version}/path/to/resource.ext
 ```
 
 例如
 
-```yaml
+```yaml title="npm cdn"
 https://unpkg.com/html-hosting-for-xp@1.0.1/%E5%9C%A8python%E4%B8%AD%E8%BF%90%E8%A1%8Cbash%EF%BC%88windows%EF%BC%89.html
 https://jsd.onmicrosoft.cn/npm/p-hosting-for-xp@1.0.15/20230525/logo%20(2).ln5ua8psy9s.webp
 ```
@@ -147,7 +147,7 @@ https://jsd.onmicrosoft.cn/npm/p-hosting-for-xp@1.0.15/20230525/logo%20(2).ln5ua
 
 同样图床可以储存 html 文件。我是在本地编译好博客然后发布到 GitHub repo 的，因而在 push 之后依然可以在 action 中把 html 发布到 npm 空间。
 
-```json
+```json title="package.json"
 {
   "name": "",
   "version": "1.0.0",
@@ -177,7 +177,7 @@ https://jsd.onmicrosoft.cn/npm/p-hosting-for-xp@1.0.15/20230525/logo%20(2).ln5ua
 
 <Callout variant="warning">同样需要注意替换你的 branch</Callout>
 
-```bash
+```bash title="bash"
     f:
     cd f:/blog #博客根目录
     hexo clean && hexo g

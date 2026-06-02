@@ -21,7 +21,7 @@ import ImageGrid from '@/components/image-grid.astro'
 
 输入的命令可以带有空格，但是必须在最后加上 `\n`
 
-```python
+```python title="example-1"
 import subprocess
 bash_path = r'F:\Program Files\Git\bin\bash.exe'
 subp = subprocess.Popen(bash_path,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,encoding='utf8',cwd='$your_path')
@@ -37,7 +37,7 @@ subp.stdin.close()
 print(subp.stdout.read())
 ```
 
-```python
+```python title="output"
 1.1.11
 1.1.11
 1.1.11
@@ -47,7 +47,7 @@ print(subp.stdout.read())
 
 需要用到多线程 `threading` 和队列 `queue` 来实时获取输出结果。最后也不要忘记调用子进程的 `close()` 方法。
 
-```python
+```python title="example-2"
 import subprocess
 import queue
 import threading,time
@@ -71,7 +71,7 @@ subp.stdin.close()
 q.task_done()
 ```
 
-```python
+```python title="output"
 1.1.11
 wake up after 0.3s
 1.1.11

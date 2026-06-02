@@ -34,7 +34,7 @@ import ImageGrid from '@/components/image-grid.astro'
 
 需要的包版本
 
-```json
+```json title="package version"
     urllib3   1.25.11
     nodejs    16.10.0
     freecdn   0.3.1
@@ -50,7 +50,7 @@ import ImageGrid from '@/components/image-grid.astro'
 
 如果利用 Windows 来写博客，那么提交 `git` 的时候会出现 `LF will be replaced by CRLF the next time Git touches it` 的提示，`CR`（回车）就是 `\r`，`LF`（换行）就是 `\n`，Windows 平台默认换行符就是 `CRLF`(`\r\n`)，此变换会导致本地文件的 `hash` 和存放在 npm 或者 git 空间的文件的 `hash` 不一致；需要运行以下命令行:
 
-```bash
+```bash title="BASH"
 #提交检出均不转换
 git config --global core.autocrlf false
 ```
@@ -90,7 +90,7 @@ freecdn 透明模式的优势和 `配置文件` 看下面的链接
 
 首先在你的博客根目录下的 `source` 创建 `Dockerfile` 文件。（生成博客的时候会把 `source` 内的文件移动到将要被上传到 repo 的文件夹内）
 
-```yaml
+```yaml title="./source/Dockerfile"
 FROM nginx
 COPY ./ /usr/share/nginx/html
 COPY ./freecdn-boot.conf /etc/nginx
@@ -100,7 +100,7 @@ EXPOSE 443
 
 然后下载 freecdn 的两个 `配置文件`，`freecdn-boot.conf` 和 `nginx.conf`，同样放在博客根目录，只需要改动 `nginx.conf`。
 
-```yaml
+```yaml title="./source/nginx.conf"
 events {
   worker_connections      1024;
 }
@@ -163,7 +163,7 @@ br 和 gzip 压缩在 render 平台自动开启，见官网[docs](https://render
 
 之后编辑 worker。点击 `快速编辑`，写入以下代码
 
-```js
+```js title="./worker.js"
 export default {
   async scheduled(event, env, ctx) {
     var res = await fetch('https://xxx.com/favicon.ico')

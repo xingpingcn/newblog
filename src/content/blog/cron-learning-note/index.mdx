@@ -15,7 +15,7 @@ cron 笔记，包含 cron 不执行 shell 脚本的解决办法
 
 也许 shell 脚本本身可以执行，但是 cron 中不能执行，需要像下面这样设置
 
-```text
+```text title="cron-for-run-per-1h.cron"
 SHELL=/bin/bash
 0 * * * * . /etc/profile;/bin/sh /pathto/run.sh
 
@@ -26,7 +26,7 @@ SHELL=/bin/bash
 
 </Callout>
 
-```bash
+```bash title="run.sh"
 #!/bin/bash
 PATH=/opt/someApp/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 LOGS_FILE="/pathto/logs/$(date "+%Y-%m-%d-%H-%M-%S").log"
@@ -36,7 +36,7 @@ docker-compose up >> $LOGS_FILE 2>&1
 
 最后设置到 cron
 
-```bash
+```bash title="run.sh"
 crontab /pathto/cron-for-run-per-1h.cron
 ```
 
@@ -54,7 +54,7 @@ cron 的话基本必有一个 `?`，它仅可存在于 `dayofmouth` 或者 `dayo
 
 个人 docker 配置备份
 
-```docker
+```docker title="Dockerfile"
 FROM python:3.11
 WORKDIR /bin/test
 COPY ./requirements.txt ./
@@ -63,7 +63,7 @@ ENTRYPOINT [ "python" ]
 CMD [ "./test.py" ]
 ```
 
-```yaml
+```yaml title="docker-compose.yml"
 version: '3.8'
 services:
   enhanced-faas:

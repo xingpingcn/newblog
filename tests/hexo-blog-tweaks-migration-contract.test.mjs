@@ -81,6 +81,18 @@ const vercel = await readProjectFile('vercel.json')
 const parentIndex = await readProjectFile(
   `src/content/blog/${parentSlug}/index.mdx`,
 )
+const npmImageHostPost = await readProjectFile(
+  `src/content/blog/${parentSlug}/npm图床不需要本地部署.mdx`,
+)
+const pythonBashPost = await readProjectFile(
+  'src/content/blog/在python中运行bash(windows)/index.mdx',
+)
+const hexoTweakPost = await readProjectFile(
+  `src/content/blog/${parentSlug}/hexo折腾.mdx`,
+)
+const traefikPost = await readProjectFile(
+  'src/content/blog/traefik-with-waf-mtls-autocertrenew/index.mdx',
+)
 
 assert.match(
   parentIndex,
@@ -105,6 +117,53 @@ assert.match(
   /路由、组件、图片处理、代码高亮和构建流程/,
   'parent index should explain why some old theme instructions are incompatible now',
 )
+
+for (const { source, title, language, description } of [
+  {
+    source: npmImageHostPost,
+    title: 'package.json',
+    language: 'json',
+    description: 'npm image host package manifest',
+  },
+  {
+    source: npmImageHostPost,
+    title: 'npm-publish.yml',
+    language: 'yaml',
+    description: 'npm image host GitHub Actions workflow',
+  },
+  {
+    source: pythonBashPost,
+    title: 'example-1',
+    language: 'python',
+    description: 'Python subprocess example',
+  },
+  {
+    source: pythonBashPost,
+    title: 'output',
+    language: 'python',
+    description: 'Python subprocess output',
+  },
+  {
+    source: hexoTweakPost,
+    title: 'blog/node_modules/hexo-theme-volantis/layout/_widget/blogger.ejs',
+    language: 'html',
+    description: 'Hexo theme widget path',
+  },
+  {
+    source: traefikPost,
+    title: '配置结构',
+    language: 'text',
+    description: 'Traefik configuration tree',
+  },
+]) {
+  assert.match(
+    source,
+    new RegExp(
+      `\`\`\`${language}\\s+title="${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`,
+    ),
+    `${description} code block should preserve the legacy Hexo codeblock title`,
+  )
+}
 
 for (const warningDetail of [
   'Hexo',

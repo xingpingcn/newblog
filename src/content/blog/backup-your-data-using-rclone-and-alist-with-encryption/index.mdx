@@ -56,7 +56,7 @@ rclone 可以直接挂载 alist 的 [webdav](https://alist.nn.ci/zh/guide/webdav
 
 建议把同步命令写到 .sh 里，方便管理。`rclone sync` 需要先了解怎么用。
 
-```bash
+```bash title="/home/rclone/bash.sh"
 rclone sync /home/dcoker-data ali:/dcoker-data \
  --copy-links --exclude-from /home/exclude.txt –ignore-size --disable-http-keep-alives --update
 
@@ -70,7 +70,7 @@ rclone sync /home/dcoker-data ali:/dcoker-data \
 
 可以在 exclude.txt 中定义不同步哪些文件。这里给一个样板。
 
-```txt
+```txt title="/home/exclude.txt"
 tmp/**
 icon_cache/**
 **pycache**/**
@@ -82,7 +82,7 @@ alist/alist-data/temp/**
 
 可以定时备份。
 
-```bash
+```bash title="cron"
 
 # 手动把本文件放在/etc/cron.d
 

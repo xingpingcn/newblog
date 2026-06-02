@@ -20,7 +20,7 @@ import ImageGrid from '@/components/image-grid.astro'
 
 现在有这样一个文件夹
 
-```bash
+```bash title="文件夹"
 root
 |____ a.py  # 该文件作为演示的运行入口文件
 |____ b.py
@@ -41,7 +41,7 @@ root
 
 - a -> d -> b（引用父文件）
 
-```python
+```python title="python"
     # a.py
     import d
     # d.py
@@ -67,7 +67,7 @@ root
 
 ## a -> d -> b（引用父文件）
 
-```python
+```python title="python"
 # a.py
 from dir1 import d
 # d.py
@@ -99,7 +99,7 @@ from .. import b
 
 如果你真的要在运行入口文件中引用其父文件，那么这样写
 
-```python
+```python title="dir1/d.py"
 import sys
 from os import path
 sys.path(path.dirname(path.dirname(path.abspath(__file__))))

@@ -67,7 +67,7 @@ CrowdSec 的工作原理之后会说
 1. 使用 CrowdSec 作为 WAF（之后再配置 CrowdSec）
 1. 扫 443 和 80 端口的请求直接丢弃
 
-```
+```text title="配置结构"
 traefik/
 ├── acme.json
 ├── docker-compose.yml
@@ -97,7 +97,7 @@ traefik/
 
 </Callout>
 
-```yaml
+```yaml title="docker-compose.yml"
 services:
   traefik:
   image: traefik:latest # 建议使用明确的版本号，而不是 latest。现在用的是 v3
@@ -176,7 +176,7 @@ networks:
   external: true
 ```
 
-```yaml
+```yaml title="cloudflare-mtls.yml"
 tls:
     options: # 给这个 TLS 选项起一个名字
         cloudflare-mtls:
@@ -187,7 +187,7 @@ tls:
 
 ```
 
-```yaml
+```yaml title="compressor.yml"
 # traefik/dynamic_conf/middlewares.yml
 http:
   middlewares:
@@ -213,7 +213,7 @@ http:
         minResponseBodyBytes: 1024 # 即只压缩大于1KB的响应
 ```
 
-```yaml
+```yaml title="crowdsec-middleware.yml"
 http:
   middlewares:
     crowdsec-bouncer:
@@ -252,7 +252,7 @@ http:
             - '172.16.0.0/12'
 ```
 
-```yaml
+```yaml title="drop-ip-access.yml"
 http:
   routers:
     catchall-http:
@@ -306,7 +306,7 @@ tcp:
 5. local API 马上推送到所有 Bouncer（如果还配置了其他 Bouncer），其中 Traefik 中的 CrowdSec Bouncer 插件会获取最新的决策列表。
 6. 当被标记为恶意的 IP 再次尝试访问时，Bouncer 会在 Traefik 层面直接拒绝该请求，从而保护所有后端服务。
 
-```yaml
+```yaml title="crowdsec-bouncer-traefik-plugin.yml"
 services:
   crowdsec:
     image: crowdsecurity/crowdsec:latest
@@ -331,7 +331,7 @@ networks:
 
 主要通过 traefik 的标签（labels）来配置反代。
 
-```yaml
+```yaml title="docker-compose.yml"
 services:
   umami:
     image: ghcr.io/umami-software/umami:postgresql-latest

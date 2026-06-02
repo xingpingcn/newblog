@@ -65,7 +65,7 @@ import ImageGrid from '@/components/image-grid.astro'
 
 [image-size](https://www.npmjs.com/package/image-size)
 
-```js
+```js title="blog/node_modules/hexo-theme-volantis/scripts/tags/fancybox.js"
 const url = require('url')
 const http = require('http')
 
@@ -93,7 +93,7 @@ http.get(options, function (response) {
 
 得到 `宽高比` 后自定义 css 样式，以下以 `volantis` 主题为例
 
-```js
+```js title="blog/node_modules/hexo-theme-volantis/scripts/tags/fancybox.js"
 const result = `<div class='fancybox' style='position: relative; width: 100%;'>
             <a class='fancybox' pjax-fancybox itemscope itemtype="http://schema.org/ImageObject" itemprop="url" href='${url}' data-fancybox='${group}' data-caption='${alt}' style="position: relative;background-color: rgb(204, 204, 204);border-radius: 4px; padding-bottom: ${h_divide_w_str};color:gray;">
             <div style="position: absolute; left: 50%; top: 50%;transform: translate(-50%, -50%);">loading picture...</div>
@@ -109,7 +109,7 @@ const result = `<div class='fancybox' style='position: relative; width: 100%;'>
 
 [hexo 标签插件（Tag）](https://hexo.io/zh-cn/api/tag.html)
 
-```js
+```js title="blog/node_modules/hexo-theme-volantis/scripts/tags/fancybox.js"
 hexo.extend.tag.register('gallery', postFancybox, { ends: true, async: true })
 ```
 
@@ -149,7 +149,7 @@ hexo.extend.tag.register('gallery', postFancybox, { ends: true, async: true })
 
 将 `html` 代码添加到 `fancybox.js` 对应位置就能得到以上效果
 
-```js
+```js title="blog/node_modules/hexo-theme-volantis/scripts/tags/fancybox.js"
 <svg class="spinner0" viewBox="0 0 50 50">
   {' '}
   <circle
@@ -165,7 +165,7 @@ hexo.extend.tag.register('gallery', postFancybox, { ends: true, async: true })
 
 然后修改 `css` 样式
 
-```styl
+```styl title="blog/node_modules/hexo-theme-volantis/source/css/_first/base_first.styl"
 .spinner0 {
   animation: rotate 2s linear infinite;
   position: absolute;

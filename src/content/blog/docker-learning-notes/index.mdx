@@ -32,7 +32,7 @@ docker 默认创建除 `container` 的三个网络。可以通过 `docker networ
 
 </Callout>
 
-```bash
+```bash title="bash"
 root@:/bin/hy2# docker network ls
 NETWORK ID     NAME          DRIVER    SCOPE
 c069db7ead85   bridge        bridge    local
@@ -47,7 +47,7 @@ cf668a8174a8   host          host      local
 
 </Callout>
 
-```bash
+```bash title="bash"
 root@445:/bin/hy2# ip link
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
@@ -76,7 +76,7 @@ root@445:/bin/hy2# docker exec -it hy2 /bin/bash
 
 官方的 `yaml` 是使用的 `host` 模式，我现在要创建一个名为 `nginx-proxy` 的网络并且在配置文件中更改。
 
-```yaml
+```yaml title="yml"
 version: '3.9'
 services:
   hysteria:
@@ -112,7 +112,7 @@ volumes:
 
 不细心眼力不好还发现不了，是暴露端口的时候默认暴露 tcp，，，。结合 hy2 文档也知道 hy2 是基于 udp 的，然后更改配置
 
-```yaml
+```yaml title="yml"
 services:
   hysteria:
     ports:
@@ -126,7 +126,7 @@ services:
 
 最终的配置文档应该像这样的
 
-```yaml
+```yaml title="yml"
 services:
   hysteria:
     ports:
@@ -142,7 +142,7 @@ services:
 
 </Callout>
 
-```bash
+```bash title="bash"
 iptables -t nat -D PREROUTING 1
 iptables -t nat -A PREROUTING -i eth0 -p udp --dport 20000:50000 -j DNAT --to-destination :10808
 iptables-save -f /etc/iptables/rules.v4
@@ -152,7 +152,7 @@ systemctl restart iptables
 <Callout variant="warning" title="warning">
 如果使用 `ufw`，则修改以下文件。重启 `ufw` 的时候不会删除 `iptables` 已经有的规则，也就是说重复重启 `ufw` 会添加多条相同的规则，需要手动删除。
 
-```bash
+```bash title="/etc/ufw/sysctl.conf"
 net/ipv4/ip_forward=1
 ```
 
@@ -165,7 +165,7 @@ net/ipv4/ip_forward=1
 
 </Callout>
 
-```bash
+```bash title="/etc/ufw/before.rules"
 # 注意！必须在前一个filter block最后，即COMMIT之后添加！
 # don't delete the 'COMMIT' line or these rules won't be processed
 COMMIT
@@ -182,7 +182,7 @@ COMMIT
 
 最后放上配置
 
-```yaml
+```yaml title="yml"
 listen: :10808
 
 #acme:
@@ -214,7 +214,7 @@ quic:
 
 例如在同一网络内有两个 `container`，别名分别为 `nginx_test` 和 `api`，则 `nginx_test` 的反代配置应该是类似于这样的。
 
-```bash
+```bash title=".conf"
 server {
     listen       80;
     server_name  localhost;
@@ -226,7 +226,7 @@ server {
 
 以上情况只是适用于 nginx 通过 `docker` 部署的情况。而我用的是直接安装在主机的方式，反代的容器需要暴露端口到 `localhost`。
 
-```yaml
+```yaml title="yml"
 services:
   hysteria:
     ports:
@@ -250,7 +250,7 @@ hy2 并不支持和 nginx 共享 443 端口，所以需要自己用 acme 申请�
 
 可以先设置软连接。注意路径，第一个为默认的 nginx 配置路径，第二个为你要软连接的路径。
 
-```bash
+```bash title="bash"
 ln -s /etc/nginx/nginx.conf /home/nginx/nginx.conf
 ```
 
@@ -258,7 +258,7 @@ ln -s /etc/nginx/nginx.conf /home/nginx/nginx.conf
 
 先在 `conf` 中写好域名，`acme.sh` 会根据配置帮你申请域名
 
-```properties
+```properties title="conf"
 server {
     server_name domain.com;
     listen 80;
@@ -267,13 +267,13 @@ server {
 
 安装 `acme.sh` 后，`重新` 打开一个终端，输入以下命令；需要域名先指向你的 vps
 
-```bash
+```bash title="bash"
 acme.sh --issue  -d  domain.com --nginx /home/nginx/nginx.conf
 ```
 
 这里有个可以不用 `nginx` 的方法，如果使用的是华为云，可以运行以下命令。原理就是利用 api 自动添加 txt 记录。如果需要更多支持的 dns 请点击[这里](https://github.com/acmesh-official/acme.sh/wiki/dnsapi)，基本上包含了主流 dns 服务器了。
 
-```bash
+```bash title="bash"
 export HUAWEICLOUD_Username=""
 export HUAWEICLOUD_Password=""
 export HUAWEICLOUD_DomainName="" # 注意的是这个的中文名为账户名而不是域名，需要你去设置里面查看
@@ -282,7 +282,7 @@ acme.sh --issue --dns dns_huaweicloud -d example.com -d *.example.com #填写你
 
 最后运行以下命令。快到期会自动续。注意路径。
 
-```bash
+```bash title="bash"
 acme.sh --install-cert -d domain.com \
 --key-file      /home/nginx/cert/domain.com.key.pem  \
 --fullchain-file /home/nginx/cert/domain.com.cert.pem \
@@ -293,7 +293,7 @@ acme.sh --install-cert -d domain.com \
 
 再打开 `conf`，填写 `443` 端口，之后就会在过期前 30 天自动更新
 
-```properties
+```properties title="conf"
 server{
 		listen 443 ssl;
 		server_name domain.com;
@@ -321,7 +321,7 @@ server{
 
 #### Certbot
 
-```bash
+```bash title="bash"
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbott
 ```
@@ -336,14 +336,14 @@ sudo ln -s /snap/bin/certbot /usr/bin/certbott
 
 有两个，前者确定不会重启 `nginx`，后者应该会。
 
-```bash
+```bash title="bash"
 nginx -s reload
 service nginx restart
 ```
 
 ## 容器更新
 
-```bash
+```bash title="bash"
 docker-compose pull
 docker-compose up -d --remove-orphans # 重启
 docker image prune # 删除旧的
