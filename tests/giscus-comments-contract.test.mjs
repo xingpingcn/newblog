@@ -104,3 +104,21 @@ assert.match(
   /postMessage\(\s*\{\s*giscus:/,
   'comments component should update the giscus iframe when the site theme changes',
 )
+
+assert.match(
+  commentsComponent,
+  /function getResolvedSiteTheme\(\)[\s\S]*?localStorage\.getItem\(['"]theme['"]\)[\s\S]*?matchMedia\(['"]\(prefers-color-scheme: dark\)['"]\)/,
+  'comments component should resolve the initial giscus theme from stored or system dark mode when html data-theme is not ready',
+)
+
+assert.match(
+  commentsComponent,
+  /iframe\.addEventListener\(\s*['"]load['"],[\s\S]*?iframe\.dataset\.giscusReady\s*=\s*['"]true['"][\s\S]*?this\.updateTheme\(\)[\s\S]*?\{\s*once:\s*true\s*\}/,
+  'comments component should resend the active theme after the giscus iframe finishes loading',
+)
+
+assert.match(
+  commentsComponent,
+  /iframe\.dataset\.giscusReady\s*!==\s*['"]true['"][\s\S]*?return/,
+  'comments component should avoid sending theme messages before the giscus iframe is ready',
+)

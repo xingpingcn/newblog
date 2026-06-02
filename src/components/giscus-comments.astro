@@ -40,16 +40,31 @@ const { giscus } = comments
 </section>
 
 <script is:inline data-astro-rerun>
+  function getResolvedSiteTheme() {
+    const explicitTheme = document.documentElement.getAttribute('data-theme')
+    if (['dark', 'light'].includes(explicitTheme)) return explicitTheme
+
+    const storedTheme = localStorage.getItem('theme')
+    if (['dark', 'light'].includes(storedTheme)) return storedTheme
+
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light'
+  }
+
   class GiscusComments extends HTMLElement {
     themeObserver
+    frameObserver
 
     connectedCallback() {
-      this.load()
       this.observeTheme()
+      this.observeGiscusFrame()
+      this.load()
     }
 
     disconnectedCallback() {
       this.themeObserver?.disconnect()
+      this.frameObserver?.disconnect()
     }
 
     load() {
@@ -96,9 +111,37 @@ const { giscus } = comments
       })
     }
 
+    observeGiscusFrame() {
+      this.frameObserver?.disconnect()
+
+      this.frameObserver = new MutationObserver(() => {
+        this.syncGiscusFrame()
+      })
+
+      this.frameObserver.observe(this, {
+        childList: true,
+        subtree: true,
+      })
+      this.syncGiscusFrame()
+    }
+
+    syncGiscusFrame() {
+      const iframe = this.querySelector('iframe.giscus-frame')
+      if (!iframe || iframe.dataset.giscusObserved === 'true') return
+
+      iframe.dataset.giscusObserved = 'true'
+      iframe.addEventListener(
+        'load',
+        () => {
+          iframe.dataset.giscusReady = 'true'
+          this.updateTheme()
+        },
+        { once: true },
+      )
+    }
+
     currentGiscusTheme() {
-      const isDark =
-        document.documentElement.getAttribute('data-theme') === 'dark'
+      const isDark = getResolvedSiteTheme() === 'dark'
 
       return isDark
         ? (this.dataset.themeDark ?? 'dark')
@@ -108,6 +151,7 @@ const { giscus } = comments
     updateTheme() {
       const iframe = this.querySelector('iframe.giscus-frame')
       if (!iframe?.contentWindow) return
+      if (iframe.dataset.giscusReady !== 'true') return
 
       iframe.contentWindow.postMessage(
         {
