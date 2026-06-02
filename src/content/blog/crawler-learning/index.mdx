@@ -1,0 +1,80 @@
+---
+title: '记录某一测速网站的 js 逆向的过程'
+description: '记录某一测速网站的 js 逆向的过程'
+date: 2024-04-01
+tags: []
+keywords: ['爬虫', '测速网站', 'js 逆向']
+authors: ['xingpingcn']
+license:
+  type: 'cc-by-nc-sa-4.0'
+---
+
+import Callout from '@/components/callout.astro'
+import Figure from '@/components/figure.astro'
+import ImageGrid from '@/components/image-grid.astro'
+
+## 前言
+
+该网站是一个免费的测速网站，我想要实现自动化测速，于是就做一下爬虫，随便记录一下。意想不到的是网站没有做反爬，，，感觉完全不能称为 js 逆向，，
+
+## 分析网站
+
+打开控制台，发现有用信息是用 `websocket` 传输的，需要的是一段 `id`，猜测 `id` 包含需要被测速网站的 `url`。返回的信息包括 id 和 `session_id`，猜测 `session_id` 是对应测速节点的 `id`，但是返回的信息里面并没有写明是哪个测速节点，只包含了测速的结果。
+
+<ImageGrid
+  images={[
+    {
+      src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/image.6wqgn65drk.webp',
+      caption: '需要请求的 url',
+    },
+    {
+      src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/image.es8tuug3q.webp',
+      caption: '返回的信息',
+    },
+  ]}
+/>
+
+现在需要找到如何生成 `id` 的。打开调用栈，每个函数都打开看一下，发现一个可能是发送 `websocket` 的函数。
+
+<ImageGrid
+  images={[
+    {
+      src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/image.7zq5y2an2y.webp',
+      caption: '调用栈',
+    },
+    {
+      src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/image.9kfwxjb1pb.webp',
+      caption: '可疑点',
+    },
+  ]}
+/>
+
+之后搜索这个 `e` 是哪里生成的，按 `ctrl+f` 搜索，发现了定义 e 的位置。之后有一个 `ae(e)` 的操作，打个断点看一下。这个 e 的内容包含了我要测速的网站还有测速的 `GET` 方法和其他一些自定义配置。
+
+之后 `F10` 继续运行，发现这个 `a` 是包含我所要的所有信息的，包括前面提到的 `id` 和 `session_id` 是对应测速节点的信息（ISP，位置等）。也就是说 `ae(e)` 是获取 `id` 的那个函数。
+
+<ImageGrid
+  images={[
+    {
+      src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/image.45f0pz9rr.webp',
+      caption: '定义 e',
+    },
+    {
+      src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/image.60tz7qk5zd.webp',
+      caption: '断点 e',
+    },
+    {
+      src: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/image.67x736apq9.webp',
+      caption: 'a 的值',
+    },
+  ]}
+/>
+
+跳转到 `ae()`，发现有 `POST` 的关键词，并且在上面找到了 `path`，尝试一下把 `e` 的内容构造成一个 `json`，并且 `POST` 到对应 `url`，结果报错。
+
+<Figure
+  src="https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/image.7awwe2eatt.webp"
+  caption="关键词"
+/>
+
+之后把 `json` 的内容一些一些删去，发现如果有多余的内容是不行的，只能带有必要的内容，否则报错。返回的内容也令我满意，到此 js 逆向结束。
