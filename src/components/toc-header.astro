@@ -152,9 +152,7 @@ const { headings } = Astro.props
       }
 
       state.headings = Array.from(
-        contentContainer.querySelectorAll<HTMLElement>(
-          'h2, h3, h4, h5, h6',
-        ),
+        contentContainer.querySelectorAll<HTMLElement>('h2, h3, h4, h5, h6'),
       )
 
       if (state.headings.length === 0) {
@@ -162,7 +160,8 @@ const { headings } = Astro.props
         return
       }
 
-      const contentEnd = contentContainer.offsetTop + contentContainer.offsetHeight
+      const contentEnd =
+        contentContainer.offsetTop + contentContainer.offsetHeight
       state.regions = state.headings.map((heading, index) => {
         const nextHeading = state.headings[index + 1]
         return {
@@ -319,7 +318,8 @@ const { headings } = Astro.props
       if (Math.abs(targetScroll - scrollContainer.scrollTop) > 5) {
         scrollContainer.scrollTo({
           top: targetScroll,
-          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+            .matches
             ? 'auto'
             : 'smooth',
         })
@@ -370,8 +370,7 @@ const { headings } = Astro.props
       const contentEnd = contentContainer
         ? contentContainer.offsetTop + contentContainer.offsetHeight
         : document.documentElement.scrollHeight
-      const scrollableDistance =
-        Math.max(contentEnd - window.innerHeight, 0)
+      const scrollableDistance = Math.max(contentEnd - window.innerHeight, 0)
       const scrollProgress =
         scrollableDistance > 0
           ? Math.min(Math.max(window.scrollY / scrollableDistance, 0), 1)

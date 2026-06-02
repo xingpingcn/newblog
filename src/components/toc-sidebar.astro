@@ -185,9 +185,7 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
       }
 
       state.headings = Array.from(
-        contentContainer.querySelectorAll<HTMLElement>(
-          'h2, h3, h4, h5, h6',
-        ),
+        contentContainer.querySelectorAll<HTMLElement>('h2, h3, h4, h5, h6'),
       )
 
       if (state.headings.length === 0) {
@@ -195,7 +193,8 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
         return
       }
 
-      const contentEnd = contentContainer.offsetTop + contentContainer.offsetHeight
+      const contentEnd =
+        contentContainer.offsetTop + contentContainer.offsetHeight
       state.regions = state.headings.map((heading, index) => {
         const nextHeading = state.headings[index + 1]
         return {

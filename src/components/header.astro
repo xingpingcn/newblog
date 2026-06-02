@@ -194,7 +194,10 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
         if (!Number.isFinite(height) || height <= 0) return
         if (Math.abs(height - motionHeight) < 0.5) return
         motionHeight = height
-        pageHeader?.style.setProperty('--site-header-motion-height', `${height}px`)
+        pageHeader?.style.setProperty(
+          '--site-header-motion-height',
+          `${height}px`,
+        )
         pageHeader?.style.setProperty(
           '--site-header-motion-hide-offset',
           `${-height}px`,

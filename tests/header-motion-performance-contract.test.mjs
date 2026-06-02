@@ -497,7 +497,7 @@ assert(
 
 assert.match(
   tocHeader,
-  /scrollContainer\.scrollTo\(\s*\{[\s\S]*?top:\s*targetScroll[\s\S]*?behavior:\s*window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches\s*\?\s*'auto'\s*:\s*'smooth'[\s\S]*?\}\s*\)/,
+  /scrollContainer\.scrollTo\(\s*\{[\s\S]*?top:\s*targetScroll[\s\S]*?behavior:\s*window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\s*\.matches\s*\?\s*'auto'\s*:\s*'smooth'[\s\S]*?\}\s*\)/,
   'mobile TOC should smoothly move the active item inside the opened TOC list',
 )
 

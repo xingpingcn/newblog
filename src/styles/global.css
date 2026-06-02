@@ -457,8 +457,7 @@
     box-shadow: none;
   }
 
-  .site-page-header.not-top:not([data-header-hidden])
-    .site-header-shell {
+  .site-page-header.not-top:not([data-header-hidden]) .site-header-shell {
     border-color: transparent;
     background-color: transparent;
     -webkit-backdrop-filter: none;
@@ -466,8 +465,7 @@
     box-shadow: none;
   }
 
-  .site-page-header.not-top:not([data-header-hidden])
-    .mobile-subposts-header {
+  .site-page-header.not-top:not([data-header-hidden]) .mobile-subposts-header {
     background-color: transparent;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
