@@ -21,6 +21,9 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   site: 'https://xingpingcn.top',
+  build: {
+    inlineStylesheets: 'always',
+  },
   integrations: [
     mdx(),
     react(),
