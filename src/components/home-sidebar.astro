@@ -29,7 +29,7 @@ const visibleTags = tags.slice(0, 12)
         visibleTags.map(({ tag, count }) => (
           <Link href={tagHref(tag)} class={badgeVariants({ variant: 'muted' })}>
             {tag}
-            <span class="text-muted-foreground ml-1">({count})</span>
+            <span class="ml-1">({count})</span>
           </Link>
         ))
       }

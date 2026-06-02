@@ -32,9 +32,9 @@ const { posts, author, tags, currentPage, totalPages } = Astro.props
   <section class="flex min-w-0 flex-col gap-y-5 lg:col-start-1 lg:row-start-2">
     <ul class="flex flex-col gap-y-4">
       {
-        posts.map((post) => (
+        posts.map((post, index) => (
           <li>
-            <BlogCard entry={post} />
+            <BlogCard entry={post} priorityImage={currentPage === 1 && index === 0} />
           </li>
         ))
       }

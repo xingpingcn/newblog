@@ -18,9 +18,10 @@ import Link from './link.astro'
 
 interface Props {
   entry: CollectionEntry<'blog'>
+  priorityImage?: boolean
 }
 
-const { entry } = Astro.props
+const { entry, priorityImage = false } = Astro.props
 const formattedDate = formatDate(entry.data.date)
 const readTime = await getCombinedReadingTime(entry.id)
 const authors = await parseAuthors(entry.data.authors ?? [])
@@ -45,6 +46,7 @@ const linkTarget = getPostLinkTarget(entry)
             alt={entry.data.title}
             width={1200}
             height={630}
+            priority={priorityImage}
             class="absolute inset-0 size-full object-cover opacity-0 transition-opacity duration-300 data-[loaded=true]:opacity-100"
             onload="this.dataset.loaded = 'true'"
           />
@@ -58,8 +60,9 @@ const linkTarget = getPostLinkTarget(entry)
               alt={entry.data.title}
               width="1200"
               height="630"
-              loading="lazy"
-              decoding="async"
+              loading={priorityImage ? 'eager' : 'lazy'}
+              decoding={priorityImage ? 'sync' : 'async'}
+              fetchpriority={priorityImage ? 'high' : undefined}
               class="absolute inset-0 size-full object-cover opacity-0 transition-opacity duration-300 data-[loaded=true]:opacity-100"
               onload="this.dataset.loaded = 'true'"
             />

@@ -9,6 +9,8 @@ async function readProjectFile(path) {
 
 const pageHead = await readProjectFile('src/components/page-head.astro')
 const postHead = await readProjectFile('src/components/post-head.astro')
+const robotsRoute = await readProjectFile('src/pages/robots.txt.ts')
+const homeSidebar = await readProjectFile('src/components/home-sidebar.astro')
 const testPost = await readProjectFile('src/content/blog/test4/index.mdx')
 const homePage = await readProjectFile('dist/index.html')
 const blogPage = await readProjectFile('dist/blog/index.html')
@@ -76,4 +78,44 @@ assert.doesNotMatch(
   sitemap,
   /test4/,
   'test4 should not appear in the generated sitemap',
+)
+
+assert.doesNotMatch(
+  robotsRoute,
+  /Disallow:\s*https?:\/\//,
+  'robots.txt rules should not disallow absolute external URLs',
+)
+
+assert.doesNotMatch(
+  homePage,
+  /<a\b(?=[^>]*data-slot="pagination-link")(?=[^>]*data-disabled="true")[^>]*>/,
+  'disabled pagination controls should not render uncrawlable anchor elements',
+)
+
+assert.match(
+  homePage,
+  /<span\b(?=[^>]*role="link")(?=[^>]*aria-disabled="true")(?=[^>]*data-slot="pagination-link")(?=[^>]*data-disabled="true")[^>]*>/,
+  'disabled pagination controls should keep valid link semantics without rendering anchors',
+)
+
+const firstHomeImage =
+  homePage.match(/<img\b(?=[^>]*alt="提升部署在 cloudflare、vercel 或 netlify 的网站在中国国内的访问速度和稳定性")[^>]*>/)?.[0] ??
+  ''
+
+assert.match(
+  firstHomeImage,
+  /\sloading="eager"/,
+  'the first home article image should load eagerly for mobile LCP',
+)
+
+assert.match(
+  firstHomeImage,
+  /\sfetchpriority="high"/,
+  'the first home article image should receive high fetch priority for mobile LCP',
+)
+
+assert.doesNotMatch(
+  homeSidebar,
+  /<span class="text-muted-foreground ml-1">\(\{count\}\)<\/span>/,
+  'home sidebar tag counts should avoid muted text on muted badges',
 )

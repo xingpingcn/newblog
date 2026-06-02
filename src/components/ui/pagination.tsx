@@ -50,20 +50,38 @@ function PaginationLink({
   size = 'icon',
   ...props
 }: PaginationLinkProps) {
+  const classNames = cn(
+    buttonVariants({
+      variant: isActive ? 'outline' : 'ghost',
+      size,
+    }),
+    isDisabled && 'pointer-events-none opacity-50',
+    className,
+  )
+
+  if (isDisabled) {
+    const { href: _href, onClick: _onClick, ...spanProps } = props
+
+    return (
+      <span
+        role="link"
+        aria-disabled="true"
+        data-slot="pagination-link"
+        data-active={isActive}
+        data-disabled={isDisabled}
+        className={classNames}
+        {...spanProps}
+      />
+    )
+  }
+
   return (
     <a
       aria-current={isActive ? 'page' : undefined}
       data-slot="pagination-link"
       data-active={isActive}
       data-disabled={isDisabled}
-      className={cn(
-        buttonVariants({
-          variant: isActive ? 'outline' : 'ghost',
-          size,
-        }),
-        isDisabled && 'pointer-events-none opacity-50',
-        className,
-      )}
+      className={classNames}
       {...props}
     />
   )
