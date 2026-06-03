@@ -46,6 +46,65 @@ import Favicons from './favicons.astro'
     media="(prefers-color-scheme: light)"
     data-site-theme-color
   />
+  <style is:inline>
+    html[data-scroll-restore-pending] body {
+      visibility: hidden;
+    }
+  </style>
+  <script is:inline>
+    ;(() => {
+      const getSavedScrollPosition = () => {
+        const state = history.state
+
+        if (
+          !state ||
+          typeof state.scrollX !== 'number' ||
+          typeof state.scrollY !== 'number' ||
+          state.scrollY <= 0
+        ) {
+          return null
+        }
+
+        return {
+          left: state.scrollX,
+          top: state.scrollY,
+        }
+      }
+
+      const navigationEntry = performance.getEntriesByType('navigation')[0]
+      const isBackForwardNavigation =
+        navigationEntry instanceof PerformanceNavigationTiming &&
+        navigationEntry.type === 'back_forward'
+      const savedPosition = isBackForwardNavigation
+        ? getSavedScrollPosition()
+        : null
+
+      if (!savedPosition) {
+        return
+      }
+
+      const root = document.documentElement
+      root.setAttribute('data-scroll-restore-pending', '')
+
+      const revealScrollRestoredPage = () => {
+        root.removeAttribute('data-scroll-restore-pending')
+      }
+
+      const restoreSavedScroll = () => {
+        window.scrollTo({
+          left: savedPosition.left,
+          top: savedPosition.top,
+          behavior: 'instant',
+        })
+        requestAnimationFrame(revealScrollRestoredPage)
+      }
+
+      window.addEventListener('pageshow', restoreSavedScroll, {
+        once: true,
+      })
+      window.setTimeout(revealScrollRestoredPage, 1200)
+    })()
+  </script>
 
   <link rel="sitemap" href="/sitemap.xml" />
   <link rel="manifest" href="/site.webmanifest" />

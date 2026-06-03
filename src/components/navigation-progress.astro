@@ -20,6 +20,7 @@
     let resetTimer: number | undefined
     let fallbackTimer: number | undefined
     let isNavigationPreparing = false
+    let restoreTraverseScroll: (() => void) | undefined
 
     const clearTimers = () => {
       window.clearTimeout(startTimer)
@@ -48,6 +49,84 @@
         url.origin === window.location.origin &&
         (url.pathname !== location.pathname || url.search !== location.search)
       )
+    }
+
+    const getHistoryScrollPosition = () => {
+      const state = history.state as
+        | { scrollX?: unknown; scrollY?: unknown }
+        | null
+
+      if (
+        typeof state?.scrollX !== 'number' ||
+        typeof state.scrollY !== 'number'
+      ) {
+        return null
+      }
+
+      return {
+        left: state.scrollX,
+        top: state.scrollY,
+      }
+    }
+
+    const isAstroTopReset = (args: unknown[]) => {
+      if (args.length !== 1) {
+        return false
+      }
+
+      const options = args[0]
+
+      if (!options || typeof options !== 'object') {
+        return false
+      }
+
+      const { behavior, left, top } = options as ScrollToOptions
+
+      return (
+        behavior === 'instant' &&
+        Number(left ?? 0) === 0 &&
+        Number(top ?? 0) === 0
+      )
+    }
+
+    const guardTraverseScrollRestore = () => {
+      const savedPosition = getHistoryScrollPosition()
+
+      if (!savedPosition) {
+        return
+      }
+
+      const originalScrollTo = window.scrollTo
+      const scrollTo = originalScrollTo.bind(window) as typeof window.scrollTo
+      let suppressTraverseTopScroll = true
+
+      const patchedScrollTo = ((...args: [ScrollToOptions] | [number, number]) => {
+        if (suppressTraverseTopScroll && isAstroTopReset(args)) {
+          suppressTraverseTopScroll = false
+          return
+        }
+
+        if (args.length === 1) {
+          scrollTo(args[0])
+          return
+        }
+
+        scrollTo(args[0], args[1])
+      }) as typeof window.scrollTo
+
+      window.scrollTo = patchedScrollTo
+
+      restoreTraverseScroll = () => {
+        if (window.scrollTo === patchedScrollTo) {
+          window.scrollTo = originalScrollTo
+        }
+
+        scrollTo({
+          left: savedPosition.left,
+          top: savedPosition.top,
+          behavior: 'instant',
+        })
+      }
     }
 
     const show = () => {
@@ -132,6 +211,18 @@
       window.clearTimeout(startTimer)
       window.clearTimeout(fallbackTimer)
     })
+    document.addEventListener('astro:before-swap', (event) => {
+      if (
+        'navigationType' in event &&
+        event.navigationType === 'traverse'
+      ) {
+        guardTraverseScrollRestore()
+      }
+    })
+    document.addEventListener('astro:after-swap', () => {
+      restoreTraverseScroll?.()
+      restoreTraverseScroll = undefined
+    })
     document.addEventListener('astro:page-load', finish)
     window.addEventListener('hashchange', finish, { passive: true })
     window.addEventListener('pageshow', finish, { passive: true })
@@ -140,6 +231,7 @@
       'pagehide',
       () => {
         clearTimers()
+        restoreTraverseScroll = undefined
         isNavigationPreparing = false
         progress.dataset.state = 'idle'
       },
