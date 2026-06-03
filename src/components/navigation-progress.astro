@@ -20,11 +20,6 @@
     let resetTimer: number | undefined
     let fallbackTimer: number | undefined
     let isNavigationPreparing = false
-    let restoreTraverseScroll: (() => void) | undefined
-    let restoreHomeLinkScroll: (() => void) | undefined
-
-    const HOME_SCROLL_SNAPSHOT_KEY = 'newblog:home-scroll-snapshot'
-    const HOME_PATH = '/'
 
     const clearTimers = () => {
       window.clearTimeout(startTimer)
@@ -32,23 +27,6 @@
       window.clearTimeout(resetTimer)
       window.clearTimeout(fallbackTimer)
     }
-
-    const normalizePath = (pathname: string) =>
-      pathname === HOME_PATH ? HOME_PATH : pathname.replace(/\/$/, '')
-
-    const getUrlPath = (url: URL) =>
-      `${normalizePath(url.pathname)}${url.search}`
-
-    const getCurrentPath = () =>
-      `${normalizePath(window.location.pathname)}${window.location.search}`
-
-    const isHomeUrl = (url: URL) =>
-      url.origin === window.location.origin &&
-      url.pathname === HOME_PATH &&
-      url.search === ''
-
-    const isCurrentHomePage = () =>
-      window.location.pathname === HOME_PATH && window.location.search === ''
 
     const isModifiedClick = (event: PointerEvent) =>
       event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
@@ -70,216 +48,6 @@
         url.origin === window.location.origin &&
         (url.pathname !== location.pathname || url.search !== location.search)
       )
-    }
-
-    const getHistoryScrollPosition = () => {
-      const state = history.state as {
-        scrollX?: unknown
-        scrollY?: unknown
-      } | null
-
-      if (
-        typeof state?.scrollX !== 'number' ||
-        typeof state.scrollY !== 'number'
-      ) {
-        return null
-      }
-
-      return {
-        left: state.scrollX,
-        top: state.scrollY,
-      }
-    }
-
-    const getEventUrl = (event: Event, key: 'from' | 'to') => {
-      if (!(key in event)) {
-        return null
-      }
-
-      const value = (event as Event & { from?: unknown; to?: unknown })[key]
-      return value instanceof URL ? value : null
-    }
-
-    const getHomeScrollSnapshot = () => {
-      try {
-        const rawSnapshot = sessionStorage.getItem(HOME_SCROLL_SNAPSHOT_KEY)
-
-        if (!rawSnapshot) {
-          return null
-        }
-
-        const snapshot = JSON.parse(rawSnapshot) as {
-          left?: unknown
-          top?: unknown
-          targetPath?: unknown
-          savedAt?: unknown
-        }
-
-        if (
-          typeof snapshot.left !== 'number' ||
-          typeof snapshot.top !== 'number' ||
-          typeof snapshot.targetPath !== 'string' ||
-          snapshot.top <= 0
-        ) {
-          return null
-        }
-
-        return {
-          left: snapshot.left,
-          top: snapshot.top,
-          targetPath: snapshot.targetPath,
-          savedAt:
-            typeof snapshot.savedAt === 'number'
-              ? snapshot.savedAt
-              : Date.now(),
-        }
-      } catch {
-        return null
-      }
-    }
-
-    const saveHomeScrollSnapshot = (targetUrl: URL | null) => {
-      if (
-        !targetUrl ||
-        !isCurrentHomePage() ||
-        targetUrl.origin !== window.location.origin ||
-        isHomeUrl(targetUrl)
-      ) {
-        return
-      }
-
-      sessionStorage.setItem(
-        HOME_SCROLL_SNAPSHOT_KEY,
-        JSON.stringify({
-          left: window.scrollX,
-          top: window.scrollY,
-          targetPath: getUrlPath(targetUrl),
-          savedAt: Date.now(),
-        }),
-      )
-    }
-
-    const isArticlePage = () =>
-      Boolean(document.querySelector('[data-article-content]'))
-
-    const isHomeLinkSource = (sourceElement: unknown) => {
-      const link =
-        sourceElement instanceof Element
-          ? sourceElement.closest<HTMLAnchorElement>('a[href]')
-          : null
-
-      if (!link) {
-        return false
-      }
-
-      const url = new URL(link.href)
-      return (
-        url.origin === window.location.origin &&
-        url.pathname === '/' &&
-        url.search === ''
-      )
-    }
-
-    const isAstroTopReset = (args: unknown[]) => {
-      if (args.length !== 1) {
-        return false
-      }
-
-      const options = args[0]
-
-      if (!options || typeof options !== 'object') {
-        return false
-      }
-
-      const { behavior, left, top } = options as ScrollToOptions
-
-      return (
-        behavior === 'instant' &&
-        Number(left ?? 0) === 0 &&
-        Number(top ?? 0) === 0
-      )
-    }
-
-    const guardScrollRestore = (
-      savedPosition: { left: number; top: number },
-      assignRestore: (restore: () => void) => void,
-    ) => {
-      const originalScrollTo = window.scrollTo
-      const scrollTo = originalScrollTo.bind(window) as typeof window.scrollTo
-      let suppressRestoreTopScroll = true
-
-      const patchedScrollTo = ((
-        ...args: [ScrollToOptions] | [number, number]
-      ) => {
-        if (suppressRestoreTopScroll && isAstroTopReset(args)) {
-          suppressRestoreTopScroll = false
-          return
-        }
-
-        if (args.length === 1) {
-          scrollTo(args[0])
-          return
-        }
-
-        scrollTo(args[0], args[1])
-      }) as typeof window.scrollTo
-
-      window.scrollTo = patchedScrollTo
-
-      assignRestore(() => {
-        if (window.scrollTo === patchedScrollTo) {
-          window.scrollTo = originalScrollTo
-        }
-
-        scrollTo({
-          left: savedPosition.left,
-          top: savedPosition.top,
-          behavior: 'instant',
-        })
-      })
-    }
-
-    const guardTraverseScrollRestore = () => {
-      const savedPosition = getHistoryScrollPosition()
-
-      if (!savedPosition) {
-        return
-      }
-
-      guardScrollRestore(savedPosition, (restore) => {
-        restoreTraverseScroll = restore
-      })
-    }
-
-    const guardHomeLinkScrollRestore = (savedPosition: {
-      left: number
-      top: number
-    }) => {
-      guardScrollRestore(savedPosition, (restore) => {
-        restoreHomeLinkScroll = () => {
-          restore()
-          sessionStorage.removeItem(HOME_SCROLL_SNAPSHOT_KEY)
-        }
-      })
-    }
-
-    const prepareHomeLinkScrollRestore = (event: Event) => {
-      if (!isArticlePage()) {
-        return
-      }
-
-      const snapshot = getHomeScrollSnapshot()
-
-      if (
-        !snapshot ||
-        snapshot.targetPath !== getCurrentPath() ||
-        !('sourceElement' in event) ||
-        !isHomeLinkSource(event.sourceElement)
-      ) {
-        return
-      }
-
-      guardHomeLinkScrollRestore(snapshot)
     }
 
     const show = () => {
@@ -359,28 +127,10 @@
     window.addEventListener('touchmove', cancel, { passive: true })
     window.addEventListener('popstate', startSoon, { passive: true })
 
-    document.addEventListener('astro:before-preparation', (event) => {
-      saveHomeScrollSnapshot(getEventUrl(event, 'to'))
-      start()
-    })
+    document.addEventListener('astro:before-preparation', start)
     document.addEventListener('astro:after-preparation', () => {
       window.clearTimeout(startTimer)
       window.clearTimeout(fallbackTimer)
-    })
-    document.addEventListener('astro:before-swap', (event) => {
-      if ('navigationType' in event && event.navigationType === 'traverse') {
-        guardTraverseScrollRestore()
-      }
-
-      if ('navigationType' in event && event.navigationType === 'push') {
-        prepareHomeLinkScrollRestore(event)
-      }
-    })
-    document.addEventListener('astro:after-swap', () => {
-      restoreTraverseScroll?.()
-      restoreTraverseScroll = undefined
-      restoreHomeLinkScroll?.()
-      restoreHomeLinkScroll = undefined
     })
     document.addEventListener('astro:page-load', finish)
     window.addEventListener('hashchange', finish, { passive: true })
@@ -390,8 +140,6 @@
       'pagehide',
       () => {
         clearTimers()
-        restoreTraverseScroll = undefined
-        restoreHomeLinkScroll = undefined
         isNavigationPreparing = false
         progress.dataset.state = 'idle'
       },
