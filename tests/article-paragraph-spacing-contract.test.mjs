@@ -6,8 +6,8 @@ const typography = await readFile(new URL('src/styles/typography.css', root), 'u
 
 assert.match(
   typography,
-  /:where\(p\):not\(:where\(\.not-prose, \.not-prose \*\)\)\s*\{[\s\S]*?@apply\s+text-foreground\/80\s+my-5;/,
-  'article prose paragraphs should keep the normal paragraph rhythm without first-line indentation',
+  /:where\(p\):not\(:where\(\.not-prose, \.not-prose \*\)\)\s*\{[\s\S]*?@apply\s+text-foreground\/80\s+my-5\s+indent-\[2em\];/,
+  'normal article prose paragraphs should keep the normal paragraph rhythm with a two-character first-line indent',
 )
 
 assert.doesNotMatch(
@@ -16,8 +16,8 @@ assert.doesNotMatch(
   'article prose should not force a special two-line gap between consecutive paragraphs',
 )
 
-assert.doesNotMatch(
+assert.match(
   typography,
-  /indent-\[2em\]|text-indent/,
-  'article prose, about page prose, and callout body text should not render with a two-character first-line indent',
+  /:where\(li\s*>\s*p,\s*details\s+p,\s*p\.prose-no-indent\):not\([\s\S]*?:where\(\.not-prose, \.not-prose \*\)[\s\S]*?\)\s*\{[\s\S]*?@apply\s+indent-0;/,
+  'list paragraphs, callout paragraphs, and explicitly marked prose paragraphs should opt out of the normal two-character indent',
 )
