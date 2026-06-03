@@ -150,6 +150,42 @@ assert.match(
 
 assert.match(
   progress,
+  /HOME_SCROLL_SNAPSHOT_KEY/,
+  'navigation component should keep a session-scoped home scroll snapshot for article-to-home link returns',
+)
+
+assert.match(
+  progress,
+  /sessionStorage\.setItem\(\s*HOME_SCROLL_SNAPSHOT_KEY/,
+  'navigation component should save the home scroll position before leaving the home feed',
+)
+
+assert.match(
+  progress,
+  /document\.querySelector\(['"]\[data-article-content\]['"]\)/,
+  'navigation component should only treat article pages as article-to-home return origins',
+)
+
+assert.match(
+  progress,
+  /sourceElement[\s\S]*?closest<HTMLAnchorElement>\(['"]a\[href\]['"]\)[\s\S]*?pathname\s*===\s*['"]\/['"]/,
+  'navigation component should identify explicit home-link returns from the clicked link target',
+)
+
+assert.match(
+  progress,
+  /navigationType\s*===\s*'push'[\s\S]*?prepareHomeLinkScrollRestore/,
+  'home-link restores should apply to explicit push navigations back to the home page',
+)
+
+assert.match(
+  progress,
+  /guardHomeLinkScrollRestore/,
+  'home-link returns should suppress Astro top-reset scrolling and restore the saved home position after the swap',
+)
+
+assert.match(
+  progress,
   /transition:persist/,
   'progress indicator should persist across Astro document swaps',
 )
