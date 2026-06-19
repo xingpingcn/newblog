@@ -1,6 +1,6 @@
 ---
-title: '让 traefik 代替你的 waf（使用 CrowdSec）+ nginx + acme.sh + mtls-auth'
-description: '本文详细介绍了如何使用 Traefik 作为现代化的反向代理和入口网关，并整合 CrowdSec 作为 WAF 进行安全防护、抛弃通过 acme.sh 实现证书自动续期的方案，以及配置 mTLS 客户端认证来增强安全性，全面取代传统的 Nginx 方案。'
+title: '用 Traefik + CrowdSec + Cloudflare mTLS 做 Docker 入口'
+description: '按当前主机配置整理 Traefik v3、CrowdSec AppSec、Cloudflare Authenticated Origin Pull、DOCKER-USER Cloudflare allowlist、自动证书和业务容器 labels。'
 date: 2025-07-16
 tags: []
 keywords:
@@ -9,10 +9,10 @@ keywords:
     'CrowdSec',
     'WAF',
     'mTLS',
-    'acme.sh',
+    'Cloudflare',
+    'Authenticated Origin Pull',
     'Docker',
     '反向代理',
-    'Nginx',
     '证书自动续期',
     '网络安全',
   ]
@@ -21,51 +21,56 @@ coverImage: 'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/
 ---
 
 import Callout from '@/components/callout.astro'
-import Figure from '@/components/figure.astro'
-import ImageGrid from '@/components/image-grid.astro'
 
-traefik 可以帮你：
+这套入口现在主要做这几件事：
 
-1. 自动续证书
-1. 反代（自动处理 ws、tls 证书、反代地址、压缩 etc.）
-1. 使用插件代替 waf
-1. 负载均衡（可以使用多个后端、k8s）
-1. 支持 mTLS 认证（如果你使用的是 Cloudflare 的 CDN）
-
-## 前言
-
-本文是对[traefik](https://traefik.io/)的一个简单介绍，主要介绍如何使用 traefik 来代替 waf（使用 CrowdSec）、nginx、acme.sh、mtls-auth 等。
-
-traefik 会是你服务器的入口，所有的请求都会先经过 traefik，然后再转发到后端服务。
-
-后端服务也不用配置绑定的端口和 ip 了（例如 `docker.port: 127.0.0.1:8080:8080`，然后 nginx 反代，每个服务都要记住端口很麻烦），traefik 会自动处理。
-
-<Callout variant="note" title="info">
-主要贴出配置，注意多看注释
-
-</Callout>
+1. Traefik 负责 80/443 入口、Docker 服务发现、自动申请和续期 Let's Encrypt 证书。
+2. Cloudflare Authenticated Origin Pull 负责 mTLS，只有 Cloudflare 带客户端证书回源时业务路由才放行。
+3. CrowdSec bouncer 挂在 Traefik entrypoint 上，负责 IP 决策拦截，并把请求转给 CrowdSec AppSec 做 inline WAF 判断。
+4. UFW 的 `DOCKER-USER` 链只允许 Cloudflare IP 段打进 Docker 暴露的 80/443，作为 mTLS 外面的第二层保护。
 
 <Callout variant="warning" title="IMPORTANT">
-CrowdSec 的工作原理之后会说
-
+  下面的配置按当前主机整理，但我把真实邮箱、`CrowdsecLapiKey`、Basic Auth hash
+  等敏感值换成了占位符。不要把服务器上的真实 key 写进公开博客。
 </Callout>
 
-<Callout variant="note" title="info">
-简单说一下 mtls 的好处
+## 旧配置的问题
 
-1. 如果其他人通过你的域名扫描全网 ip，没有 mtls 很容易就扫到你的服务器 ip 了，然后被定点攻击
-1. 如果你使用了 mtls 认证，其他人就算扫到你的 ip 也无法访问你的服务，除非他有 cf 的客户端证书，这个只有 cf 有私钥，无法伪造
+原来那版配置能表达大方向，但有几处实际问题：
 
-</Callout>
+1. `docker-compose.yml` 里 `traefik:` 下面的缩进不对，直接复制不能跑。
+2. `cloudflare-mtls.yml` 的 `clientAuth` 放错层级，`caFiles: - ...` 也是错误 YAML。
+3. 只给 `web` 配了 `forwardedHeaders.trustedIPs`，当前主机在 `web` 和 `websecure` 都配置了 Cloudflare IPv4 段。
+4. CrowdSec 插件版本旧了，当前主机是 `crowdsec-bouncer-traefik-plugin v1.4.6`，并且已经接了 AppSec。
+5. `ban.html` 文件名和当前主机不一致，当前用的是 `banbanban.html`。
+6. “扫 443 和 80 端口直接丢弃”这个说法不准确。当前主机真正的外层限制在 `DOCKER-USER`，Traefik 里的 catchall 只是兜底路由；TLS 黑洞连接还会在日志里产生 `dial tcp 192.0.2.1:1: i/o timeout`。
 
-## traefik 配置
+## 当前主机状态
 
-此项配置了之后可以
+当前主机上跑的是：
 
-1. 自动帮你续证书
-1. 如果你用的是 cf 的 cdn，还可以自动 mtls 认证。
-1. 使用 CrowdSec 作为 WAF（之后再配置 CrowdSec）
-1. 扫 443 和 80 端口的请求直接丢弃
+```text title="live"
+traefik  traefik:v3.6.12
+crowdsec crowdsecurity/crowdsec:v1.7.8-debian
+```
+
+真实流量里能看到 Cloudflare Origin Pull 证书：
+
+```text title="traefik access log"
+TLSClientSubject="CN=origin-pull.cloudflare.net,O=Cloudflare Inc.,L=San Francisco,ST=CA,C=US"
+TLSVersion="1.3"
+RouterName="newsjoin@docker"
+```
+
+业务 router 也必须挂上 mTLS 选项。只定义 `cloudflare-mtls.yml` 不够，关键是业务容器 labels 里要有这一条：
+
+```yaml
+- traefik.http.routers.<router-name>.tls.options=cloudflare-mtls@file
+```
+
+当前 `newsjoin` 的公开 router 都已经挂了这个选项，包括首页、`/news`、`/api/home`、`/api/home/card-items` 和 preview API。
+
+## 目录结构
 
 ```text title="配置结构"
 traefik/
@@ -74,7 +79,9 @@ traefik/
 ├── cf-cert/
 │   └── cloudflare-ca.pem
 ├── dynamic_conf/
-│   ├── ban.html
+│   ├── auth.yml
+│   ├── banbanban.html
+│   ├── buffer-middleware.yml
 │   ├── cloudflare-mtls.yml
 │   ├── compressor.yml
 │   ├── crowdsec-middleware.yml
@@ -82,151 +89,183 @@ traefik/
 └── logs/
     └── traefik.log
 
+crowdsec/
+├── docker-compose.yml
+└── config/
+    └── acquis.d/
+        └── appsec.yaml
 ```
 
-<Callout variant="warning" title="ERROR">
-`ban.html` 我就不贴了，需要的自己 ai 写一个
+准备工作：
 
-</Callout>
+```bash
+docker network create traefik-net
+touch acme.json
+chmod 600 acme.json
+```
 
-<Callout variant="warning" title="IMPORTANT">
+`cloudflare-ca.pem` 用 Cloudflare Authenticated Origin Pull 的 CA 证书。Cloudflare 会在回源 TLS 握手时出示客户端证书，Traefik 用这个 CA 验证它；没有客户端证书的直连请求会在 TLS 层失败。
 
-1. 如果要自动帮你续证书，记得 `acme.json` 的权限要设置为 `600`，否则 traefik 无法写入证书。
-2. 如果你使用的是 cf 的 cdn，记得在添加你的 cf 证书。到[这里](https://developers.cloudflare.com/ssl/origin-configuration/authenticated-origin-pull/set-up/zone-level/)下载证书。
-3. 记得事先创建 `traefik-net` 网络，或者在 `docker-compose.yml` 中注释掉网络部分。
+## Traefik 配置
 
-</Callout>
-
-```yaml title="docker-compose.yml"
+```yaml title="traefik/docker-compose.yml"
 services:
   traefik:
-  image: traefik:latest # 建议使用明确的版本号，而不是 latest。现在用的是 v3
-  container_name: traefik
-  restart: unless-stopped
+    image: traefik:v3.6.12
+    container_name: traefik
+    restart: unless-stopped
 
-  # --- 静态配置：通过 command 而不是文件 ---
-  command:
-    - '--entrypoints.websecure.http.middlewares=crowdsec-bouncer@file,global-compressor@file'
-    # --- CrowdSec 插件配置 ---
-    - '--experimental.plugins.crowdsec-bouncer-traefik-plugin.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin'
-    - '--experimental.plugins.crowdsec-bouncer-traefik-plugin.version=v1.4.4'
-    # --- API 和仪表盘 ---
-    # - "--api.dashboard=true" # 启用仪表盘
-    # # 警告：下面的 insecure=true 仅用于开发环境，方便通过 8080 端口访问。生产环境请务必通过安全路由暴露。
-    # - "--api.insecure=true"
+    command:
+      # 全局中间件：HTTP/HTTPS 入口都先过 CrowdSec，再做压缩。
+      - '--entrypoints.web.http.middlewares=crowdsec-bouncer@file,global-compressor@file'
+      - '--entrypoints.websecure.http.middlewares=crowdsec-bouncer@file,global-compressor@file'
 
-    # --- 入口点定义 ---
-    - '--entrypoints.web.address=:80' # 定义 HTTP 入口点，监听80端口
-    - '--entrypoints.websecure.address=:443' # 定义 HTTPS 入口点，监听443端口
+      # CrowdSec Traefik bouncer plugin。
+      - '--experimental.plugins.crowdsec-bouncer-traefik-plugin.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin'
+      - '--experimental.plugins.crowdsec-bouncer-traefik-plugin.version=v1.4.6'
 
-    # --- Cloudflare IPs ---
-    - '--entrypoints.web.forwardedheaders.trustedips=173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22'
+      # Dashboard 不要开 api.insecure。要暴露就走 websecure + auth + mTLS。
+      - '--api.dashboard=true'
+      - '--api.basePath=/traefik-dash'
 
-    # --- Docker Provider 配置 ---
-    - '--providers.docker=true' # 启用 Docker 服务发现
-    - '--providers.docker.exposedbydefault=false' # 默认不暴露任何容器，更安全
-    - '--providers.docker.network=traefik-net' # 指定Traefik监听哪个网络
+      - '--entrypoints.web.address=:80'
+      - '--entrypoints.websecure.address=:443'
 
-    #配置log
-    - '--log.level=DEBUG' # 设置日志级别为DEBUG
-    - '--log.filePath=/var/log/traefik.log' # 设置日志文件路径
-    # - "--log.format=json" # 设置日志格式为JSON，便于后续处理
+      # 信任 Cloudflare 回源 IP，Traefik 才会接受 CF-Connecting-IP 这类 forwarded headers。
+      - '--entrypoints.web.forwardedheaders.trustedips=173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22'
+      - '--entrypoints.websecure.forwardedheaders.trustedips=173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22'
 
-    # --- 文件 Provider 配置 ---
-    - '--providers.file=true' # 启用文件提供者
-    - '--providers.file.directory=/etc/traefik/dynamic_conf' # 指定动态配置文件目录
-    - '--providers.file.watch=true' # 启用动态配置文件监控
+      - '--providers.docker=true'
+      - '--providers.docker.exposedbydefault=false'
+      - '--providers.docker.network=traefik-net'
 
-    - '--accesslog=true' # 启用访问日志
-    - '--accesslog.format=json' # 建议使用json格式，便于后续处理
+      - '--log.level=INFO'
+      - '--log.filePath=/var/log/traefik.log'
+      - '--log.format=json'
 
-    # --- Let's Encrypt (SSL证书) 配置 ---
-    # 暂时注释掉，在您配置好域名后可以启用
-    - '--certificatesresolvers.myresolver.acme.httpchallenge=true'
-    - '--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web'
-    - '--certificatesresolvers.myresolver.acme.email=xxx'
-    - '--certificatesresolvers.myresolver.acme.storage=/etc/traefik/acme.json'
-    # 注意：请确保acme.json文件权限为600，Traefik才能写入证书
+      - '--providers.file=true'
+      - '--providers.file.directory=/etc/traefik/dynamic_conf'
+      - '--providers.file.watch=true'
 
-  # --- 端口映射 ---
-  ports:
-    - '80:80'
-    - '443:443'
-    # - "8080:8080" # 暴露仪表盘的8080端口(仅开发)
+      - '--accesslog=true'
+      - '--accesslog.format=json'
 
-  # --- 挂载卷 ---
-  volumes:
-    # 挂载Docker socket，让Traefik可以监听到容器的创建和销毁
-    - '/var/run/docker.sock:/var/run/docker.sock:ro'
-    # 挂载acme.json文件，用于持久化SSL证书
-    - './acme.json:/etc/traefik/acme.json'
-    # 挂载动态配置文件目录
-    - './dynamic_conf:/etc/traefik/dynamic_conf:ro'
-    # 挂载日志目录
-    - './logs:/var/log:rw'
-    - './cf-cert:/etc/traefik/cf-cert:ro'
+      - '--certificatesresolvers.myresolver.acme.httpchallenge=true'
+      - '--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web'
+      - '--certificatesresolvers.myresolver.acme.email=<YOUR_EMAIL>'
+      - '--certificatesresolvers.myresolver.acme.storage=/etc/traefik/acme.json'
 
-  # --- 网络 ---
-  networks:
-    - traefik-net
+    ports:
+      - '80:80'
+      - '443:443'
+
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      - './acme.json:/etc/traefik/acme.json'
+      - './dynamic_conf:/etc/traefik/dynamic_conf:ro'
+      - './logs:/var/log:rw'
+      - './cf-cert:/etc/traefik/cf-cert:ro'
+
+    networks:
+      - traefik-net
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dashboard.rule=Host(`traefik.example.com`) && PathPrefix(`/traefik-dash`)
+      - traefik.http.routers.dashboard.entrypoints=websecure
+      - traefik.http.routers.dashboard.service=api@internal
+      - traefik.http.routers.dashboard.middlewares=auth@file
+      - traefik.http.routers.dashboard.tls=true
+      - traefik.http.routers.dashboard.tls.certresolver=myresolver
+      - traefik.http.routers.dashboard.tls.options=cloudflare-mtls@file
 
 networks:
   traefik-net:
-  name: traefik-net
-  external: true
+    name: traefik-net
+    external: true
 ```
 
-```yaml title="cloudflare-mtls.yml"
+当前主机的 dashboard label 里最重要的是 `auth@file` 和 `cloudflare-mtls@file`；示例里额外把 `rule` 写出来，避免依赖 Docker provider 的默认 host rule。
+
+## mTLS 配置
+
+```yaml title="traefik/dynamic_conf/cloudflare-mtls.yml"
 tls:
-    options: # 给这个 TLS 选项起一个名字
-        cloudflare-mtls:
-            minVersion: VersionTLS12
-        clientAuth:
-            caFiles: - /etc/traefik/cf-cert/cloudflare-ca.pem
-            clientAuthType: "RequireAndVerifyClientCert"
-
+  options:
+    cloudflare-mtls:
+      minVersion: VersionTLS12
+      clientAuth:
+        caFiles:
+          - /etc/traefik/cf-cert/cloudflare-ca.pem
+        clientAuthType: 'RequireAndVerifyClientCert'
 ```
 
-```yaml title="compressor.yml"
-# traefik/dynamic_conf/middlewares.yml
+<Callout variant="warning" title="IMPORTANT">
+  这个文件只是在 file provider 里定义了一个 TLS option。每个需要保护的 HTTPS
+  router 都要显式引用 `tls.options=cloudflare-mtls@file`。
+</Callout>
+
+## 动态中间件
+
+```yaml title="traefik/dynamic_conf/compressor.yml"
 http:
   middlewares:
-    # 定义一个全局可用的压缩中间件，我们给它起个名字叫 'global-compressor'
     global-compressor:
       compress:
-        # 在这里可以设置更详细的参数，进行精细化控制
-
-        # 排除不需要压缩的内容类型（例如图片，因为它们已经被压缩过了）
         excludedContentTypes:
           - 'image/png'
           - 'image/jpeg'
           - 'image/gif'
           - 'application/pdf'
-
-        # 设置压缩算法，默认是gzip
-        # 也可以使用 'br' (Brotli) 或者 'deflate'
-        # 但注意，Brotli在某些浏览器上支持不如gzip
-        # algorithm: "gzip" # 默认是gzip，通常不需要显式设置
-        # 设置压缩级别，范围是1到9，数字越大压缩率越高，但CPU消耗也越大
-
-        # 设置一个最小响应体大小，小于这个大小的响应不进行压缩 (避免浪费CPU)
-        minResponseBodyBytes: 1024 # 即只压缩大于1KB的响应
+        minResponseBodyBytes: 1024
 ```
 
-```yaml title="crowdsec-middleware.yml"
+```yaml title="traefik/dynamic_conf/buffer-middleware.yml"
+http:
+  middlewares:
+    buffer:
+      buffering:
+        maxRequestBodyBytes: 20000000
+        memRequestBodyBytes: 20000000
+        maxResponseBodyBytes: 20000000
+        memResponseBodyBytes: 20000000
+        retryExpression: 'IsNetworkError() && Attempts() < 2'
+```
+
+```yaml title="traefik/dynamic_conf/auth.yml"
+http:
+  middlewares:
+    auth:
+      basicAuth:
+        users:
+          # docker run --rm httpd:2.4 htpasswd -nb admin '<PASSWORD>'
+          - 'admin:<HTPASSWD_HASH>'
+```
+
+## CrowdSec bouncer
+
+```yaml title="traefik/dynamic_conf/crowdsec-middleware.yml"
 http:
   middlewares:
     crowdsec-bouncer:
       plugin:
         crowdsec-bouncer-traefik-plugin:
-          CrowdsecLapiKey: '' #填自己的
+          CrowdsecLapiKey: '<CS_BOUNCER_KEY>'
           Enabled: 'true'
           crowdsecMode: 'stream'
-          # logLevel: "DEBUG"
-          banHTMLFilePath: '/etc/traefik/dynamic_conf/ban.html' #自己生成
+          crowdsecLapiScheme: 'http'
+          crowdsecLapiHost: 'crowdsec:8080'
+
+          # AppSec inline WAF。Traefik 把请求发给 CrowdSec AppSec 引擎判断。
+          crowdsecAppsecEnabled: true
+          crowdsecAppsecHost: 'crowdsec:7422'
+          crowdsecAppsecPath: '/'
+          crowdsecAppsecFailureBlock: true
+          crowdsecAppsecUnreachableBlock: true
+
+          banHTMLFilePath: '/etc/traefik/dynamic_conf/banbanban.html'
           forwardedHeadersCustomName: 'CF-Connecting-IP'
           forwardedHeadersTrustedIPs:
-            # Cloudflare IPs
             - '173.245.48.0/20'
             - '103.21.244.0/22'
             - '103.22.200.0/22'
@@ -242,40 +281,35 @@ http:
             - '104.24.0.0/14'
             - '172.64.0.0/13'
             - '131.0.72.0/22'
-            # Local IPs
-            - '10.0.10.23/32'
-            - '10.0.20.0/24'
-          # Local IPs
+
+          # 这些来源会绕过 bouncer 检查，只放自己的内网或运维出口。
           clientTrustedIPs:
             - '192.168.0.0/16'
             - '10.0.0.0/8'
             - '172.16.0.0/12'
 ```
 
-```yaml title="drop-ip-access.yml"
+如果你的源站会被 Cloudflare 用 IPv6 回源，`entrypoints.*.forwardedheaders.trustedips` 和 `forwardedHeadersTrustedIPs` 也要补 Cloudflare IPv6 段。当前主机的 UFW 已经有 IPv6 allowlist，但最近 Traefik 回源日志里看到的是 IPv4。
+
+## 兜底路由
+
+```yaml title="traefik/dynamic_conf/drop-ip-access.yml"
 http:
   routers:
     catchall-http:
       rule: 'HostRegexp(`{host:.+}`)'
       entryPoints:
         - web
-      service: 'blackhole-http-svc' # 指向HTTP黑洞服务
+      service: noop@internal
       priority: 1
 
-  services:
-    blackhole-http-svc:
-      loadBalancer:
-        servers:
-          - url: 'http://10.255.255.1:80'
-
-# TCP部分：处理所有未匹配的HTTPS请求 (例如 https://<IP>)
 tcp:
   routers:
     catchall-tls:
-      rule: 'HostSNI(`*`)' # 匹配任何TLS连接
+      rule: 'HostSNI(`*`)'
       entryPoints:
         - websecure
-      service: 'blackhole-tcp-svc' # 指向TCP黑洞服务
+      service: 'blackhole-tcp-svc'
       priority: 1
       tls:
         passthrough: false
@@ -284,39 +318,25 @@ tcp:
     blackhole-tcp-svc:
       loadBalancer:
         servers:
-          # TCP服务使用 'address' 字段
           - address: '192.0.2.1:1'
 ```
 
-## crowdsec 配置
+这段只是低优先级兜底。真实业务 router 的 priority 要比 `1` 高。当前主机日志里会看到 TLS catchall 连接打到 `192.0.2.1:1` 后超时，这是黑洞写法的副作用。
 
-这里配置 CrowdSec，通过 docker 搭建。
+## CrowdSec 配置
 
-整个安全方案由两部分组成：
-
-1. **CrowdSec Agent (`crowdsec` 服务)**: 负责分析日志、检测威胁，并管理决策（例如，哪个 IP 应该被禁止）。
-2. **Traefik Bouncer (作为 Traefik 插件)**: 在 Traefik 中运行，负责执行 CrowdSec Agent 的决策，直接在流量入口处阻止恶意 IP。
-
-### 工作流程
-
-1. Traefik 接收外部请求，并将访问日志（JSON 格式）输出。
-2. CrowdSec Agent (`crowdsec` 服务) 通过挂载的 Docker Socket 读取 Traefik 的日志。
-3. Agent 使用 `crowdsecurity/traefik` collection 中的解析器和场景分析日志，检测到攻击行为（如暴力破解、扫描等）。
-4. 一旦检测到威胁，CrowdSec 会生成一个“决策”，将攻击者的 IP 标记为恶意，并推送到 local API。
-5. local API 马上推送到所有 Bouncer（如果还配置了其他 Bouncer），其中 Traefik 中的 CrowdSec Bouncer 插件会获取最新的决策列表。
-6. 当被标记为恶意的 IP 再次尝试访问时，Bouncer 会在 Traefik 层面直接拒绝该请求，从而保护所有后端服务。
-
-```yaml title="crowdsec-bouncer-traefik-plugin.yml"
+```yaml title="crowdsec/docker-compose.yml"
 services:
   crowdsec:
-    image: crowdsecurity/crowdsec:latest
+    image: crowdsecurity/crowdsec:v1.7.8-debian
     container_name: crowdsec
     restart: unless-stopped
     environment:
       - GID=999
-      - COLLECTIONS=crowdsecurity/traefik #安装了 crowdsecurity/traefik 集合，CrowdSec 知道 Traefik 日志长什么样。当它发现某个容器（也就是 Traefik 容器）的日志格式与 Traefik 解析器匹配时，就会自动开始采集和分析这些日志。
+      - BOUNCER_KEY_TRAEFIK=<CS_BOUNCER_KEY>
+      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro #允许 CrowdSec 监控其他容器的日志
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./data:/var/lib/crowdsec/data
       - ./config:/etc/crowdsec
     networks:
@@ -325,41 +345,151 @@ services:
 networks:
   traefik-net:
     external: true
+    name: traefik-net
 ```
 
-## 反代配置
+```yaml title="crowdsec/config/acquis.d/appsec.yaml"
+appsec_configs:
+  - crowdsecurity/appsec-default
+labels:
+  type: appsec
+listen_addr: 0.0.0.0:7422
+path: /
+source: appsec
+```
 
-主要通过 traefik 的标签（labels）来配置反代。
+当前主机上 `cscli collections list` 能看到这些已启用：
+
+```text
+crowdsecurity/traefik
+crowdsecurity/appsec-virtual-patching
+crowdsecurity/appsec-generic-rules
+crowdsecurity/http-cve
+```
+
+AppSec 的作用不是事后看日志封 IP，而是让 Traefik bouncer 在请求进入业务前把请求内容交给 CrowdSec AppSec 判断。上面的 `crowdsecAppsecEnabled: true`、`crowdsecAppsecHost: "crowdsec:7422"` 和 `appsec.yaml` 是一套。
+
+## 主机防火墙
+
+只靠 mTLS 不够。当前主机还在 UFW 的 `DOCKER-USER` 链限制 Docker 暴露的 80/443：外部打进来的 Web 流量必须来自 Cloudflare IP 段；Docker 容器自己的出站 HTTP/HTTPS 要提前 `RETURN`，否则会误伤构建、抓取和依赖下载。
+
+```text title="/etc/ufw/after.rules"
+*filter
+:DOCKER-USER - [0:0]
+:ufw-docker-cloudflare-web - [0:0]
+
+-A DOCKER-USER -i docker0 -p tcp -m tcp --dport 80 -j RETURN
+-A DOCKER-USER -i docker0 -p tcp -m tcp --dport 443 -j RETURN
+-A DOCKER-USER ! -i br+ -p tcp -m multiport --dports 80,443 -j ufw-docker-cloudflare-web
+-A ufw-docker-cloudflare-web -s 173.245.48.0/20 -j RETURN
+-A ufw-docker-cloudflare-web -s 103.21.244.0/22 -j RETURN
+-A ufw-docker-cloudflare-web -s 103.22.200.0/22 -j RETURN
+-A ufw-docker-cloudflare-web -s 103.31.4.0/22 -j RETURN
+-A ufw-docker-cloudflare-web -s 141.101.64.0/18 -j RETURN
+-A ufw-docker-cloudflare-web -s 108.162.192.0/18 -j RETURN
+-A ufw-docker-cloudflare-web -s 190.93.240.0/20 -j RETURN
+-A ufw-docker-cloudflare-web -s 188.114.96.0/20 -j RETURN
+-A ufw-docker-cloudflare-web -s 197.234.240.0/22 -j RETURN
+-A ufw-docker-cloudflare-web -s 198.41.128.0/17 -j RETURN
+-A ufw-docker-cloudflare-web -s 162.158.0.0/15 -j RETURN
+-A ufw-docker-cloudflare-web -s 104.16.0.0/13 -j RETURN
+-A ufw-docker-cloudflare-web -s 104.24.0.0/14 -j RETURN
+-A ufw-docker-cloudflare-web -s 172.64.0.0/13 -j RETURN
+-A ufw-docker-cloudflare-web -s 131.0.72.0/22 -j RETURN
+-A ufw-docker-cloudflare-web -j DROP
+
+COMMIT
+```
+
+IPv6 同理：
+
+```text title="/etc/ufw/after6.rules"
+*filter
+:DOCKER-USER - [0:0]
+:ufw6-docker-cloudflare-web - [0:0]
+
+-A DOCKER-USER -i docker0 -p tcp -m tcp --dport 80 -j RETURN
+-A DOCKER-USER -i docker0 -p tcp -m tcp --dport 443 -j RETURN
+-A DOCKER-USER ! -i br+ -p tcp -m multiport --dports 80,443 -j ufw6-docker-cloudflare-web
+-A ufw6-docker-cloudflare-web -s 2400:cb00::/32 -j RETURN
+-A ufw6-docker-cloudflare-web -s 2606:4700::/32 -j RETURN
+-A ufw6-docker-cloudflare-web -s 2803:f800::/32 -j RETURN
+-A ufw6-docker-cloudflare-web -s 2405:b500::/32 -j RETURN
+-A ufw6-docker-cloudflare-web -s 2405:8100::/32 -j RETURN
+-A ufw6-docker-cloudflare-web -s 2a06:98c0::/29 -j RETURN
+-A ufw6-docker-cloudflare-web -s 2c0f:f248::/32 -j RETURN
+-A ufw6-docker-cloudflare-web -j DROP
+
+COMMIT
+```
+
+改 UFW 前先测语法：
+
+```bash
+iptables-restore --test < /etc/ufw/after.rules
+ip6tables-restore --test < /etc/ufw/after6.rules
+systemctl restart ufw
+```
+
+`ufw status` 不是 Docker 入口保护的最终证据。检查这类规则时，优先看 `iptables -S DOCKER-USER`、`ip6tables -S DOCKER-USER`，再做真实直连测试。
+
+## 业务容器 labels
+
+每个业务容器至少要有这些 labels：
 
 ```yaml title="docker-compose.yml"
 services:
-  umami:
-    image: ghcr.io/umami-software/umami:postgresql-latest
-    # ports:
-    #   - "3000:3000"
-    environment:
-      DATABASE_URL:
-      DATABASE_TYPE: postgresql
-    init: true
-    restart: unless-stopped
-    healthcheck:
-      test: ['CMD-SHELL', 'curl http://localhost:3000/api/heartbeat']
-      interval: 5s
-      timeout: 5s
-      retries: 5
+  app:
+    image: ghcr.io/example/app:latest
     networks:
       - traefik-net
     labels:
       - traefik.enable=true
-      - traefik.http.routers.umami.rule=Host(`stats.xingpingcn.top`) # 替换为你的域名。会自动帮你申请证书，记得把ip指向vps ip或者cname到cf的cdn
-      - traefik.http.services.umami.loadbalancer.server.port=3000 # umami 默认端口。traefik会主动处理，不需要要你自己设置端口。如果有另一个服务在网络traefik-net上监听3000端口，traefik会自动处理冲突。服务b想连接此服务，直接使用服务名和端口，例如 `http://umami:3000`
-      - traefik.http.routers.umami.entrypoints=websecure
-      - traefik.http.routers.umami.tls=true
-      - traefik.http.routers.umami.tls.certresolver=myresolver # 使用之前定义的证书解析器
-      - traefik.http.routers.umami.tls.options=cloudflare-mtls@file # 使用之前定义的 mtls 选项。traefik似乎不支持全局设置
+      - traefik.http.routers.app.rule=Host(`app.example.com`)
+      - traefik.http.routers.app.entrypoints=websecure
+      - traefik.http.routers.app.tls=true
+      - traefik.http.routers.app.tls.certresolver=myresolver
+      - traefik.http.routers.app.tls.options=cloudflare-mtls@file
+      - traefik.http.services.app.loadbalancer.server.port=3000
 
 networks:
   traefik-net:
     name: traefik-net
     external: true
 ```
+
+如果要按真实访客 IP 限速，不要用 Cloudflare edge IP 当 key。当前主机的限速 middleware 是按 `CF-Connecting-IP` 取源：
+
+```yaml
+- traefik.http.middlewares.app-ratelimit.ratelimit.average=30
+- traefik.http.middlewares.app-ratelimit.ratelimit.burst=10
+- traefik.http.middlewares.app-ratelimit.ratelimit.period=1m
+- traefik.http.middlewares.app-ratelimit.ratelimit.sourcecriterion.requestheadername=CF-Connecting-IP
+- traefik.http.routers.app.middlewares=app-ratelimit
+```
+
+当前 `newsjoin` 按路径拆了几个 router：`/news` 是 `30 rpm`、`/api/home/card-items` 是 `20 rpm`、其他公开 home/preview API 是 `120 rpm`。拆 router 的原因是不同接口的正常访问频率差异很大，不能全塞进一个桶。
+
+## 验证
+
+部署后至少做这几项：
+
+```bash
+docker compose -f /home/ubuntu/docker-data/traefik/docker-compose.yml config
+docker exec traefik traefik version
+docker exec crowdsec cscli lapi status
+docker exec crowdsec cscli capi status
+docker exec crowdsec cscli collections list
+docker exec crowdsec cscli appsec-configs list
+iptables -S DOCKER-USER
+ip6tables -S DOCKER-USER
+```
+
+业务侧要确认：
+
+1. 正常走 Cloudflare 的域名请求返回 `200`。
+2. Traefik access log 里有 `TLSClientSubject="CN=origin-pull.cloudflare.net,..."`。
+3. 业务 router 的 labels 里有 `tls.options=cloudflare-mtls@file`。
+4. 直连源站 IP 不带 Cloudflare 客户端证书时失败，常见表现是 TLS certificate required 或被主机防火墙超时。
+
+这四项同时成立，才算 Cloudflare mTLS、Traefik router 和主机防火墙这三层都接上了。
