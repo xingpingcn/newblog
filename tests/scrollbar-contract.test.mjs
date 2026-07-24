@@ -14,5 +14,8 @@ test('applies the Umami scrollbar only to the root page', async () => {
   assert.match(css, /background-color:\s*var\(--border\)/)
   assert.match(css, /background-color:\s*var\(--muted-foreground\)/)
   assert.match(css, /scrollbar-color:\s*var\(--muted-foreground\)\s+var\(--border\)/)
+  const bodyRule = css.match(/body\s*\{([^}]*)\}/)
+  assert.ok(bodyRule, 'body must reset inherited scrollbar color')
+  assert.match(bodyRule[1], /scrollbar-color:\s*auto/)
   assert.doesNotMatch(css, /(^|\n)::[-]webkit-scrollbar\s*\{/)
 })

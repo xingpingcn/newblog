@@ -71,6 +71,10 @@ html {
   scrollbar-color: var(--muted-foreground) var(--border);
 }
 
+body {
+  scrollbar-color: auto;
+}
+
 html::-webkit-scrollbar {
   width: 15px;
   background: transparent;

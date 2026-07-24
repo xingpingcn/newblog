@@ -69,3 +69,18 @@ test('keeps old component authoring and makes directives the default snippet', a
   assert.match(snippets, /"prefix":\s*"callout-component"/)
   assert.match(snippets, /"prefix":\s*"callout-component-folded"/)
 })
+
+test('escapes unsafe directive labels as text', async () => {
+  const { calloutDirective } = await import('../src/lib/callout.ts')
+  const label = '<script>alert(1)</script><img src=x onerror=alert(1)> &'
+  const { html } = markdownToHtml(`:::note[${label}]\nBody.\n:::`, {
+    features: { directive: true },
+    mdastPlugins: [calloutDirective],
+  })
+
+  assert.match(html, /(?:&lt;|&#x3c;)script(?:&gt;|>)/i)
+  assert.match(html, /(?:&lt;|&#x3c;)img src=x onerror=alert\(1\)(?:&gt;|>)/i)
+  assert.match(html, /(?:&amp;|&#x26;)/i)
+  assert.doesNotMatch(html, /<script\b/i)
+  assert.doesNotMatch(html, /<img\b/i)
+})
