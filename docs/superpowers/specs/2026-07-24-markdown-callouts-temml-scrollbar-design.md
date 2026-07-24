@@ -4,7 +4,7 @@
 
 Add Markdown-native Callout directives with repository-level VS Code
 autocomplete, complete the existing Temml MathML presentation, and apply an
-Umami-style page scrollbar without removing or changing existing blog
+Umami-style global scrollbar without removing or changing existing blog
 features.
 
 ## Scope
@@ -18,7 +18,7 @@ The change includes:
 - the complete Temml MathML stylesheet adapted to the site's `.prose`
   container;
 - a vendored STIX Two Math font used only for mathematical content;
-- an Umami-style replacement for the browser's page scrollbar.
+- an Umami-style replacement for browser scrollbars throughout the site.
 
 The change does not include the upstream v2 continuous series reader, unified
 series table of contents, persistent article action bar, sidebar redesign,
@@ -137,13 +137,13 @@ body font and Geist Mono remains the code font.
 
 No KaTeX stylesheet or client-side math runtime is introduced.
 
-## Umami-Style Page Scrollbar
+## Umami-Style Global Scrollbar
 
 Adapt Umami's current global scrollbar CSS to the site's theme variables.
 
 For Chromium, Safari, and other WebKit-scrollbar implementations:
 
-- reserve a 15-pixel page scrollbar;
+- reserve a 15-pixel scrollbar gutter;
 - use transparent borders and `background-clip: padding-box` so the default
   thumb appears as a narrow line;
 - use a fully rounded thumb;
@@ -153,9 +153,11 @@ For Chromium, Safari, and other WebKit-scrollbar implementations:
 For Firefox, use `scrollbar-width` and `scrollbar-color` to provide the closest
 native equivalent. The implementation must remain CSS-only and theme-aware.
 
-Scope the replacement to the root page scrollbar. Do not unintentionally
-change code blocks, Pagefind result containers, subpost panels, table-of-
-contents panels, or other internal scrolling regions.
+Use Umami's unscoped WebKit scrollbar selectors so the root page and every
+internal scrolling region share the same treatment, including code blocks,
+Pagefind result containers, subpost panels, and table-of-contents panels.
+The default visible thumb is a one-pixel line within its 15-pixel gutter;
+hovering the thumb exposes a seven-pixel width.
 
 The top navigation progress indicator remains a separate feature and is not
 changed by this scrollbar work.
@@ -176,7 +178,7 @@ The tests must verify:
 - the full Temml stylesheet is imported and contains representative complex
   `.tml-*` rules;
 - the STIX Two Math font is registered and emitted by the build;
-- the page scrollbar uses Umami's narrow/default and thick/hover behavior;
+- root and internal scrollbars use Umami's narrow/default and thick/hover behavior;
 - ClientRouter, navigation progress, and the secondary-menu blur contracts
   remain intact.
 
@@ -196,7 +198,7 @@ git diff --check
 
 Inspect representative generated HTML/CSS to confirm directive rendering,
 MathML styling/font emission, and scrollbar output. Perform a browser check in
-light and dark themes for the page scrollbar, open and folded Callouts, math
+light and dark themes for root and internal scrollbars, open and folded Callouts, math
 layout, and navigation across ClientRouter page swaps.
 
 ## Delivery
