@@ -18,3 +18,24 @@ test('applies Umami scrollbar geometry to every WebKit scrollbar', async () => {
   assert.doesNotMatch(css, /html::[-]webkit-scrollbar/)
   assert.doesNotMatch(css, /scrollbar-(?:width|color)\s*:/)
 })
+
+test('overrides Expressive Code scrollbar chrome with Umami geometry', async () => {
+  const css = await readFile(new URL('src/styles/typography.css', root), 'utf8')
+
+  assert.match(
+    css,
+    /\.prose\s+\.expressive-code\s+pre::[-]webkit-scrollbar\s*\{[\s\S]*?height:\s*15px/,
+  )
+  assert.match(
+    css,
+    /\.prose\s+\.expressive-code\s+pre::[-]webkit-scrollbar-track\s*\{[\s\S]*?border:\s*7px solid transparent/,
+  )
+  assert.match(
+    css,
+    /\.prose\s+\.expressive-code\s+pre::[-]webkit-scrollbar-thumb\s*\{[\s\S]*?border:\s*7px solid transparent/,
+  )
+  assert.match(
+    css,
+    /\.prose\s+\.expressive-code\s+pre::[-]webkit-scrollbar-thumb:hover\s*\{[\s\S]*?border:\s*4px solid transparent/,
+  )
+})
