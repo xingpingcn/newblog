@@ -97,16 +97,16 @@
       @apply bg-muted/50 text-foreground relative rounded-sm px-[0.3rem] py-[0.2rem] text-sm font-medium wrap-break-word;
     }
 
-    :where(.shiki):not(:where(pre *, .not-prose, .not-prose *)) {
+    :where([data-ec]):not(:where(pre *, .not-prose, .not-prose *)) {
       @apply bg-muted/50! text-foreground relative rounded-sm px-[0.3rem] py-[0.2rem] text-sm font-medium wrap-break-word;
     }
 
-    :where(.shiki code):not(:where(.not-prose, .not-prose *)) {
-      @apply bg-transparent p-0;
-    }
+    :where([data-ec] span):not(:where(pre *, .not-prose, .not-prose *)) {
+      color: var(--0);
 
-    :where(.shiki span):not(:where(pre *, .not-prose, .not-prose *)) {
-      @apply dark:text-(--shiki-dark)!;
+      [data-theme='dark'] & {
+        color: var(--1);
+      }
     }
 
     :where(blockquote):not(:where(.not-prose, .not-prose *)) {
@@ -157,12 +157,25 @@
       @apply text-foreground bg-muted rounded-md border px-2 py-1 text-xs font-medium;
     }
 
-    :where(.katex-display):not(:where(.not-prose, .not-prose *)) {
+    :where(math-display):not(:where(.not-prose, .not-prose *)) {
       @apply text-foreground/80 my-6 overflow-x-auto overflow-y-hidden py-2 tracking-normal;
+      display: flex;
+      justify-content: safe center;
+    }
+
+    :where(math, math *):not(:where(.not-prose, .not-prose *)) {
+      @apply tracking-normal;
+    }
+
+    :where(math):not(:where(.not-prose, .not-prose *)) {
+      font-family: 'STIX Two Math', 'Cambria Math', serif;
+      font-style: normal;
+      font-weight: normal;
+      line-height: normal;
     }
   }
 }
 
 @utility small {
-  @apply text-sm leading-6 [&_code]:text-xs [&_img,video,figure,details,blockquote,.katex-display,.expressive-code]:my-4! [&_li,ol]:mt-0 [&_p]:my-2! [&_ul]:my-0;
+  @apply text-sm leading-6 [&_code]:text-xs [&_img,video,figure,details,blockquote,math-display,.expressive-code]:my-4! [&_li,ol]:mt-0 [&_p]:my-2! [&_ul]:my-0;
 }

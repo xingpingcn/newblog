@@ -9,7 +9,7 @@ on:
       - 'src/content/blog/**/*.mdx'
       - 'scripts/sync-image-metadata.mjs'
       - 'package.json'
-      - 'bun.lock'
+      - 'package-lock.json'
 
 permissions:
   contents: write
