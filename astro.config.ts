@@ -14,10 +14,11 @@ import {
 import { externalLinks } from './src/lib/external-links'
 import { headingAnchors } from './src/lib/heading-anchors'
 import { temmlMath } from './src/lib/math'
+import { calloutDirective } from './src/lib/callout'
 
 const processor = satteri({
-  features: { math: true },
-  mdastPlugins: [inlineExpressiveCode, temmlMath],
+  features: { directive: true, math: true },
+  mdastPlugins: [calloutDirective, inlineExpressiveCode, temmlMath],
   hastPlugins: [externalLinks, blockExpressiveCode, headingAnchors()],
 })
 

@@ -24,7 +24,10 @@ assert.match(codePage, /target="_blank"/)
 assert.match(codePage, /rel="nofollow noreferrer noopener"/)
 assert.doesNotMatch(codePage, /katex\.min\.css/)
 assert.match(codePage, /class="gutter"/)
-assert.match(astroConfig, /features:\s*\{\s*math:\s*true\s*\}/)
+assert.match(
+  astroConfig,
+  /features:\s*\{\s*directive:\s*true,\s*math:\s*true\s*\}/,
+)
 assert.match(astroConfig, /mdastPlugins:\s*\[[^\]]*temmlMath/)
 assert.match(mathPlugin, /inlineMath\(node,\s*ctx\)/)
 assert.match(mathPlugin, /math\(node,\s*ctx\)/)

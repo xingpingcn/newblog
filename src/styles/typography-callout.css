@@ -1,0 +1,38 @@
+@reference './global.css';
+
+@layer components {
+  .prose [data-callout] {
+    > summary {
+      @apply flex cursor-pointer items-center font-medium;
+      list-style: none;
+    }
+
+    > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    > summary::marker {
+      display: none;
+    }
+
+    > summary > svg {
+      @apply size-4 shrink-0;
+    }
+
+    > summary > span > span {
+      @apply font-normal opacity-70;
+    }
+
+    &[open] > summary > svg:last-child {
+      @apply rotate-180;
+    }
+
+    &[open] > summary {
+      @apply mb-3;
+    }
+
+    > :last-child {
+      @apply mb-0!;
+    }
+  }
+}
