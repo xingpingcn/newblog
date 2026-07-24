@@ -5,16 +5,39 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+function nodeSource(
+  source: string,
+  position:
+    | {
+        start: { line: number; column: number }
+        end: { line: number; column: number }
+      }
+    | undefined,
+): string {
+  if (!position || position.start.line !== position.end.line) return ''
+  const line = source.split(/\r?\n/)[position.start.line - 1]
+  if (line === undefined) return ''
+  return Array.from(line)
+    .slice(position.start.column - 1, position.end.column - 1)
+    .join('')
+}
+
+function hasExactDoubleDollarDelimiters(source: string): boolean {
+  return (
+    source.startsWith('$$') &&
+    source[2] !== '$' &&
+    source.endsWith('$$') &&
+    source.at(-3) !== '$'
+  )
+}
+
 export const temmlMath = defineMdastPlugin({
   name: 'temml-math',
   inlineMath(node, ctx) {
     try {
       // Satteri parses same-line `$$...$$` as inlineMath; preserve its display intent.
-      const source = ctx.source.slice(
-        node.position?.start.offset,
-        node.position?.end.offset,
-      )
-      const displayMode = source.startsWith('$$') && source.endsWith('$$')
+      const source = nodeSource(ctx.source, node.position)
+      const displayMode = hasExactDoubleDollarDelimiters(source)
       const value = temml.renderToString(node.value, {
         displayMode,
         throwOnError: false,

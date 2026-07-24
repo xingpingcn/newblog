@@ -26,13 +26,43 @@ test('ships complete Temml CSS and the STIX math font', async () => {
   assert.ok(font.size > 250_000)
 })
 
-test('renders inline and display MathML through Temml', () => {
-  const { html } = markdownToHtml(
-    'Inline $x^2$ and display:\n\n$$\\frac{a}{b}$$',
-    { features: { math: true }, mdastPlugins: [temmlMath] },
-  )
+function renderMath(markdown) {
+  return markdownToHtml(markdown, {
+    features: { math: true },
+    mdastPlugins: [temmlMath],
+  }).html
+}
+
+test('keeps ordinary single-dollar math inline', () => {
+  const html = renderMath('Inline $x^2$ after')
 
   assert.match(html, /<math/)
+  assert.doesNotMatch(html, /<math-display>/)
+})
+
+test('renders same-line double-dollar math as display', () => {
+  const html = renderMath('Before $$\\frac{a}{b}$$ after')
+
   assert.match(html, /<math-display>/)
   assert.match(html, /<mfrac>/)
+})
+
+test('renders canonical multiline math as display', () => {
+  const html = renderMath('$$\n\\frac{a}{b}\n$$')
+
+  assert.match(html, /<math-display>/)
+  assert.match(html, /<mfrac>/)
+})
+
+test('detects same-line display math after an astral character', () => {
+  const html = renderMath('😀 $$x$$ after')
+
+  assert.match(html, /<math-display>/)
+})
+
+test('does not promote an ambiguous triple-dollar run to display', () => {
+  const html = renderMath('Before $$$x$$$ after')
+
+  assert.match(html, /<math/)
+  assert.doesNotMatch(html, /<math-display>/)
 })
