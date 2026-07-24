@@ -1,51 +1,66 @@
 {
   "Import Writing Components": {
     "scope": "mdx,markdown",
-    "prefix": ["imports", "import-writing"],
+    "prefix": [
+      "imports",
+      "import-writing"
+    ],
     "body": [
       "import Callout from '@/components/callout.astro'",
       "import Figure from '@/components/figure.astro'",
-      "import ImageGrid from '@/components/image-grid.astro'",
+      "import ImageGrid from '@/components/image-grid.astro'"
     ],
-    "description": "Import Callout, Figure, and ImageGrid components",
+    "description": "Import Callout, Figure, and ImageGrid components"
   },
   "Import Callout": {
     "scope": "mdx,markdown",
     "prefix": "import-callout",
-    "body": ["import Callout from '@/components/callout.astro'"],
-    "description": "Import Callout component",
+    "body": [
+      "import Callout from '@/components/callout.astro'"
+    ],
+    "description": "Import Callout component"
   },
   "Import Figure": {
     "scope": "mdx,markdown",
     "prefix": "import-figure",
-    "body": ["import Figure from '@/components/figure.astro'"],
-    "description": "Import Figure component",
+    "body": [
+      "import Figure from '@/components/figure.astro'"
+    ],
+    "description": "Import Figure component"
   },
   "Import ImageGrid": {
     "scope": "mdx,markdown",
     "prefix": "import-imggrid",
-    "body": ["import ImageGrid from '@/components/image-grid.astro'"],
-    "description": "Import ImageGrid component",
+    "body": [
+      "import ImageGrid from '@/components/image-grid.astro'"
+    ],
+    "description": "Import ImageGrid component"
   },
   "Code Block": {
     "scope": "mdx,markdown",
-    "prefix": ["code", "codeblock"],
+    "prefix": [
+      "code",
+      "codeblock"
+    ],
     "body": [
       "```${1|bash,sh,zsh,js,ts,tsx,jsx,json,yaml,toml,css,html,md,mdx,python,sql,dockerfile,text|}",
       "${2:code}",
-      "```",
+      "```"
     ],
-    "description": "Insert a fenced code block",
+    "description": "Insert a fenced code block"
   },
   "Code Block With Title": {
     "scope": "mdx,markdown",
-    "prefix": ["code-title", "codefile"],
+    "prefix": [
+      "code-title",
+      "codefile"
+    ],
     "body": [
       "```${1|bash,sh,zsh,js,ts,tsx,jsx,json,yaml,toml,css,html,md,mdx,python,sql,dockerfile,text|} title=\"${2:path/to/file}\"",
       "${3:code}",
-      "```",
+      "```"
     ],
-    "description": "Insert an Expressive Code block with a title",
+    "description": "Insert an Expressive Code block with a title"
   },
   "Code Block Without Line Numbers": {
     "scope": "mdx,markdown",
@@ -53,9 +68,9 @@
     "body": [
       "```${1|bash,sh,zsh,js,ts,tsx,jsx,json,yaml,toml,css,html,md,mdx,python,sql,dockerfile,text|} showLineNumbers=false",
       "${2:code}",
-      "```",
+      "```"
     ],
-    "description": "Insert an Expressive Code block with line numbers disabled",
+    "description": "Insert an Expressive Code block with line numbers disabled"
   },
   "Collapsible Code Block": {
     "scope": "mdx,markdown",
@@ -63,32 +78,47 @@
     "body": [
       "```${1|bash,sh,zsh,js,ts,tsx,jsx,json,yaml,toml,css,html,md,mdx,python,sql,dockerfile,text|} title=\"${2:path/to/file}\" collapse={${3:1-5}}",
       "${4:code}",
-      "```",
+      "```"
     ],
-    "description": "Insert an Expressive Code block with collapsible line ranges",
+    "description": "Insert an Expressive Code block with collapsible line ranges"
   },
   "Diff Code Block": {
     "scope": "mdx,markdown",
-    "prefix": ["diff", "codediff"],
+    "prefix": [
+      "diff",
+      "codediff"
+    ],
     "body": [
       "```diff lang=\"${1|js,ts,tsx,jsx,json,yaml,css,html,md,python,sql,text|}\" title=\"${2:path/to/file}\"",
       "- ${3:old line}",
       "+ ${4:new line}",
-      "```",
+      "```"
     ],
-    "description": "Insert an Expressive Code diff block",
+    "description": "Insert an Expressive Code diff block"
   },
   "Inline Code": {
     "scope": "mdx,markdown",
-    "prefix": ["g", "gaoliang", "高亮", "inline-code"],
-    "body": ["`${TM_SELECTED_TEXT:${1:高亮内容}}`"],
-    "description": "Insert inline code backticks",
+    "prefix": [
+      "g",
+      "gaoliang",
+      "高亮",
+      "inline-code"
+    ],
+    "body": [
+      "`${TM_SELECTED_TEXT:${1:高亮内容}}`"
+    ],
+    "description": "Insert inline code backticks"
   },
   "Keyboard Key": {
     "scope": "mdx,markdown",
-    "prefix": ["kbd", "key"],
-    "body": ["<kbd>${TM_SELECTED_TEXT:${1:Ctrl}}</kbd>"],
-    "description": "Insert an inline keyboard key",
+    "prefix": [
+      "kbd",
+      "key"
+    ],
+    "body": [
+      "<kbd>${TM_SELECTED_TEXT:${1:Ctrl}}</kbd>"
+    ],
+    "description": "Insert an inline keyboard key"
   },
   "Callout": {
     "scope": "mdx,markdown",
@@ -96,9 +126,9 @@
     "body": [
       ":::${1|note,tip,warning,danger,caution,important,definition,theorem,lemma,proof,corollary,proposition,axiom,conjecture,notation,remark,intuition,recall,explanation,example,exercise,problem,answer,solution,summary|}[${2:标题}]",
       "${3:内容}",
-      ":::",
+      ":::"
     ],
-    "description": "Insert a Callout block",
+    "description": "Insert a Callout block"
   },
   "Folded Callout": {
     "scope": "mdx,markdown",
@@ -106,9 +136,9 @@
     "body": [
       ":::${1|note,tip,warning,danger,caution,important,definition,theorem,lemma,proof,corollary,proposition,axiom,conjecture,notation,remark,intuition,recall,explanation,example,exercise,problem,answer,solution,summary|}[${2:标题}]{closed}",
       "${3:内容}",
-      ":::",
+      ":::"
     ],
-    "description": "Insert a collapsed Callout block",
+    "description": "Insert a collapsed Callout block"
   },
   "Callout Component": {
     "scope": "mdx,markdown",
@@ -116,9 +146,9 @@
     "body": [
       "<Callout variant=\"${1|note,tip,warning,danger,caution,important,definition,theorem,lemma,proof,corollary,proposition,axiom,conjecture,notation,remark,intuition,recall,explanation,example,exercise,problem,answer,solution,summary|}\" title=\"${2:标题}\">",
       "  ${3:内容}",
-      "</Callout>",
+      "</Callout>"
     ],
-    "description": "Insert a Callout component block",
+    "description": "Insert a Callout component block"
   },
   "Folded Callout Component": {
     "scope": "mdx,markdown",
@@ -130,9 +160,9 @@
       "  defaultOpen={false}",
       ">",
       "  ${3:内容}",
-      "</Callout>",
+      "</Callout>"
     ],
-    "description": "Insert a collapsed Callout component block",
+    "description": "Insert a collapsed Callout component block"
   },
   "Figure": {
     "scope": "mdx,markdown",
@@ -141,13 +171,16 @@
       "<Figure",
       "  src=\"${1:https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/path/to/image.webp}\"",
       "  caption=\"${2:图片说明}\"",
-      "/>",
+      "/>"
     ],
-    "description": "Insert a Figure block",
+    "description": "Insert a Figure block"
   },
   "ImageGrid": {
     "scope": "mdx,markdown",
-    "prefix": ["image", "imggrid"],
+    "prefix": [
+      "image",
+      "imggrid"
+    ],
     "body": [
       "<ImageGrid",
       "  images={[",
@@ -160,21 +193,25 @@
       "      caption: '${4:图片说明}',",
       "    },",
       "  ]}",
-      "/>",
+      "/>"
     ],
-    "description": "Insert an ImageGrid block",
+    "description": "Insert an ImageGrid block"
   },
   "Markdown Link": {
     "scope": "mdx,markdown",
     "prefix": "link",
-    "body": ["[${1:链接文字}](${2:https://example.com})"],
-    "description": "Insert a Markdown link",
+    "body": [
+      "[${1:链接文字}](${2:https://example.com})"
+    ],
+    "description": "Insert a Markdown link"
   },
   "Blockquote": {
     "scope": "mdx,markdown",
     "prefix": "quote",
-    "body": ["> ${1:引用内容}"],
-    "description": "Insert a blockquote",
+    "body": [
+      "> ${1:引用内容}"
+    ],
+    "description": "Insert a blockquote"
   },
   "Details": {
     "scope": "mdx,markdown",
@@ -184,9 +221,9 @@
       "  <summary>${1:标题}</summary>",
       "",
       "  ${2:内容}",
-      "</details>",
+      "</details>"
     ],
-    "description": "Insert a details block",
+    "description": "Insert a details block"
   },
   "Markdown Table": {
     "scope": "mdx,markdown",
@@ -194,20 +231,26 @@
     "body": [
       "| ${1:列一} | ${2:列二} | ${3:列三} |",
       "| --- | --- | --- |",
-      "| ${4:内容} | ${5:内容} | ${6:内容} |",
+      "| ${4:内容} | ${5:内容} | ${6:内容} |"
     ],
-    "description": "Insert a Markdown table",
+    "description": "Insert a Markdown table"
   },
   "Math Block": {
     "scope": "mdx,markdown",
     "prefix": "math",
-    "body": ["$$", "${1:f(x) = x^2}", "$$"],
-    "description": "Insert a math block",
+    "body": [
+      "$$",
+      "${1:f(x) = x^2}",
+      "$$"
+    ],
+    "description": "Insert a math block"
   },
   "Horizontal Rule": {
     "scope": "mdx,markdown",
     "prefix": "hr",
-    "body": ["---"],
-    "description": "Insert a horizontal rule",
-  },
+    "body": [
+      "---"
+    ],
+    "description": "Insert a horizontal rule"
+  }
 }
