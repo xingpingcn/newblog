@@ -1,10 +1,20 @@
 {
   "[markdown]": {
+    "editor.quickSuggestions": {
+      "comments": true,
+      "other": true,
+      "strings": true
+    },
     "editor.snippetSuggestions": "top",
     "editor.suggestSelection": "first",
     "editor.tabCompletion": "on"
   },
   "[mdx]": {
+    "editor.quickSuggestions": {
+      "comments": true,
+      "other": true,
+      "strings": true
+    },
     "editor.snippetSuggestions": "top",
     "editor.suggestSelection": "first",
     "editor.tabCompletion": "on"
