@@ -68,7 +68,9 @@ const siteScreenshot =
           />
           申请友链需要满足以下全部条件
         </div>
-        <ul class="text-muted-foreground flex flex-col gap-3 text-sm leading-6">
+        <ol
+          class="text-muted-foreground marker:text-foreground/60 flex list-decimal flex-col gap-3 pl-5 text-sm leading-6"
+        >
           <li>
             首先将本站 <code>https://xingpingcn.top/</code> 添加至你的友链中。
           </li>
@@ -80,7 +82,7 @@ const siteScreenshot =
           <li>有独立域名，非免费域名。</li>
           <li>博客已运行至少半年，非刚搭建好。</li>
           <li>看我心情。</li>
-        </ul>
+        </ol>
       </div>
 
       <aside class="flex flex-col gap-4">
@@ -115,7 +117,10 @@ const siteScreenshot =
         <Link
           href={SITE.friends.applyUrl}
           external
-          class={buttonVariants({ variant: 'outline', className: 'w-full' })}
+          class={buttonVariants({
+            variant: 'outline',
+            className: 'w-full rounded-xl',
+          })}
         >
           <Icon name="lucide:github" class="size-4" />
           提交友链申请
