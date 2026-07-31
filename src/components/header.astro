@@ -4,8 +4,6 @@ import ThemeToggle from '@/components/theme-toggle.astro'
 import { buttonVariants } from '@/components/ui/button'
 import { NAV_LINKS } from '@/consts'
 import { Icon } from 'astro-icon/components'
-import { Image } from 'astro:assets'
-import logo from '../../public/static/logo.png'
 
 interface Props {
   class?: string
@@ -30,6 +28,8 @@ const primaryNavLinks = NAV_LINKS.filter(
 const secondaryNavLinks = NAV_LINKS.filter((item) =>
   secondaryNavLabels.has(item.label),
 )
+const logoCdnRoot =
+  'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/optimized/newblog/logo'
 ---
 
 <site-header-motion class="site-header-motion">
@@ -50,9 +50,16 @@ const secondaryNavLinks = NAV_LINKS.filter((item) =>
         className: 'site-header-brand size-8 overflow-hidden p-0',
       })}
     >
-      <Image
-        src={logo}
+      <img
+        src={`${logoCdnRoot}/5beaa005-96.webp`}
+        srcset={`${logoCdnRoot}/5beaa005-64.webp 64w, ${logoCdnRoot}/5beaa005-96.webp 96w`}
+        sizes="32px"
         alt="Logo"
+        width="32"
+        height="32"
+        loading="eager"
+        decoding="async"
+        fetchpriority="low"
         class="-m-px size-[calc(100%+2px)] max-w-none rounded-md object-cover"
       />
     </Link>

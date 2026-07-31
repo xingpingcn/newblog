@@ -27,6 +27,7 @@ import {
   isSubpost,
   parseAuthors,
 } from '@/lib/data-utils'
+import { getResponsiveCdnImage } from '@/lib/cdn-images'
 import { formatDate, tagHref } from '@/lib/utils'
 import { Icon } from 'astro-icon/components'
 import { Image } from 'astro:assets'
@@ -59,6 +60,9 @@ const combinedReadingTime =
     ? await getCombinedReadingTime(currentPostId)
     : null
 const formattedDate = formatDate(post.data.date)
+const responsiveCoverImage = post.data.coverImage
+  ? getResponsiveCdnImage(post.data.coverImage)
+  : undefined
 
 const tocSections = await getTOCSections(currentPostId)
 ---
@@ -131,12 +135,19 @@ const tocSections = await getTOCSections(currentPostId)
           <div class="bg-muted/30 relative col-span-full mx-auto aspect-[1200/630] w-full max-w-5xl overflow-hidden">
             <Skeleton className="absolute inset-0 size-full rounded-none" />
             <img
-              src={post.data.coverImage}
+              src={responsiveCoverImage?.src ?? post.data.coverImage}
+              srcset={responsiveCoverImage?.srcset}
+              sizes={
+                responsiveCoverImage
+                  ? '(min-width: 1056px) 64rem, calc(100vw - 2rem)'
+                  : undefined
+              }
               alt={post.data.title}
               width="1200"
               height="630"
               loading="eager"
               decoding="async"
+              fetchpriority="high"
               class="bg-background absolute inset-0 size-full object-contain"
             />
           </div>
