@@ -1,0 +1,517 @@
+---
+import SearchResultTemplate from '@/components/search-result-template.astro'
+import SearchStatus from '@/components/search-status.astro'
+import { buttonVariants } from '@/components/ui/button'
+import { Icon } from 'astro-icon/components'
+---
+
+<search-dialog>
+  <dialog
+    class="search-dialog"
+    data-search-dialog
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="search-dialog-title"
+  >
+    <div class="search-dialog-shell">
+      <header class="search-dialog-header">
+        <div>
+          <p class="search-dialog-kicker">
+            <Icon name="lucide:search" class="size-3.5" />
+            站内搜索
+          </p>
+          <h2 id="search-dialog-title" class="search-dialog-title">搜索文章</h2>
+        </div>
+        <button
+          type="button"
+          class={buttonVariants({
+            variant: 'ghost',
+            size: 'icon',
+            className: 'search-dialog-close',
+          })}
+          data-search-dialog-close
+          aria-label="关闭搜索"
+          title="关闭搜索"
+        >
+          <Icon name="lucide:x" class="size-4" />
+        </button>
+      </header>
+
+      <form class="search-shell" data-search-dialog-form role="search">
+        <div class="search-input-wrap">
+          <Icon name="lucide:search" class="search-input-icon size-4" />
+          <input
+            id="search-dialog-input"
+            class="search-input"
+            name="q"
+            type="search"
+            placeholder="搜索文章"
+            autocomplete="off"
+            enterkeyhint="search"
+            data-search-dialog-input
+            aria-controls="search-dialog-results"
+          />
+          <button
+            type="button"
+            class="search-clear"
+            aria-label="清空搜索"
+            title="清空搜索"
+            hidden
+            data-search-dialog-clear
+          >
+            <Icon name="lucide:x" class="size-4" />
+          </button>
+        </div>
+        <button
+          type="submit"
+          class={buttonVariants({
+            variant: 'default',
+            className: 'search-submit',
+          })}
+        >
+          <Icon name="lucide:search" class="size-4" />
+          搜索
+        </button>
+      </form>
+
+      <SearchStatus />
+
+      <div class="search-dialog-results">
+        <ol
+          id="search-dialog-results"
+          class="search-results"
+          data-search-dialog-results
+        >
+        </ol>
+      </div>
+
+      <a
+        href="/search/"
+        class={buttonVariants({
+          variant: 'outline',
+          className: 'search-dialog-all',
+        })}
+        data-search-dialog-all
+        hidden
+      >
+        <Icon name="lucide:list" class="size-4" />
+        查看全部搜索结果
+      </a>
+    </div>
+    <SearchResultTemplate />
+  </dialog>
+</search-dialog>
+
+<script>
+  import {
+    SEARCH_DIALOG_RESULT_LIMIT,
+    loadResultData,
+    prepareSearchPagefind,
+    renderSearchResult,
+    searchPageHref,
+    searchPagefind,
+  } from '@/lib/search-client'
+
+  class SearchDialog extends HTMLElement {
+    private controller?: AbortController
+    private activeTrigger?: HTMLButtonElement
+    private inputSearchTimer?: number
+    private searchId = 0
+
+    connectedCallback() {
+      const dialog = this.querySelector<HTMLDialogElement>(
+        '[data-search-dialog]',
+      )
+      const form = this.querySelector<HTMLFormElement>(
+        '[data-search-dialog-form]',
+      )
+      const input = this.querySelector<HTMLInputElement>(
+        '[data-search-dialog-input]',
+      )
+      const clearButton = this.querySelector<HTMLButtonElement>(
+        '[data-search-dialog-clear]',
+      )
+      const closeButton = this.querySelector<HTMLButtonElement>(
+        '[data-search-dialog-close]',
+      )
+      const statusText = this.querySelector<HTMLElement>(
+        '[data-search-status-text]',
+      )
+      const idleStatus = this.querySelector<HTMLElement>(
+        '[data-search-status-idle]',
+      )
+      const loadingStatus = this.querySelector<HTMLElement>(
+        '[data-search-status-loading]',
+      )
+      const results = this.querySelector<HTMLOListElement>(
+        '[data-search-dialog-results]',
+      )
+      const allResultsLink = this.querySelector<HTMLAnchorElement>(
+        '[data-search-dialog-all]',
+      )
+      const resultTemplate = this.querySelector<HTMLTemplateElement>(
+        '[data-search-result-template]',
+      )
+
+      if (
+        !dialog ||
+        !form ||
+        !input ||
+        !clearButton ||
+        !closeButton ||
+        !statusText ||
+        !idleStatus ||
+        !loadingStatus ||
+        !results ||
+        !allResultsLink ||
+        !resultTemplate
+      ) {
+        return
+      }
+
+      this.controller?.abort()
+      this.controller = new AbortController()
+      const { signal } = this.controller
+
+      document
+        .querySelectorAll<HTMLButtonElement>('[data-search-trigger]')
+        .forEach((trigger) => {
+          trigger.addEventListener(
+            'click',
+            () => {
+              this.open(
+                dialog,
+                input,
+                trigger,
+                statusText,
+                idleStatus,
+                loadingStatus,
+                results,
+                allResultsLink,
+              )
+            },
+            { signal },
+          )
+        })
+
+      closeButton.addEventListener(
+        'click',
+        () => {
+          this.close(
+            dialog,
+            input,
+            statusText,
+            idleStatus,
+            loadingStatus,
+            results,
+            allResultsLink,
+          )
+        },
+        { signal },
+      )
+
+      dialog.addEventListener(
+        'cancel',
+        (event) => {
+          event.preventDefault()
+          this.close(
+            dialog,
+            input,
+            statusText,
+            idleStatus,
+            loadingStatus,
+            results,
+            allResultsLink,
+          )
+        },
+        { signal },
+      )
+
+      dialog.addEventListener(
+        'click',
+        (event) => {
+          if (event.target === dialog) {
+            this.close(
+              dialog,
+              input,
+              statusText,
+              idleStatus,
+              loadingStatus,
+              results,
+              allResultsLink,
+            )
+          }
+        },
+        { signal },
+      )
+
+      form.addEventListener(
+        'submit',
+        (event) => {
+          event.preventDefault()
+          this.cancelPendingSearch()
+          void this.runSearch(
+            input.value,
+            input,
+            clearButton,
+            statusText,
+            idleStatus,
+            loadingStatus,
+            results,
+            allResultsLink,
+            resultTemplate,
+          )
+        },
+        { signal },
+      )
+
+      input.addEventListener(
+        'input',
+        () => {
+          this.cancelPendingSearch()
+          this.inputSearchTimer = window.setTimeout(() => {
+            this.inputSearchTimer = undefined
+            void this.runSearch(
+              input.value,
+              input,
+              clearButton,
+              statusText,
+              idleStatus,
+              loadingStatus,
+              results,
+              allResultsLink,
+              resultTemplate,
+            )
+          }, 120)
+        },
+        { signal },
+      )
+
+      clearButton.addEventListener(
+        'click',
+        () => {
+          this.cancelPendingSearch()
+          input.value = ''
+          void this.runSearch(
+            '',
+            input,
+            clearButton,
+            statusText,
+            idleStatus,
+            loadingStatus,
+            results,
+            allResultsLink,
+            resultTemplate,
+          )
+          input.focus({ preventScroll: true })
+        },
+        { signal },
+      )
+
+      allResultsLink.addEventListener(
+        'click',
+        () => {
+          const href = allResultsLink.href
+          this.close(
+            dialog,
+            input,
+            statusText,
+            idleStatus,
+            loadingStatus,
+            results,
+            allResultsLink,
+          )
+          allResultsLink.href = href
+        },
+        { signal },
+      )
+
+      results.addEventListener(
+        'click',
+        (event) => {
+          if ((event.target as Element).closest('a')) {
+            this.close(
+              dialog,
+              input,
+              statusText,
+              idleStatus,
+              loadingStatus,
+              results,
+              allResultsLink,
+            )
+          }
+        },
+        { signal },
+      )
+    }
+
+    private open(
+      dialog: HTMLDialogElement,
+      input: HTMLInputElement,
+      trigger: HTMLButtonElement,
+      statusText: HTMLElement,
+      idleStatus: HTMLElement,
+      loadingStatus: HTMLElement,
+      results: HTMLOListElement,
+      allResultsLink: HTMLAnchorElement,
+    ) {
+      this.activeTrigger = trigger
+      void prepareSearchPagefind().catch(() => undefined)
+      this.reset(
+        input,
+        statusText,
+        idleStatus,
+        loadingStatus,
+        results,
+        allResultsLink,
+      )
+      if (!dialog.open) dialog.showModal()
+      input.focus({ preventScroll: true })
+    }
+
+    private close(
+      dialog: HTMLDialogElement,
+      input: HTMLInputElement,
+      statusText: HTMLElement,
+      idleStatus: HTMLElement,
+      loadingStatus: HTMLElement,
+      results: HTMLOListElement,
+      allResultsLink: HTMLAnchorElement,
+    ) {
+      this.cancelPendingSearch()
+      if (dialog.open) dialog.close()
+      this.searchId += 1
+      this.reset(
+        input,
+        statusText,
+        idleStatus,
+        loadingStatus,
+        results,
+        allResultsLink,
+      )
+      const trigger = this.activeTrigger
+      this.activeTrigger = undefined
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true })
+    }
+
+    private cancelPendingSearch() {
+      if (this.inputSearchTimer === undefined) return
+      window.clearTimeout(this.inputSearchTimer)
+      this.inputSearchTimer = undefined
+    }
+
+    private reset(
+      input: HTMLInputElement,
+      statusText: HTMLElement,
+      idleStatus: HTMLElement,
+      loadingStatus: HTMLElement,
+      results: HTMLOListElement,
+      allResultsLink: HTMLAnchorElement,
+    ) {
+      input.value = ''
+      input.setAttribute('aria-busy', 'false')
+      results.replaceChildren()
+      allResultsLink.hidden = true
+      allResultsLink.href = '/search/'
+      this.setStatus(
+        statusText,
+        idleStatus,
+        loadingStatus,
+        '输入关键词开始搜索。',
+        false,
+      )
+    }
+
+    private setStatus(
+      statusText: HTMLElement,
+      idleStatus: HTMLElement,
+      loadingStatus: HTMLElement,
+      text: string,
+      loading: boolean,
+    ) {
+      statusText.textContent = text
+      idleStatus.hidden = loading
+      loadingStatus.hidden = !loading
+    }
+
+    private async runSearch(
+      rawQuery: string,
+      input: HTMLInputElement,
+      clearButton: HTMLButtonElement,
+      statusText: HTMLElement,
+      idleStatus: HTMLElement,
+      loadingStatus: HTMLElement,
+      results: HTMLOListElement,
+      allResultsLink: HTMLAnchorElement,
+      resultTemplate: HTMLTemplateElement,
+    ) {
+      const query = rawQuery.trim()
+      const currentSearchId = ++this.searchId
+      clearButton.hidden = query.length === 0
+      input.setAttribute('aria-busy', query ? 'true' : 'false')
+      allResultsLink.hidden = true
+
+      if (!query) {
+        results.replaceChildren()
+        this.setStatus(
+          statusText,
+          idleStatus,
+          loadingStatus,
+          '输入关键词开始搜索。',
+          false,
+        )
+        return
+      }
+
+      results.replaceChildren()
+      this.setStatus(statusText, idleStatus, loadingStatus, '正在搜索...', true)
+
+      try {
+        const search = await searchPagefind(query)
+        if (currentSearchId !== this.searchId) return
+
+        const visibleResults = await loadResultData(
+          search.results,
+          0,
+          SEARCH_DIALOG_RESULT_LIMIT,
+        )
+        if (currentSearchId !== this.searchId) return
+
+        results.replaceChildren(
+          ...visibleResults.map((result) =>
+            renderSearchResult(result, resultTemplate, query),
+          ),
+        )
+        allResultsLink.href = searchPageHref(query)
+        allResultsLink.hidden = search.total === 0
+        this.setStatus(
+          statusText,
+          idleStatus,
+          loadingStatus,
+          search.total > 0
+            ? `找到 ${search.total} 个结果。`
+            : '没有找到匹配文章。',
+          false,
+        )
+      } catch (error) {
+        console.error(error)
+        if (currentSearchId !== this.searchId) return
+        this.setStatus(
+          statusText,
+          idleStatus,
+          loadingStatus,
+          '搜索索引加载失败，请刷新页面后重试。',
+          false,
+        )
+      } finally {
+        if (currentSearchId === this.searchId) {
+          input.setAttribute('aria-busy', 'false')
+        }
+      }
+    }
+  }
+
+  if (!customElements.get('search-dialog')) {
+    customElements.define('search-dialog', SearchDialog)
+  }
+</script>

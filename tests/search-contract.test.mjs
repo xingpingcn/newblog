@@ -10,7 +10,13 @@ async function readProjectFile(path) {
 const packageJson = JSON.parse(await readProjectFile('package.json'))
 const postPage = await readProjectFile('src/pages/[...id].astro')
 const header = await readProjectFile('src/components/header.astro')
+const layout = await readProjectFile('src/layouts/layout.astro')
+const searchClient = await readProjectFile('src/lib/search-client.ts')
+const searchDialog = await readProjectFile('src/components/search-dialog.astro')
 const searchPage = await readProjectFile('src/pages/search.astro')
+const searchResultTemplate = await readProjectFile(
+  'src/components/search-result-template.astro',
+)
 
 assert.match(
   packageJson.scripts.build,
@@ -32,24 +38,144 @@ assert.match(
 
 assert.match(
   postPage,
+  /<article[\s\S]*data-pagefind-body[\s\S]*data-pagefind-meta="title"/,
+  'article title metadata should stay inside the Pagefind body scope',
+)
+
+assert.match(
+  postPage,
   /data-pagefind-filter="tag"/,
   'article page should expose tags as Pagefind filters',
 )
 
 assert.match(
   header,
-  /href="\/search"/,
-  'header should expose a search entry point',
+  /data-search-trigger/,
+  'header should expose a search dialog trigger',
 )
 
 assert.match(
-  searchPage,
-  /\/pagefind\/pagefind\.js/,
+  layout,
+  /<SearchDialog\s*\/>/,
+  'layout should render the global search dialog',
+)
+
+assert.match(
+  searchDialog,
+  /<dialog[\s\S]*data-search-dialog[\s\S]*role="dialog"[\s\S]*aria-modal="true"[\s\S]*aria-labelledby=/,
+  'search dialog should expose native dialog semantics',
+)
+
+assert.match(
+  searchDialog,
+  /data-search-dialog-all[\s\S]*查看全部搜索结果/,
+  'search dialog should link to all search results',
+)
+
+assert.match(
+  searchDialog,
+  /SEARCH_DIALOG_RESULT_LIMIT/,
+  'search dialog should cap its preview results',
+)
+
+assert.match(
+  searchClient,
+  /pagefindPath\s*=\s*['"]\/pagefind\/pagefind\.js['"]/,
   'search page should load the generated Pagefind client',
 )
 
 assert.match(
   searchPage,
-  /pagefind\.search/,
+  /searchPagefind/,
   'search page should execute searches through Pagefind',
+)
+
+assert.match(
+  searchClient,
+  /export async function prepareSearchPagefind/,
+  'search client should expose an index warmup operation',
+)
+
+assert.match(
+  searchDialog,
+  /prepareSearchPagefind\(\)/,
+  'opening the search dialog should warm the Pagefind index',
+)
+
+assert.match(
+  searchDialog,
+  /window\.setTimeout\([\s\S]*?, 120\)/,
+  'dialog input search should debounce rapid typing',
+)
+
+assert.match(
+  searchPage,
+  /window\.setTimeout\([\s\S]*?, 120\)/,
+  'search page input should debounce rapid typing',
+)
+
+assert.match(
+  searchPage,
+  /data-search-pagination-container/,
+  'search page should render a pagination container',
+)
+
+assert.match(
+  searchClient,
+  /SEARCH_PAGE_SIZE\s*=\s*20/,
+  'search page should use twenty results per page',
+)
+
+assert.match(
+  searchClient,
+  /page\s*>\s*1[\s\S]*params\.set\('page'/,
+  'search URLs should preserve pagination state',
+)
+
+assert.match(
+  searchResultTemplate,
+  /data-search-result-detail-link[\s\S]*aria-label="查看文章详情"[\s\S]*title="查看文章详情"/,
+  'search result detail control should remain accessible when icon-only',
+)
+
+assert.doesNotMatch(
+  searchResultTemplate,
+  /<span>查看详情<\/span>/,
+  'search result detail control should not render a separate text label',
+)
+
+assert.match(
+  searchClient,
+  /renderHighlightedText\(title,[\s\S]*query\)/,
+  'search result titles should highlight the active query',
+)
+
+assert.match(
+  searchDialog,
+  /renderSearchResult\(result, resultTemplate, query\)/,
+  'search dialog should pass its query to result title highlighting',
+)
+
+assert.match(
+  searchPage,
+  /renderSearchResult\(result, resultTemplate, query\)/,
+  'search page should pass its query to result title highlighting',
+)
+
+assert.match(
+  searchClient,
+  /mark\.className = 'search-result-highlight'/,
+  'title highlights should use the shared search highlight class',
+)
+
+assert.match(
+  searchClient,
+  /mark\.classList\.add\('search-result-highlight'\)/,
+  'Pagefind excerpt highlights should use the shared search highlight class',
+)
+
+assert.doesNotMatch(
+  searchDialog,
+  /window\.location\.assign\(/,
+  'full search navigation should stay inside Astro client routing',
 )

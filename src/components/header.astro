@@ -123,8 +123,8 @@ const logoCdnRoot =
           }
         </div>
       </div>
-      <Link
-        href="/search"
+      <button
+        type="button"
         aria-label="搜索"
         title="搜索"
         class={buttonVariants({
@@ -132,9 +132,10 @@ const logoCdnRoot =
           size: 'icon',
           className: 'size-8',
         })}
+        data-search-trigger
       >
         <Icon name="lucide:search" class="size-4" />
-      </Link>
+      </button>
       <Link
         href="https://github.com/xingpingcn/newblog"
         aria-label="源码"

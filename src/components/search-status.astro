@@ -1,0 +1,13 @@
+---
+import { Icon } from 'astro-icon/components'
+---
+
+<div class="search-status" aria-live="polite">
+  <span data-search-status-idle aria-hidden="true">
+    <Icon name="lucide:search" class="size-3.5" />
+  </span>
+  <span data-search-status-loading hidden aria-hidden="true">
+    <Icon name="lucide:loader-circle" class="size-3.5 animate-spin" />
+  </span>
+  <span data-search-status-text>输入关键词开始搜索。</span>
+</div>

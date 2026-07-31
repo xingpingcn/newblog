@@ -1,0 +1,38 @@
+---
+import { buttonVariants } from '@/components/ui/button'
+import { Icon } from 'astro-icon/components'
+---
+
+<template data-search-result-template>
+  <li class="search-result">
+    <article class="search-result-card">
+      <div class="search-result-heading">
+        <div class="search-result-heading-copy">
+          <a
+            class="search-result-title-link"
+            data-search-result-title-link
+            href="/"
+          >
+            <Icon name="lucide:file-text" class="mt-0.5 size-4 shrink-0" />
+            <span data-search-result-title></span>
+          </a>
+          <span class="search-result-meta" data-search-result-meta></span>
+        </div>
+        <a
+          class={buttonVariants({
+            variant: 'ghost',
+            size: 'icon',
+            className: 'search-result-detail',
+          })}
+          data-search-result-detail-link
+          href="/"
+          aria-label="查看文章详情"
+          title="查看文章详情"
+        >
+          <Icon name="lucide:arrow-up-right" class="size-4" />
+        </a>
+      </div>
+      <p class="search-result-excerpt" data-search-result-excerpt></p>
+    </article>
+  </li>
+</template>

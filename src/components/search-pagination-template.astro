@@ -1,0 +1,36 @@
+---
+import { buttonVariants } from '@/components/ui/button'
+import { Icon } from 'astro-icon/components'
+---
+
+<template data-search-pagination-template>
+  <nav class="search-pagination" aria-label="搜索结果分页">
+    <button
+      type="button"
+      class={buttonVariants({
+        variant: 'outline',
+        size: 'icon',
+        className: 'search-page-control',
+      })}
+      data-search-page-prev
+      aria-label="上一页"
+      title="上一页"
+    >
+      <Icon name="lucide:chevron-left" class="size-4" />
+    </button>
+    <div class="search-page-numbers" data-search-page-numbers></div>
+    <button
+      type="button"
+      class={buttonVariants({
+        variant: 'outline',
+        size: 'icon',
+        className: 'search-page-control',
+      })}
+      data-search-page-next
+      aria-label="下一页"
+      title="下一页"
+    >
+      <Icon name="lucide:chevron-right" class="size-4" />
+    </button>
+  </nav>
+</template>

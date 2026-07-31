@@ -160,8 +160,6 @@ const tocSections = await getTOCSections(currentPostId)
         <h1
           class="mb-2 scroll-mt-31 text-3xl leading-tight font-medium sm:text-4xl"
           id="post-title"
-          data-pagefind-meta="title"
-          data-pagefind-weight="4"
         >
           {post.data.title}
         </h1>
@@ -278,6 +276,11 @@ const tocSections = await getTOCSections(currentPostId)
       data-pagefind-body
       data-article-content
     >
+      <span
+        class="sr-only"
+        data-pagefind-meta="title"
+        data-pagefind-weight="4"
+      >{post.data.title}</span>
       <Content />
     </article>
 
