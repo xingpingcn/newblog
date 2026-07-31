@@ -6,12 +6,14 @@ import { cn } from '@/lib/utils'
 function ScrollArea({
   className,
   children,
+  type = 'auto',
   ...props
 }: React.ComponentProps<typeof ScrollAreaPrimitive.Root>) {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
       className={cn('relative', className)}
+      type={type}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
@@ -36,18 +38,24 @@ function ScrollBar({
       data-slot="scroll-area-scrollbar"
       orientation={orientation}
       className={cn(
-        'flex touch-none p-px transition-colors select-none',
+        'before:bg-border relative flex touch-none select-none before:pointer-events-none before:absolute',
         orientation === 'vertical' &&
-          'h-full w-2.5 border-l border-l-transparent',
+          'h-full w-[15px] before:inset-y-0 before:left-1/2 before:w-px before:-translate-x-1/2',
         orientation === 'horizontal' &&
-          'h-2.5 flex-col border-t border-t-transparent',
+          'h-[15px] flex-col before:inset-x-0 before:top-1/2 before:h-px before:-translate-y-1/2',
         className,
       )}
       {...props}
     >
       <ScrollAreaPrimitive.ScrollAreaThumb
         data-slot="scroll-area-thumb"
-        className="bg-border relative flex-1 rounded-full"
+        className={cn(
+          'after:bg-muted-foreground relative flex-1 after:pointer-events-none after:absolute after:rounded-full',
+          orientation === 'vertical' &&
+            'after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 hover:after:w-[7px]',
+          orientation === 'horizontal' &&
+            'after:inset-x-0 after:top-1/2 after:h-px after:-translate-y-1/2 hover:after:h-[7px]',
+        )}
       />
     </ScrollAreaPrimitive.ScrollAreaScrollbar>
   )
