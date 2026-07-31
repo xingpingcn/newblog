@@ -20,7 +20,6 @@ const siteScreenshot =
   <PageHead
     slot="head"
     title="友链"
-    description="邢平cn 的朋友们和友情链接申请说明。"
     canonical={new URL('/friends/', SITE.href).href}
   />
   <Breadcrumbs items={[{ label: '友链', icon: 'lucide:heart-handshake' }]} />
@@ -33,17 +32,6 @@ const siteScreenshot =
           {friends.length} 个站点
         </span>
       </div>
-      <p class="text-muted-foreground max-w-2xl leading-7">
-        这里展示旧博客友链系统中的站点数据，数据来自公开的
-        <Link
-          href={`https://github.com/${SITE.friends.repo}`}
-          external
-          underline
-        >
-          {SITE.friends.repo}
-        </Link>
-        输出。
-      </p>
     </div>
 
     {
