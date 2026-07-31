@@ -10,6 +10,7 @@ async function readProjectFile(path) {
 const packageJson = JSON.parse(await readProjectFile('package.json'))
 const postPage = await readProjectFile('src/pages/[...id].astro')
 const header = await readProjectFile('src/components/header.astro')
+const themeToggle = await readProjectFile('src/components/theme-toggle.astro')
 const layout = await readProjectFile('src/layouts/layout.astro')
 const searchClient = await readProjectFile('src/lib/search-client.ts')
 const searchDialog = await readProjectFile('src/components/search-dialog.astro')
@@ -56,15 +57,39 @@ assert.match(
 
 assert.match(
   header,
-  /className: 'site-header-search size-8'/,
-  'header search trigger should use the shared icon-button size',
+  /className: 'site-header-icon-button site-header-search size-8'/,
+  'header search trigger should use the shared header icon-button style',
 )
 
 const globalStyles = await readProjectFile('src/styles/global.css')
 assert.match(
   globalStyles,
-  /\.site-header-search[\s\S]*width: 2rem;[\s\S]*height: 2rem;[\s\S]*cursor: pointer;/,
-  'header search trigger should have an explicit icon-button hit area and pointer cursor',
+  /\.site-header-icon-button[\s\S]*width: 2rem;[\s\S]*height: 2rem;[\s\S]*cursor: pointer;/,
+  'header icon buttons should have an explicit hit area and pointer cursor',
+)
+
+assert.match(
+  globalStyles,
+  /\.site-header-icon-button:hover,[\s\S]*\.site-header-icon-button:focus-visible[\s\S]*background-color: var\(--muted\);[\s\S]*color: var\(--foreground\);/,
+  'header icon buttons should provide consistent hover and focus feedback',
+)
+
+assert.match(
+  header,
+  /className: 'site-header-icon-button site-header-menu-trigger size-8'/,
+  'header menu trigger should use the shared icon-button style',
+)
+
+assert.match(
+  header,
+  /className: 'site-header-icon-button size-8'/,
+  'header source link should use the shared icon-button style',
+)
+
+assert.match(
+  themeToggle,
+  /className="site-header-icon-button size-8"/,
+  'theme toggle should use the shared header icon-button style',
 )
 
 assert.match(
