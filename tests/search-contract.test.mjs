@@ -55,6 +55,19 @@ assert.match(
 )
 
 assert.match(
+  header,
+  /className: 'site-header-search size-8'/,
+  'header search trigger should use the shared icon-button size',
+)
+
+const globalStyles = await readProjectFile('src/styles/global.css')
+assert.match(
+  globalStyles,
+  /\.site-header-search[\s\S]*width: 2rem;[\s\S]*height: 2rem;[\s\S]*cursor: pointer;/,
+  'header search trigger should have an explicit icon-button hit area and pointer cursor',
+)
+
+assert.match(
   layout,
   /<SearchDialog\s*\/>/,
   'layout should render the global search dialog',

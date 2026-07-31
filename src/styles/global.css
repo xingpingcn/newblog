@@ -248,6 +248,18 @@
   cursor: pointer;
 }
 
+.site-header-search {
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+}
+
+.site-header-search:hover,
+.site-header-search:focus-visible {
+  background-color: var(--muted);
+  color: var(--foreground);
+}
+
 .site-header-menu-panel {
   position: absolute;
   top: calc(100% + 0.5rem);
