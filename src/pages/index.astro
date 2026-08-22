@@ -1,6 +1,7 @@
 ---
 import HomePage from '@/components/home-page.astro'
 import PageHead from '@/components/page-head.astro'
+import SiteStructuredData from '@/components/site-structured-data.astro'
 import { SITE } from '@/consts'
 import Layout from '@/layouts/layout.astro'
 import { getAllAuthors, getAllPosts, getSortedTags } from '@/lib/data-utils'
@@ -15,6 +16,13 @@ const totalPages = Math.ceil(posts.length / SITE.postsPerPage)
 
 <Layout class="max-w-6xl">
   <PageHead slot="head" title="首页" />
+  <SiteStructuredData slot="head" />
+  <link slot="head" rel="alternate" type="text/markdown" href="/index.md" />
+  {
+    totalPages > 1 && (
+      <link slot="head" rel="next" href={new URL('/page/2/', SITE.href).href} />
+    )
+  }
   <HomePage
     posts={blog}
     author={author}

@@ -5,6 +5,12 @@
 [build.processing.html]
   pretty_urls = true
 
+[[headers]]
+  for = "/"
+  [headers.values]
+    Vary = "Accept, Accept-Encoding"
+    Link = "</index.md>; rel=\"alternate\"; type=\"text/markdown\""
+
 [[redirects]]
   from = "/rss.xml"
   to = "https://cf-blog.xingpingcn.top/rss.xml"

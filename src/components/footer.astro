@@ -21,6 +21,12 @@ import SocialIcons from './social-icons.astro'
         underline>邢平cn</Link
       >
     </p>
+    <Separator orientation="vertical" className="hidden h-4! sm:block" />
+    <p class="text-muted-foreground text-sm">
+      <Link href="/contact" underline>联系</Link>
+      <span aria-hidden="true"> · </span>
+      <Link href="/privacy" underline>隐私说明</Link>
+    </p>
   </div>
   <SocialIcons links={SOCIAL_LINKS} />
 </footer>

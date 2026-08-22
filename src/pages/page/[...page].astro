@@ -32,6 +32,10 @@ const tags = await getSortedTags()
 const authors = await getAllAuthors()
 const author = authors.find((item) => item.id === 'xingpingcn') ?? authors[0]
 const title = `首页 · 第 ${page.currentPage} 页`
+const previousPageUrl =
+  page.currentPage === 2 ? '/' : `/page/${page.currentPage - 1}/`
+const nextPageUrl =
+  page.currentPage < page.lastPage ? `/page/${page.currentPage + 1}/` : null
 ---
 
 <Layout class="max-w-6xl">
@@ -40,6 +44,20 @@ const title = `首页 · 第 ${page.currentPage} 页`
     title={title}
     canonical={new URL(`/page/${page.currentPage}/`, SITE.href).href}
   />
+  <link
+    slot="head"
+    rel="prev"
+    href={new URL(previousPageUrl, SITE.href).href}
+  />
+  {
+    nextPageUrl && (
+      <link
+        slot="head"
+        rel="next"
+        href={new URL(nextPageUrl, SITE.href).href}
+      />
+    )
+  }
   <HomePage
     posts={page.data}
     author={author}

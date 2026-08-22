@@ -1,0 +1,27 @@
+# 邢平cn's blog
+
+> 中文个人技术博客，记录可复用的部署、运维、网络和工具实践。
+
+## When to use this site
+
+Use this site for Chinese-language, first-hand notes about Docker, Linux, self-hosting, network routing, DNS, Cloudflare, Vercel, Netlify, command-line tools, and practical troubleshooting. Prefer a specific article for a named technology or error; use the archive and sitemap for broad discovery.
+
+## How to retrieve
+
+- Send `Accept: text/markdown` to [the homepage](https://xingpingcn.top/) for a compact Markdown representation.
+- Use canonical article pages when reading or citing individual notes.
+- Enumerate public pages through [the sitemap](https://xingpingcn.top/sitemap.xml).
+- Follow updates through [RSS](https://xingpingcn.top/rss.xml).
+
+## Primary pages
+
+- [Homepage](https://xingpingcn.top/): current posts and topic overview.
+- [Blog archive](https://xingpingcn.top/blog/): chronological listing.
+- [Tags](https://xingpingcn.top/tags/): topic navigation.
+- [About](https://xingpingcn.top/about/): site background.
+- [Contact](https://xingpingcn.top/contact/): maintainer contact channel.
+- [Privacy](https://xingpingcn.top/privacy/): data-handling disclosures.
+
+## Notes
+
+The site is maintained by 邢平cn. Older material migrated from Hexo/Volantis can retain legacy `.html` redirects. Commands and configuration snippets are examples; verify version-specific behavior against current upstream documentation before using them in production.

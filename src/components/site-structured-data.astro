@@ -1,0 +1,52 @@
+---
+import { SITE, SOCIAL_LINKS } from '@/consts'
+
+const sameAs = SOCIAL_LINKS.filter((link) => link.href.startsWith('https://'))
+  .filter((link) => link.label !== 'RSS')
+  .map((link) => link.href)
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Person',
+      '@id': `${SITE.href}/#person`,
+      name: SITE.author,
+      url: SITE.href,
+      email: 'mailto:zzy4on9@outlook.com',
+      description: '中文个人技术博客作者，分享部署、网络和工具实践。',
+      sameAs,
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE.href}/#website`,
+      name: SITE.title,
+      url: SITE.href,
+      description: SITE.description,
+      inLanguage: SITE.locale,
+      publisher: { '@id': `${SITE.href}/#person` },
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: `${SITE.href}/search/?q={search_term_string}`,
+        'query-input': 'required name=search_term_string',
+      },
+    },
+    {
+      '@type': 'Blog',
+      '@id': `${SITE.href}/#blog`,
+      name: SITE.title,
+      url: SITE.href,
+      description: SITE.description,
+      inLanguage: SITE.locale,
+      author: { '@id': `${SITE.href}/#person` },
+      publisher: { '@id': `${SITE.href}/#person` },
+    },
+  ],
+}
+---
+
+<script
+  is:inline
+  type="application/ld+json"
+  set:html={JSON.stringify(structuredData)}
+/>

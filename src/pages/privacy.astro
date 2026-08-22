@@ -1,0 +1,54 @@
+---
+import Breadcrumbs from '@/components/breadcrumbs.astro'
+import Link from '@/components/link.astro'
+import PageHead from '@/components/page-head.astro'
+import Layout from '@/layouts/layout.astro'
+---
+
+<Layout class="max-w-3xl">
+  <PageHead
+    slot="head"
+    title="隐私说明"
+    description="xingpingcn.top 的访问统计、第三方资源与联系信息处理说明。"
+  />
+  <Breadcrumbs
+    items={[
+      { label: '首页', href: '/', icon: 'lucide:home' },
+      { label: '隐私说明', icon: 'lucide:shield-check' },
+    ]}
+  />
+
+  <article class="prose max-w-none">
+    <h1>隐私说明</h1>
+    <p>
+      xingpingcn.top
+      是个人博客，不提供账户注册、付费交易或用户档案功能。访问公开页面时，部署平台和网络服务商可能会按照其自身规则处理请求所必需的技术信息，例如
+      IP
+      地址、请求时间、浏览器标识、来源页面、缓存状态和错误日志。这些信息用于交付网页、抵御滥用、排查故障和了解整体访问趋势，并不用于在本站建立可出售的个人资料库。
+    </p>
+
+    <h2>本站使用的服务</h2>
+    <p>
+      本站使用 Umami
+      生成聚合访问统计，以了解页面访问量和内容趋势；公开统计入口可在导航中访问。文章评论由
+      Giscus 提供，评论、点赞或登录操作会跳转或连接到 GitHub，并受 GitHub
+      的账户和隐私规则约束。部分图片和公开友链数据通过 jsDelivr 镜像、GitHub
+      或其他公开内容源加载；当浏览器请求这些资源时，相应服务商会收到完成请求所需的网络信息。RSS、sitemap
+      和 llms.txt 是公开机器可读文件，不要求提交个人信息。
+    </p>
+
+    <h2>信息提交与保留</h2>
+    <p>
+      通过评论或邮件主动提交的信息，仅会用于回复问题、维护文章、处理勘误或理解上下文。请不要在评论、邮件或链接表单中发送密码、访问令牌、身份证号码、完整住址、支付信息或其他不必要的敏感内容。公开评论的可见性、修改和删除方式由
+      Giscus/GitHub
+      的功能决定；邮件可通过原地址提出删除或更正请求。为了维护沟通记录和处理未完成事项，必要信息可能在合理期限内保留。
+    </p>
+
+    <h2>链接与更新</h2>
+    <p>
+      本站文章会链接到第三方项目、文档和服务。访问这些链接后，对方网站会按照自己的隐私政策处理数据，本站无法控制其内容、可用性或后续变更。部署、统计、评论或图片服务调整时，本页会随之更新。关于具体的数据处理疑问、删除请求或安全问题，请通过
+      <Link href="/contact" underline>联系页</Link>所列邮箱说明相关
+      URL、时间和可复现的信息。
+    </p>
+  </article>
+</Layout>

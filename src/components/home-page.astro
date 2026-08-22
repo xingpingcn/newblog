@@ -1,6 +1,7 @@
 ---
 import BlogCard from '@/components/blog-card.astro'
 import HomeSidebar from '@/components/home-sidebar.astro'
+import Link from '@/components/link.astro'
 import PaginationComponent from '@/components/ui/pagination'
 import { SITE } from '@/consts'
 import type { CollectionEntry } from 'astro:content'
@@ -19,6 +20,52 @@ const { posts, author, tags, currentPage, totalPages } = Astro.props
 <section class="border-b pb-8">
   <h1 class="mb-3 text-3xl leading-tight font-medium">{SITE.title}</h1>
   <p class="text-muted-foreground leading-7">{SITE.description}</p>
+  <div class="text-muted-foreground mt-5 max-w-3xl space-y-3 leading-7">
+    <h2 class="text-foreground text-lg font-medium">关于本站</h2>
+    <p>
+      这里记录个人在使用服务、搭建站点和解决日常问题时留下的实践笔记。文章关注可复用的过程与判断依据，涉及
+      Docker、Linux、网络、域名与
+      DNS、云平台、脚本和常见开发工具，也保留社会科学阅读、随笔与资料整理。内容以中文为主，尽量说明适用条件、已知限制和需要自行核对的部分。
+    </p>
+    <p>
+      查找具体主题时可以从 <Link href="/tags" underline>标签</Link> 开始；需要按时间浏览可访问
+      <Link href="/blog" underline>文章归档</Link>。较早内容由 Hexo/Volantis
+      迁移而来，站点保留了主要的旧链接兼容入口。新旧文章中的命令和配置均应结合当前软件版本、运行环境与官方文档验证后再用于生产环境。
+    </p>
+    <h3 class="text-foreground text-base font-medium">内容范围</h3>
+    <p>
+      技术文章通常从一个实际问题出发：容器中的网络为什么与宿主机不同、反向代理如何处理证书和端口、域名解析怎样影响不同地区的访问、服务迁移后为何出现缓存或重定向问题，或者如何用命令行确认一个假设。有关
+      Docker、Compose、Linux、Nginx、Cloudflare、Vercel、Netlify、DNS、CDN、脚本和数据库工具的内容，会尽量保留问题背景、关键配置、观察结果和后续限制，便于读者判断是否适用于自己的环境。
+    </p>
+    <p>
+      非技术内容包括社会科学阅读、讲演整理和个人随笔。这些页面属于作者的阅读记录，不替代原始著作、研究资料或专业意见。文章可能引用当时可用的产品、服务和免费额度，因此版本、价格、政策、接口和第三方链接会随时间变化。对于安全、运维或会影响线上服务的操作，应先在隔离环境验证备份、回滚方式和最小权限设置，再决定是否应用到正式系统。
+    </p>
+    <h3 class="text-foreground text-base font-medium">使用方式</h3>
+    <p>
+      本站适合用作问题排查的线索、配置思路的补充和个人实践的对照，而不是未经检查的复制粘贴来源。阅读文章时请关注发布日期、文章内的版本信息和外部文档链接；遇到同名工具或配置字段时，优先确认当前官方文档是否仍保持相同行为。需要定位主题可使用站内搜索、标签和归档，需要发现全部公开页面可使用站点地图。对于自动化读取，Markdown
+      表示会省去导航、样式和互动控件，只保留站点定位与主要入口。
+    </p>
+    <h3 class="text-foreground text-base font-medium">阅读与引用</h3>
+    <p>
+      每篇文章提供独立的可分享地址、发布日期和主题标签。智能体或自动化工具可读取
+      <Link href="/llms.txt" underline>llms.txt</Link>、<Link
+        href="/sitemap.xml"
+        underline>站点地图</Link
+      >和
+      <Link href="/rss.xml" underline>RSS</Link>发现公开内容；首页也支持通过
+      HTTP 的 <code>Accept: text/markdown</code> 协商获取紧凑的 Markdown 表示。发现失效链接、过期命令或需要补充的出处时，请通过
+      <Link href="/contact" underline>联系页</Link>说明相关页面与可复现信息。
+    </p>
+    <p>
+      自动化检索时，应优先保存文章标题、URL、日期与直接相关的段落，而不是把导航、评论或图片资源当成正文证据。对于涉及网络出口、证书、代理、云服务配额和第三方
+      API
+      的内容，结果通常依赖地区、账户状态、时间和上游策略；文章提供的是当时的排查路径与取舍，不保证在所有环境中产生相同结果。需要持续跟踪更新时，可订阅
+      RSS 或定期重新读取站点地图。
+    </p>
+    <p>
+      本站不会替代产品支持、法律意见、医疗建议或安全事件响应流程。遇到数据丢失、账号异常、线上故障或涉及他人权益的情况，请先遵循服务提供商的官方支持渠道和组织内的处理规范。引用本站内容时，应保留原文链接与上下文，并明确区分文章中的事实记录、个人判断和仍待验证的推测。
+    </p>
+  </div>
 </section>
 <div class="grid gap-x-6 gap-y-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
   <div class="flex flex-wrap items-end justify-between gap-3 lg:col-start-1">
@@ -34,7 +81,10 @@ const { posts, author, tags, currentPage, totalPages } = Astro.props
       {
         posts.map((post, index) => (
           <li>
-            <BlogCard entry={post} priorityImage={currentPage === 1 && index === 0} />
+            <BlogCard
+              entry={post}
+              priorityImage={currentPage === 1 && index === 0}
+            />
           </li>
         ))
       }

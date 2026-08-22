@@ -21,10 +21,22 @@ const { page } = Astro.props
 
 const postsByYear = groupPostsByYear(page.data)
 const years = Object.keys(postsByYear).sort((a, b) => parseInt(b) - parseInt(a))
+const toCanonicalPageUrl = (path: string) =>
+  new URL(path.endsWith('/') ? path : `${path}/`, SITE.href).href
 ---
 
 <Layout class="max-w-3xl">
   <PageHead slot="head" title="博客" />
+  {
+    page.url.prev && (
+      <link slot="head" rel="prev" href={toCanonicalPageUrl(page.url.prev)} />
+    )
+  }
+  {
+    page.url.next && (
+      <link slot="head" rel="next" href={toCanonicalPageUrl(page.url.next)} />
+    )
+  }
   <Breadcrumbs
     items={[
       { label: '博客', href: '/blog', icon: 'lucide:library-big' },

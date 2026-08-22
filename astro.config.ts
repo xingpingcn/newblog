@@ -25,7 +25,7 @@ const processor = satteri({
 export default defineConfig({
   site: 'https://xingpingcn.top',
   build: {
-    inlineStylesheets: 'always',
+    inlineStylesheets: 'never',
   },
   integrations: [
     mdx({ processor }),

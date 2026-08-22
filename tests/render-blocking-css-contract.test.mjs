@@ -4,14 +4,14 @@ import assert from 'node:assert/strict'
 const root = new URL('../', import.meta.url)
 const homePage = await readFile(new URL('dist/index.html', root), 'utf8')
 
-assert.doesNotMatch(
-  homePage,
-  /<link rel="stylesheet" href="\/_astro\/layout\.[^"]+\.css">/,
-  'home page should not block first render on the shared layout stylesheet request',
-)
-
 assert.match(
   homePage,
-  /<style(?:\s|>)/,
-  'home page should inline project CSS for the initial render path',
+  /<link rel="stylesheet" href="\/_astro\/[^"]+\.css">/,
+  'home page should serve project CSS as a cacheable stylesheet instead of duplicating it in every HTML document',
+)
+
+assert.doesNotMatch(
+  homePage,
+  /<style>\/\*! tailwindcss v4\.3\.3/,
+  'home page should not inline the complete Tailwind stylesheet into the document',
 )

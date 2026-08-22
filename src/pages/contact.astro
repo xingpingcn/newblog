@@ -1,0 +1,45 @@
+---
+import Breadcrumbs from '@/components/breadcrumbs.astro'
+import Link from '@/components/link.astro'
+import PageHead from '@/components/page-head.astro'
+import Layout from '@/layouts/layout.astro'
+---
+
+<Layout class="max-w-3xl">
+  <PageHead
+    slot="head"
+    title="联系"
+    description="联系邢平cn，交流本站文章、勘误和技术实践。"
+  />
+  <Breadcrumbs
+    items={[
+      { label: '首页', href: '/', icon: 'lucide:home' },
+      { label: '联系', icon: 'lucide:mail' },
+    ]}
+  />
+
+  <article class="prose max-w-none">
+    <h1>联系</h1>
+    <p>
+      本站由邢平cn个人维护，欢迎围绕公开文章、部署经验、网络与系统工具、链接勘误和转载来源联系。最稳定的联系渠道是
+      <Link href="mailto:zzy4on9@outlook.com" underline>Email</Link
+      >；来信时请使用清晰的主题，并附上相关页面链接、运行环境、版本号和已观察到的现象。这样可以更快判断问题是否能够复现，也能避免把猜测当成结论。
+    </p>
+
+    <h2>适合联系的事项</h2>
+    <p>
+      如果文章中的命令、配置、链接、截图或前提条件已经过时，欢迎指出具体位置和当前可验证的信息。对于文章主题的补充实践、兼容性差异、部署失败记录和更安全的默认配置，也欢迎提供最小复现步骤。本站保留了部分较早的
+      Hexo/Volantis
+      迁移内容；发现旧链接跳转不正确、正文遗漏或原始出处需要补充时，可以直接说明旧地址和期望地址。
+    </p>
+    <p>
+      可以在合理范围内讨论友链、开源项目、技术资料和公开可访问的服务配置，但不接受垃圾邮件、批量推广、索要账号凭据、绕过访问限制或要求处理私人数据的请求。邮件内容会仅用于回复、核对问题和维护本站；请不要发送密码、令牌、身份证明、真实住址或其他不必要的敏感信息。涉及第三方服务时，请先确认对方的公开联系和使用规则。
+    </p>
+
+    <h2>回复与公开说明</h2>
+    <p>
+      这是个人维护的非实时联系渠道，回复时间取决于问题的复杂度和可复现性。具有普遍价值的勘误、配置修正或补充说明，可能会在文章更新、提交记录或公开评论中被整理，但不会公开来信中的私人信息。需要讨论单篇文章时，请优先使用文章页的评论区；需要私下说明问题、请求删除个人信息或报告链接风险时，请使用电子邮件。本站的收集范围和第三方服务说明见
+      <Link href="/privacy" underline>隐私说明</Link>。
+    </p>
+  </article>
+</Layout>
