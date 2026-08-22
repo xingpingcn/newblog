@@ -11,10 +11,6 @@
         {
           "key": "Vary",
           "value": "Accept, Accept-Encoding"
-        },
-        {
-          "key": "Link",
-          "value": "</index.md>; rel=\"alternate\"; type=\"text/markdown\""
         }
       ]
     },
