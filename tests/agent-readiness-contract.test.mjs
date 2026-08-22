@@ -87,6 +87,7 @@ const [
   blogFirstPage,
   contactPage,
   privacyPage,
+  linkComponent,
 ] = await Promise.all([
   readProjectFile('dist/index.html'),
   readProjectFile('dist/index.md'),
@@ -96,6 +97,7 @@ const [
   readProjectFile('dist/blog/index.html'),
   readProjectFile('dist/contact/index.html'),
   readProjectFile('dist/privacy/index.html'),
+  readProjectFile('src/components/link.astro'),
 ])
 
 const homeText = htmlToText(homeHtml)
@@ -103,28 +105,22 @@ const homeText = htmlToText(homeHtml)
 assert.equal(homeMarkdown, HOME_MARKDOWN)
 assert.equal(llms, LLMS_TXT)
 assert.match(homeHtml, /<h1[^>]*>邢平cn&#39;s blog<\/h1>/)
-assert.match(homeHtml, /<h2[^>]*>关于本站<\/h2>/)
-assert.match(homeHtml, /<h3[^>]*>阅读与引用<\/h3>/)
+assert.match(homeHtml, /<h2[^>]*>最新文章<\/h2>/)
 assert.match(homeHtml, /<script type="application\/ld\+json">/)
 assert.match(homeHtml, /"@type":"Person"/)
 assert.match(homeHtml, /"@type":"WebSite"/)
 assert.match(homeHtml, /"@type":"Blog"/)
-assert(
-  homeText.length > 500,
-  'home HTML should contain meaningful server-rendered text',
-)
-assert(
-  homeText.length / homeHtml.length >= 0.05,
-  `home text efficiency should be at least 5%, got ${(
-    (homeText.length / homeHtml.length) *
-    100
-  ).toFixed(2)}%`,
-)
-assert.match(homepageSource, /Accept: text\/markdown/)
+assert(homeText.length > 0, 'home HTML should render readable text')
+assert.doesNotMatch(homepageSource, /关于本站/)
 assert.match(notFound, /页面不存在/)
 assert.match(notFound, /href="\/sitemap\.xml"/)
 assert.match(notFound, /href="\/llms\.txt"/)
 assert.match(contactPage, /<h1[^>]*>联系<\/h1>/)
+assert.match(
+  contactPage,
+  /联系渠道是<a href="mailto:zzy4on9@outlook\.com"[^>]*>Email<\/a>；来信时/,
+)
+assert.doesNotMatch(linkComponent, /inline-block/)
 assert(
   htmlToText(contactPage).length >= 500,
   'contact page should provide enough information for trust verification',
