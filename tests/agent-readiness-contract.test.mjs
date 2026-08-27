@@ -87,6 +87,9 @@ const [
   blogFirstPage,
   contactPage,
   privacyPage,
+  aboutPage,
+  backupArticle,
+  v2rayArticle,
   linkComponent,
 ] = await Promise.all([
   readProjectFile('dist/index.html'),
@@ -97,6 +100,9 @@ const [
   readProjectFile('dist/blog/index.html'),
   readProjectFile('dist/contact/index.html'),
   readProjectFile('dist/privacy/index.html'),
+  readProjectFile('dist/about/index.html'),
+  readProjectFile('dist/backup-your-data-using-rclone-and-alist-with-encryption/index.html'),
+  readProjectFile('dist/v2raywstls太慢解决方法/index.html'),
   readProjectFile('src/components/link.astro'),
 ])
 
@@ -121,6 +127,26 @@ assert.match(
   /联系渠道是<a href="mailto:zzy4on9@outlook\.com"[^>]*>Email<\/a>；来信时/,
 )
 assert.doesNotMatch(linkComponent, /inline-block/)
+assert.match(
+  aboutPage,
+  /迁移到<a href="https:\/\/astro\.build"[^>]*>Astro<\/a>，目前保留/,
+)
+assert.match(
+  aboutPage,
+  /欢迎通过<a href="mailto:zzy4on9@outlook\.com"[^>]*>Email<\/a>联系我/,
+)
+assert.match(
+  backupArticle,
+  /官网提供的<a href="https:\/\/rclone\.org\/install\/"[^>]*>bash<\/a>，/,
+)
+assert.match(
+  backupArticle,
+  /alist 的<a href="https:\/\/alist\.nn\.ci\/zh\/guide\/webdav\.html"[^>]*>webdav<\/a>，/,
+)
+assert.match(
+  v2rayArticle,
+  /5、<a href="https:\/\/github\.com\/jinwyp\/one_click_script"[^>]*>Easy install latest/,
+)
 assert(
   htmlToText(contactPage).length >= 500,
   'contact page should provide enough information for trust verification',

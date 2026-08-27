@@ -20,7 +20,7 @@ import ImageGrid from '@/components/image-grid.astro'
 <Callout variant="tip" title="需要的东西">
 
 1. alist，并注册多个国内公有云账号，会把 vps 的数据同步到多个公有云
-1. 安装好 rclone。直接用官网提供的 [bash](https://rclone.org/install/)，就没必要用 docker 了，因为可能要经常敲命令行，如果用 docker 还得进入 docker 才可以敲。
+1. 安装好 rclone。直接用官网提供的[bash](https://rclone.org/install/)，就没必要用 docker 了，因为可能要经常敲命令行，如果用 docker 还得进入 docker 才可以敲。
 
 </Callout>
 
@@ -43,7 +43,7 @@ alist 可以很方便加密数据并上传到公有云。见[官网教程](https
 
 通过 alist 来中转而不是直接在 rclone 中挂载公有云的原因是，rclone 挂载起来没有 alist 方便，而且 alist 文档写的比较清楚。我一开始是用 rclone 来挂载谷歌云盘的，官网教程用的谷歌云盘的 oauth api，结果弄到后面需要我在有浏览器的电脑里，下载 rclone 然后再用浏览器登录，把 cookie 复制到 vps，，，
 
-rclone 可以直接挂载 alist 的 [webdav](https://alist.nn.ci/zh/guide/webdav.html)，例如挂载 alist 的 `/ali/test`，就填写 [http://127.0.0.1:port/dav/ali/test，注意你](http://127.0.0.1:port/dav/ali/test，注意你) alist 的端口，还要要加 `/dav` 前缀。
+rclone 可以直接挂载 alist 的[webdav](https://alist.nn.ci/zh/guide/webdav.html)，例如挂载 alist 的 `/ali/test`，就填写[http://127.0.0.1:port/dav/ali/test，注意你](http://127.0.0.1:port/dav/ali/test，注意你) alist 的端口，还要要加 `/dav` 前缀。
 
 输入 `rclone config` 就可以挂载 webdav。webdav 的用户和密码同 alist 的登录用户密码。
 
@@ -62,7 +62,7 @@ rclone sync /home/dcoker-data ali:/dcoker-data \
 
 ## --copy-links 复制软连接
 
-## --exclude-from 排除某些文件或者文件夹。语法见 [https://rclone.org/filtering/](https://rclone.org/filtering/)
+## --exclude-from 排除某些文件或者文件夹。语法见[https://rclone.org/filtering/](https://rclone.org/filtering/)
 
 # --dry-run 检查哪些文件要同步
 
