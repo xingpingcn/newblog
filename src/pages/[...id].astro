@@ -121,19 +121,20 @@ const tocSections = await getTOCSections(currentPostId)
     {
       post.data.image ? (
         <div class="bg-muted/30 relative col-span-full mx-auto aspect-[1200/630] w-full max-w-5xl overflow-hidden">
-          <Skeleton className="absolute inset-0 size-full rounded-none" />
+          <Skeleton className="absolute inset-0 size-full rounded-none transition-opacity duration-300 has-[+img[data-loaded=true]]:animate-none has-[+img[data-loaded=true]]:opacity-0" />
           <Image
             src={post.data.image}
             alt={post.data.title}
             width={1200}
             height={630}
             class="bg-background absolute inset-0 size-full object-cover"
+            onload="this.dataset.loaded = 'true'"
           />
         </div>
       ) : (
         post.data.coverImage && (
           <div class="bg-muted/30 relative col-span-full mx-auto aspect-[1200/630] w-full max-w-5xl overflow-hidden">
-            <Skeleton className="absolute inset-0 size-full rounded-none" />
+            <Skeleton className="absolute inset-0 size-full rounded-none transition-opacity duration-300 has-[+img[data-loaded=true]]:animate-none has-[+img[data-loaded=true]]:opacity-0" />
             <img
               src={responsiveCoverImage?.src ?? post.data.coverImage}
               srcset={responsiveCoverImage?.srcset}
@@ -149,6 +150,7 @@ const tocSections = await getTOCSections(currentPostId)
               decoding="async"
               fetchpriority="high"
               class="bg-background absolute inset-0 size-full object-contain"
+              onload="this.dataset.loaded = 'true'"
             />
           </div>
         )

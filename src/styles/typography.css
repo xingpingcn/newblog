@@ -71,11 +71,11 @@
     }
 
     :where(ul):not(:where(.not-prose, .not-prose *)) {
-      @apply marker:text-foreground/30 my-5 ml-6 list-disc [&>li]:mt-2;
+      @apply marker:text-muted-foreground my-5 ml-6 list-disc [&>li]:mt-2;
     }
 
     :where(ol):not(:where(.not-prose, .not-prose *)) {
-      @apply marker:text-foreground/30 my-5 ml-6 list-decimal [&>li]:mt-2;
+      @apply marker:text-muted-foreground my-5 ml-6 list-decimal [&>li]:mt-2;
       @apply [[type='A']]:list-[upper-alpha] [[type='I']]:list-[upper-roman] [[type='a']]:list-[lower-alpha] [[type='i']]:list-[lower-roman];
     }
 
@@ -84,7 +84,7 @@
     }
 
     :where(ul ul, ol ol, ul ol, ol ul):not(:where(.not-prose, .not-prose *)) {
-      @apply marker:text-foreground/30 my-2 ml-6;
+      @apply marker:text-muted-foreground my-2 ml-6;
     }
 
     :where(code):not(:where(.not-prose, .not-prose *)) {
