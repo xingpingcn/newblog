@@ -1,5 +1,5 @@
 ---
-import { ScrollArea } from '@/components/ui/scroll-area'
+import ScrollArea from '@/components/ui/scroll-area.astro'
 import type { TOCSection } from '@/lib/data-utils'
 import { getParentId, isSubpost } from '@/lib/data-utils'
 import { cn, getHeadingMargin } from '@/lib/utils'
@@ -21,7 +21,6 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
       class="sticky top-20 col-start-1 row-span-1 mr-8 ml-auto hidden max-h-[calc(100vh-5rem)] max-w-md self-start lg:block"
     >
       <ScrollArea
-        client:load
         className="flex max-h-[calc(100vh-5rem)] flex-col overflow-y-auto"
         data-toc-scroll-area
       >
@@ -144,15 +143,30 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
 <script>
   const HEADER_OFFSET = 150
 
+  /* 逐项比较，避免每次滚动都 JSON.stringify 两个数组 */
+  const sameIds = (a: string[], b: string[]) =>
+    a.length === b.length && a.every((id, index) => id === b[index])
+
   class TOCState {
     links: NodeListOf<Element> = document.querySelectorAll(
       '[data-heading-link]',
     )
     activeIds: string[] = []
     headings: HTMLElement[] = []
-    regions: { id: string; start: number; end: number }[] = []
+    regions: {
+      id: string
+      headingTop: number
+      headingBottom: number
+      start: number
+      end: number
+    }[] = []
     scrollArea: HTMLElement | null = null
     tocScrollArea: HTMLElement | null = null
+    /* 缓存的正文几何量，滚动时只读数字 */
+    contentEnd = 0
+    controller: AbortController | null = null
+    resizeObserver: ResizeObserver | null = null
+    frame = 0
 
     reset() {
       this.links = document.querySelectorAll(
@@ -163,7 +177,7 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
       this.regions = []
       const tocContainer = document.getElementById('toc-sidebar-container')
       this.scrollArea =
-        tocContainer?.querySelector('[data-radix-scroll-area-viewport]') || null
+        tocContainer?.querySelector('[data-scroll-area-viewport]') || null
       this.tocScrollArea =
         tocContainer?.querySelector('[data-toc-scroll-area]') || null
     }
@@ -180,6 +194,7 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
       if (!contentContainer) {
         state.headings = []
         state.regions = []
+        state.contentEnd = 0
         return
       }
 
@@ -187,25 +202,27 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
         contentContainer.querySelectorAll<HTMLElement>('h2, h3, h4, h5, h6'),
       )
 
+      const contentEnd =
+        contentContainer.offsetTop + contentContainer.offsetHeight
+      state.contentEnd = contentEnd
+
       if (state.headings.length === 0) {
         state.regions = []
         return
       }
 
-      const contentEnd =
-        contentContainer.offsetTop + contentContainer.offsetHeight
-      state.regions = state.headings.map((heading, index) => {
-        const nextHeading = state.headings[index + 1]
-        return {
-          id: heading.id,
-          start: heading.offsetTop,
-          end: nextHeading ? nextHeading.offsetTop : contentEnd,
-        }
-      })
+      const tops = state.headings.map((heading) => heading.offsetTop)
+      state.regions = state.headings.map((heading, index) => ({
+        id: heading.id,
+        headingTop: tops[index]!,
+        headingBottom: tops[index]! + heading.offsetHeight,
+        start: tops[index]!,
+        end: index + 1 < tops.length ? tops[index + 1]! : contentEnd,
+      }))
     }
 
     static getVisibleIds(): string[] {
-      if (state.headings.length === 0) return []
+      if (state.regions.length === 0) return []
 
       const viewportTop = window.scrollY + HEADER_OFFSET
       const viewportBottom = window.scrollY + window.innerHeight
@@ -216,24 +233,19 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
         (bottom >= viewportTop && bottom <= viewportBottom) ||
         (top <= viewportTop && bottom >= viewportBottom)
 
-      state.headings.forEach((heading) => {
-        const headingBottom = heading.offsetTop + heading.offsetHeight
-        if (isInViewport(heading.offsetTop, headingBottom)) {
-          visibleIds.add(heading.id)
+      state.regions.forEach((region) => {
+        if (isInViewport(region.headingTop, region.headingBottom)) {
+          visibleIds.add(region.id)
         }
       })
 
       state.regions.forEach((region) => {
         if (region.start <= viewportBottom && region.end >= viewportTop) {
-          const heading = document.getElementById(region.id)
-          if (heading) {
-            const headingBottom = heading.offsetTop + heading.offsetHeight
-            if (
-              region.end > headingBottom &&
-              (headingBottom < viewportBottom || viewportTop < region.end)
-            ) {
-              visibleIds.add(region.id)
-            }
+          if (
+            region.end > region.headingBottom &&
+            (region.headingBottom < viewportBottom || viewportTop < region.end)
+          ) {
+            visibleIds.add(region.id)
           }
         }
       })
@@ -305,10 +317,19 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
   }
 
   class TOCController {
-    static handleScroll() {
+    /* 每帧最多算一次：滚动事件本身可能一帧来好几个 */
+    static onScroll = () => {
+      if (state.frame) return
+      state.frame = requestAnimationFrame(() => {
+        state.frame = 0
+        TOCController.update()
+      })
+    }
+
+    static update() {
       const newActiveIds = HeadingRegions.getVisibleIds()
 
-      if (JSON.stringify(newActiveIds) !== JSON.stringify(state.activeIds)) {
+      if (!sameIds(newActiveIds, state.activeIds)) {
         state.activeIds = newActiveIds
         TOCLinks.update(state.activeIds)
       }
@@ -316,19 +337,14 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
 
     static handleTOCScroll = () => TOCScrollMask.update()
 
-    static handleResize() {
+    static rebuild = () => {
       HeadingRegions.build()
-      const newActiveIds = HeadingRegions.getVisibleIds()
-
-      if (JSON.stringify(newActiveIds) !== JSON.stringify(state.activeIds)) {
-        state.activeIds = newActiveIds
-        TOCLinks.update(state.activeIds)
-      }
-
+      TOCController.update()
       TOCScrollMask.update()
     }
 
     static init() {
+      if (state.controller) return
       state.reset()
       HeadingRegions.build()
 
@@ -337,23 +353,33 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
         return
       }
 
-      this.handleScroll()
+      state.controller = new AbortController()
+      const { signal } = state.controller
+      const options = { passive: true, signal }
+
+      this.update()
       setTimeout(TOCScrollMask.update, 100)
 
-      const options = { passive: true }
-      window.addEventListener('scroll', this.handleScroll, options)
-      window.addEventListener('resize', this.handleResize, options)
+      window.addEventListener('scroll', this.onScroll, options)
+      window.addEventListener('resize', this.rebuild, options)
       state.scrollArea?.addEventListener(
         'scroll',
         this.handleTOCScroll,
         options,
       )
+
+      /* 图片、字体加载完会改变正文高度，缓存的几何量要跟着重算 */
+      const content = document.querySelector('[data-article-content]')
+      if (content && 'ResizeObserver' in window) {
+        state.resizeObserver = new ResizeObserver(this.rebuild)
+        state.resizeObserver.observe(content)
+      }
     }
 
     static cleanup() {
-      window.removeEventListener('scroll', this.handleScroll)
-      window.removeEventListener('resize', this.handleResize)
-      state.scrollArea?.removeEventListener('scroll', this.handleTOCScroll)
+      state.controller?.abort()
+      state.resizeObserver?.disconnect()
+      if (state.frame) cancelAnimationFrame(state.frame)
 
       Object.assign(state, {
         activeIds: [],
@@ -361,14 +387,13 @@ const parentId = isCurrentSubpost ? getParentId(currentPostId) : currentPostId
         regions: [],
         scrollArea: null,
         tocScrollArea: null,
+        controller: null,
+        resizeObserver: null,
+        frame: 0,
       })
     }
   }
 
   document.addEventListener('astro:page-load', () => TOCController.init())
-  document.addEventListener('astro:after-swap', () => {
-    TOCController.cleanup()
-    TOCController.init()
-  })
   document.addEventListener('astro:before-swap', () => TOCController.cleanup())
 </script>

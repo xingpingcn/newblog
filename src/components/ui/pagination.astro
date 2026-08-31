@@ -1,0 +1,126 @@
+---
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { Icon } from 'astro-icon/components'
+
+/**
+ * 静态分页：全部是 <a>，没有任何交互状态，所以不需要 hydrate。
+ * 页码用窗口折叠（首页 / 末页 / 当前页 ±1），文章变多也不会撑爆一行。
+ */
+interface Props {
+  currentPage: number
+  totalPages: number
+  baseUrl: string
+  firstPageUrl?: string
+  class?: string
+}
+
+const {
+  currentPage,
+  totalPages,
+  baseUrl,
+  firstPageUrl = baseUrl,
+  class: klass,
+} = Astro.props
+
+const pageUrl = (page: number) =>
+  page === 1 ? firstPageUrl : `${baseUrl}${page}/`
+
+const SIBLINGS = 1
+const shown = new Set<number>([1, totalPages])
+for (let page = currentPage - SIBLINGS; page <= currentPage + SIBLINGS; page++) {
+  if (page >= 1 && page <= totalPages) shown.add(page)
+}
+
+const sortedPages = [...shown].sort((a, b) => a - b)
+const items: (number | 'ellipsis')[] = []
+sortedPages.forEach((page, index) => {
+  const previous = sortedPages[index - 1]
+  if (previous !== undefined && page - previous > 1) items.push('ellipsis')
+  items.push(page)
+})
+
+const hasPrevious = currentPage > 1
+const hasNext = currentPage < totalPages
+
+const stepClass = cn(
+  buttonVariants({ variant: 'ghost', size: 'default' }),
+  'gap-1 px-2.5',
+)
+const disabledStepClass = cn(stepClass, 'pointer-events-none opacity-50')
+---
+
+<nav
+  aria-label="pagination"
+  data-slot="pagination"
+  class={cn('mx-auto flex w-full justify-center', klass)}
+>
+  <ul class="flex flex-row flex-wrap items-center justify-center gap-1">
+    <li>
+      {
+        hasPrevious ? (
+          <a
+            href={pageUrl(currentPage - 1)}
+            rel="prev"
+            aria-label="Go to previous page"
+            class={stepClass}
+          >
+            <Icon name="lucide:chevron-left" />
+            <span class="hidden sm:block">Previous</span>
+          </a>
+        ) : (
+          <span role="link" aria-disabled="true" class={disabledStepClass}>
+            <Icon name="lucide:chevron-left" />
+            <span class="hidden sm:block">Previous</span>
+          </span>
+        )
+      }
+    </li>
+
+    {
+      items.map((item) =>
+        item === 'ellipsis' ? (
+          <li aria-hidden="true" class="flex size-9 items-center justify-center">
+            <Icon name="lucide:ellipsis" class="text-muted-foreground size-4" />
+          </li>
+        ) : (
+          <li>
+            <a
+              href={pageUrl(item)}
+              aria-current={item === currentPage ? 'page' : undefined}
+              aria-label={`Go to page ${item}`}
+              class={cn(
+                buttonVariants({ variant: 'ghost', size: 'icon' }),
+                item === currentPage &&
+                  'bg-accent text-accent-foreground hover:bg-accent/90 hover:text-accent-foreground font-semibold',
+              )}
+            >
+              {item}
+            </a>
+          </li>
+        ),
+      )
+    }
+
+    <li>
+      {
+        hasNext ? (
+          <a
+            href={pageUrl(currentPage + 1)}
+            rel="next"
+            aria-label="Go to next page"
+            class={stepClass}
+          >
+            <span class="hidden sm:block">Next</span>
+            <Icon name="lucide:chevron-right" />
+          </a>
+        ) : (
+          <span role="link" aria-disabled="true" class={disabledStepClass}>
+            <span class="hidden sm:block">Next</span>
+            <Icon name="lucide:chevron-right" />
+          </span>
+        )
+      }
+    </li>
+  </ul>
+</nav>

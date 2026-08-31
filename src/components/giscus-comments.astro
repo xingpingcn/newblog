@@ -8,7 +8,7 @@ const { giscus } = comments
 
 <section
   id="comments"
-  class="not-prose bg-muted/20 col-start-2 scroll-mt-28 rounded-md border px-4 py-4"
+  class="surface-card not-prose bg-muted/20 col-start-2 scroll-mt-28"
   aria-labelledby="comments-title"
 >
   <div class="mb-4 flex items-center gap-2">
@@ -16,7 +16,7 @@ const { giscus } = comments
       name="lucide:messages-square"
       class="text-muted-foreground size-4 shrink-0"
     />
-    <h2 id="comments-title" class="text-foreground text-sm font-medium">
+    <h2 id="comments-title" class="text-foreground text-sm font-semibold">
       {comments.title}
     </h2>
   </div>
@@ -40,133 +40,162 @@ const { giscus } = comments
 </section>
 
 <script is:inline data-astro-rerun>
-  function getResolvedSiteTheme() {
-    const explicitTheme = document.documentElement.getAttribute('data-theme')
-    if (['dark', 'light'].includes(explicitTheme)) return explicitTheme
+  // data-astro-rerun 会让这段脚本在每次站内切换后重新执行；
+  // 顶层的 class/function 声明会因此报 "already declared"，包一层作用域即可。
+  {
+    function getResolvedSiteTheme() {
+      const explicitTheme = document.documentElement.getAttribute('data-theme')
+      if (['dark', 'light'].includes(explicitTheme)) return explicitTheme
 
-    const storedTheme = localStorage.getItem('theme')
-    if (['dark', 'light'].includes(storedTheme)) return storedTheme
+      const storedTheme = localStorage.getItem('theme')
+      if (['dark', 'light'].includes(storedTheme)) return storedTheme
 
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light'
-  }
-
-  class GiscusComments extends HTMLElement {
-    themeObserver
-    frameObserver
-
-    connectedCallback() {
-      this.observeTheme()
-      this.observeGiscusFrame()
-      this.load()
+      return window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light'
     }
 
-    disconnectedCallback() {
-      this.themeObserver?.disconnect()
-      this.frameObserver?.disconnect()
-    }
+    class GiscusComments extends HTMLElement {
+      themeObserver
+      frameObserver
+      visibilityObserver
 
-    load() {
-      if (this.querySelector('iframe.giscus-frame, script')) return
+      connectedCallback() {
+        this.observeTheme()
+        this.observeGiscusFrame()
+        this.scheduleLoad()
+      }
 
-      const script = document.createElement('script')
-      script.src = 'https://giscus.app/client.js'
-      script.async = true
-      script.crossOrigin = 'anonymous'
-      script.setAttribute('data-repo', this.dataset.repo ?? '')
-      script.setAttribute('data-repo-id', this.dataset.repoId ?? '')
-      script.setAttribute('data-category', this.dataset.category ?? '')
-      script.setAttribute('data-category-id', this.dataset.categoryId ?? '')
-      script.setAttribute('data-mapping', this.dataset.mapping ?? 'pathname')
-      script.setAttribute('data-strict', this.dataset.strict ?? '0')
-      script.setAttribute(
-        'data-reactions-enabled',
-        this.dataset.reactionsEnabled ?? '1',
-      )
-      script.setAttribute(
-        'data-emit-metadata',
-        this.dataset.emitMetadata ?? '0',
-      )
-      script.setAttribute(
-        'data-input-position',
-        this.dataset.inputPosition ?? 'top',
-      )
-      script.setAttribute('data-theme', this.currentGiscusTheme())
-      script.setAttribute('data-lang', this.dataset.lang ?? 'zh-CN')
+      disconnectedCallback() {
+        this.themeObserver?.disconnect()
+        this.frameObserver?.disconnect()
+        this.visibilityObserver?.disconnect()
+      }
 
-      this.appendChild(script)
-    }
+      /**
+       * 评论区在首屏之外很远，giscus 是第三方 origin + iframe + 自己一整套资源。
+       * 等它进入视口附近再加载，首访不再和正文抢带宽。
+       */
+      scheduleLoad() {
+        if (!('IntersectionObserver' in window)) {
+          this.load()
+          return
+        }
 
-    observeTheme() {
-      this.themeObserver?.disconnect()
+        this.visibilityObserver?.disconnect()
+        this.visibilityObserver = new IntersectionObserver(
+          (entries) => {
+            if (!entries.some((entry) => entry.isIntersecting)) return
+            this.visibilityObserver?.disconnect()
+            this.visibilityObserver = undefined
+            this.load()
+          },
+          { rootMargin: '600px 0px' },
+        )
+        this.visibilityObserver.observe(this)
+      }
 
-      this.themeObserver = new MutationObserver(() => {
-        this.updateTheme()
-      })
+      load() {
+        if (this.querySelector('iframe.giscus-frame, script')) return
 
-      this.themeObserver.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['data-theme'],
-      })
-    }
+        const script = document.createElement('script')
+        script.src = 'https://giscus.app/client.js'
+        script.async = true
+        script.crossOrigin = 'anonymous'
+        script.setAttribute('data-repo', this.dataset.repo ?? '')
+        script.setAttribute('data-repo-id', this.dataset.repoId ?? '')
+        script.setAttribute('data-category', this.dataset.category ?? '')
+        script.setAttribute('data-category-id', this.dataset.categoryId ?? '')
+        script.setAttribute('data-mapping', this.dataset.mapping ?? 'pathname')
+        script.setAttribute('data-strict', this.dataset.strict ?? '0')
+        script.setAttribute(
+          'data-reactions-enabled',
+          this.dataset.reactionsEnabled ?? '1',
+        )
+        script.setAttribute(
+          'data-emit-metadata',
+          this.dataset.emitMetadata ?? '0',
+        )
+        script.setAttribute(
+          'data-input-position',
+          this.dataset.inputPosition ?? 'top',
+        )
+        script.setAttribute('data-theme', this.currentGiscusTheme())
+        script.setAttribute('data-lang', this.dataset.lang ?? 'zh-CN')
 
-    observeGiscusFrame() {
-      this.frameObserver?.disconnect()
+        this.appendChild(script)
+      }
 
-      this.frameObserver = new MutationObserver(() => {
-        this.syncGiscusFrame()
-      })
+      observeTheme() {
+        this.themeObserver?.disconnect()
 
-      this.frameObserver.observe(this, {
-        childList: true,
-        subtree: true,
-      })
-      this.syncGiscusFrame()
-    }
-
-    syncGiscusFrame() {
-      const iframe = this.querySelector('iframe.giscus-frame')
-      if (!iframe || iframe.dataset.giscusObserved === 'true') return
-
-      iframe.dataset.giscusObserved = 'true'
-      iframe.addEventListener(
-        'load',
-        () => {
-          iframe.dataset.giscusReady = 'true'
+        this.themeObserver = new MutationObserver(() => {
           this.updateTheme()
-        },
-        { once: true },
-      )
-    }
+        })
 
-    currentGiscusTheme() {
-      const isDark = getResolvedSiteTheme() === 'dark'
+        this.themeObserver.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['data-theme'],
+        })
+      }
 
-      return isDark
-        ? (this.dataset.themeDark ?? 'dark')
-        : (this.dataset.themeLight ?? 'light')
-    }
+      observeGiscusFrame() {
+        this.frameObserver?.disconnect()
 
-    updateTheme() {
-      const iframe = this.querySelector('iframe.giscus-frame')
-      if (!iframe?.contentWindow) return
-      if (iframe.dataset.giscusReady !== 'true') return
+        this.frameObserver = new MutationObserver(() => {
+          this.syncGiscusFrame()
+        })
 
-      iframe.contentWindow.postMessage(
-        {
-          giscus: {
-            setConfig: {
-              theme: this.currentGiscusTheme(),
+        this.frameObserver.observe(this, {
+          childList: true,
+          subtree: true,
+        })
+        this.syncGiscusFrame()
+      }
+
+      syncGiscusFrame() {
+        const iframe = this.querySelector('iframe.giscus-frame')
+        if (!iframe || iframe.dataset.giscusObserved === 'true') return
+
+        iframe.dataset.giscusObserved = 'true'
+        iframe.addEventListener(
+          'load',
+          () => {
+            iframe.dataset.giscusReady = 'true'
+            this.updateTheme()
+          },
+          { once: true },
+        )
+      }
+
+      currentGiscusTheme() {
+        const isDark = getResolvedSiteTheme() === 'dark'
+
+        return isDark
+          ? (this.dataset.themeDark ?? 'dark')
+          : (this.dataset.themeLight ?? 'light')
+      }
+
+      updateTheme() {
+        const iframe = this.querySelector('iframe.giscus-frame')
+        if (!iframe?.contentWindow) return
+        if (iframe.dataset.giscusReady !== 'true') return
+
+        iframe.contentWindow.postMessage(
+          {
+            giscus: {
+              setConfig: {
+                theme: this.currentGiscusTheme(),
+              },
             },
           },
-        },
-        'https://giscus.app',
-      )
+          'https://giscus.app',
+        )
+      }
     }
-  }
 
-  if (!customElements.get('giscus-comments')) {
-    customElements.define('giscus-comments', GiscusComments)
+    if (!customElements.get('giscus-comments')) {
+      customElements.define('giscus-comments', GiscusComments)
+    }
   }
 </script>

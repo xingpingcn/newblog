@@ -30,17 +30,11 @@
     @apply text-foreground text-base leading-7;
 
     :where(p):not(:where(.not-prose, .not-prose *)) {
-      @apply text-foreground/80 my-5 indent-[2em];
-    }
-
-    :where(li > p, details p, p.prose-no-indent):not(
-      :where(.not-prose, .not-prose *)
-    ) {
-      @apply indent-0;
+      @apply text-foreground/80 my-5;
     }
 
     :where(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) {
-      @apply text-foreground scroll-mt-32 font-medium xl:scroll-mt-20;
+      @apply text-foreground scroll-mt-32 font-semibold xl:scroll-mt-20;
     }
 
     :first-child:not(:where(.not-prose, .not-prose *)) {
@@ -69,11 +63,11 @@
     }
 
     :where(a):not(:where(.not-prose, .not-prose *)) {
-      @apply text-foreground decoration-muted-foreground hover:decoration-foreground font-medium wrap-break-word underline underline-offset-[3px] transition-colors;
+      @apply text-accent decoration-accent/40 hover:decoration-accent font-medium wrap-break-word underline underline-offset-[3px] transition-colors;
     }
 
     :where(strong):not(:where(.not-prose, .not-prose *)) {
-      @apply text-foreground font-medium;
+      @apply text-foreground font-semibold;
     }
 
     :where(ul):not(:where(.not-prose, .not-prose *)) {
@@ -158,13 +152,9 @@
     }
 
     :where(math-display):not(:where(.not-prose, .not-prose *)) {
-      @apply text-foreground/80 my-6 overflow-x-auto overflow-y-hidden py-2 tracking-normal;
+      @apply text-foreground/80 my-6 overflow-x-auto overflow-y-hidden py-2;
       display: flex;
       justify-content: safe center;
-    }
-
-    :where(math, math *):not(:where(.not-prose, .not-prose *)) {
-      @apply tracking-normal;
     }
 
     :where(math):not(:where(.not-prose, .not-prose *)) {

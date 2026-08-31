@@ -1,0 +1,54 @@
+---
+import { cn } from '@/lib/utils'
+
+/**
+ * 静态头像：直接在 HTML 里输出 <img>，浏览器解析到就能开始下载，
+ * 不需要等 JS。图片加载失败时移除自身，露出底下的首字母兜底。
+ */
+interface Props {
+  src?: string
+  alt?: string
+  fallback: string
+  class?: string
+  className?: string
+  loading?: 'lazy' | 'eager'
+}
+
+const {
+  src,
+  alt,
+  fallback,
+  class: klass,
+  className,
+  loading = 'lazy',
+} = Astro.props
+---
+
+<span
+  data-slot="avatar"
+  class={cn(
+    'relative flex size-8 shrink-0 overflow-hidden rounded-full',
+    className,
+    klass,
+  )}
+>
+  <span
+    data-slot="avatar-fallback"
+    class="bg-muted text-muted-foreground absolute inset-0 flex size-full items-center justify-center rounded-full text-[0.5em] leading-none font-medium"
+  >
+    {fallback}
+  </span>
+  {
+    src && (
+      <img
+        data-slot="avatar-image"
+        src={src}
+        alt={alt}
+        loading={loading}
+        decoding="async"
+        class="relative aspect-square size-full object-cover"
+        onerror="this.remove()"
+      />
+    )
+  }
+</span>

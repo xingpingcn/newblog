@@ -13,6 +13,23 @@ import Favicons from './favicons.astro'
   />
   <meta name="generator" content={Astro.generator} />
 
+  <!-- 首屏所有图片（logo / 头像 / 封面）都在这个 CDN 上：
+       提前握手，省掉首访时的 DNS + TCP + TLS 串行等待 -->
+  <link rel="preconnect" href="https://cdn.jsdmirror.com" crossorigin />
+  <link rel="dns-prefetch" href="https://cdn.jsdmirror.com" />
+  <!-- 统计与评论不在关键路径上，只预解析 DNS -->
+  <link rel="dns-prefetch" href="https://stats.xingpingcn.top" />
+  <link rel="dns-prefetch" href="https://giscus.app" />
+
+  <!-- 正文字体：不预载的话要等 CSS 解析完才被发现，会多一轮 FOUT -->
+  <link
+    rel="preload"
+    href="/fonts/GeistVF.woff2"
+    as="font"
+    type="font/woff2"
+    crossorigin
+  />
+
   <meta name="HandheldFriendly" content="True" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -30,7 +47,8 @@ import Favicons from './favicons.astro'
   <meta name="msvalidate.01" content={SITE.verification.bing} />
   <script
     is:inline
-    async
+    defer
+    fetchpriority="low"
     src={SITE.analytics.umami.src}
     data-website-id={SITE.analytics.umami.websiteId}></script>
 

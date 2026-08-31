@@ -14,7 +14,7 @@ const author = authors.find((item) => item.id === 'xingpingcn') ?? authors[0]
 const totalPages = Math.ceil(posts.length / SITE.postsPerPage)
 ---
 
-<Layout class="max-w-6xl">
+<Layout class="max-w-wide">
   <PageHead slot="head" title="首页" />
   <SiteStructuredData slot="head" />
   <link slot="head" rel="alternate" type="text/markdown" href="/index.md" />

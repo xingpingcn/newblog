@@ -11,7 +11,7 @@ const authors = await getAllAuthors()
 const author = authors.find((item) => item.id === 'xingpingcn') ?? authors[0]
 ---
 
-<Layout class="max-w-3xl">
+<Layout class="max-w-read">
   <PageHead slot="head" title="关于" />
   <Breadcrumbs items={[{ label: '关于', icon: 'lucide:info' }]} />
 

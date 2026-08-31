@@ -1,5 +1,5 @@
 ---
-import { ScrollArea } from '@/components/ui/scroll-area'
+import ScrollArea from '@/components/ui/scroll-area.astro'
 import { cn, getHeadingMargin } from '@/lib/utils'
 import type { MarkdownHeading } from 'astro'
 import { Icon } from 'astro-icon/components'
@@ -16,7 +16,7 @@ const { headings } = Astro.props
     <div id="mobile-toc-container" class="mobile-toc-header w-full lg:hidden">
       <details class="group mobile-stack-details">
         <summary class="mobile-stack-summary flex w-full cursor-pointer items-center justify-between">
-          <div class="mobile-toc-header-inner mobile-stack-summary-inner mx-auto flex w-full max-w-3xl items-center px-4 py-3">
+          <div class="mobile-toc-header-inner mobile-stack-summary-inner mx-auto flex w-full max-w-read items-center px-4 py-3">
             <div class="relative mr-2 size-4">
               <svg class="h-4 w-4" viewBox="0 0 24 24">
                 <circle
@@ -59,8 +59,7 @@ const { headings } = Astro.props
         </summary>
 
         <ScrollArea
-          client:load
-          className="mobile-toc-header-panel mobile-stack-panel mx-auto max-w-3xl"
+          className="mobile-toc-header-panel mobile-stack-panel mx-auto max-w-read"
           data-toc-header-scroll
         >
           <div class="max-h-[30vh]">
@@ -100,6 +99,10 @@ const { headings } = Astro.props
   const PROGRESS_CIRCLE_RADIUS = 10
   const PROGRESS_CIRCLE_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_CIRCLE_RADIUS
 
+  /* 逐项比较，避免每次滚动都 JSON.stringify 两个数组 */
+  const sameIds = (a: string[], b: string[]) =>
+    a.length === b.length && a.every((id, index) => id === b[index])
+
   class MobileTOCState {
     progressCircle: HTMLElement | null = null
     currentSectionText: HTMLElement | null = null
@@ -107,8 +110,21 @@ const { headings } = Astro.props
     listElement: HTMLElement | null = null
     scrollArea: HTMLElement | null = null
     headings: HTMLElement[] = []
-    regions: { id: string; start: number; end: number }[] = []
+    regions: {
+      id: string
+      headingTop: number
+      headingBottom: number
+      start: number
+      end: number
+    }[] = []
     activeIds: string[] = []
+    /* 以下几何量在 build() 时算好并缓存，滚动时只读数字，不再触发强制回流 */
+    contentEnd = 0
+    commentsTop = Number.POSITIVE_INFINITY
+    commentsBottom = Number.POSITIVE_INFINITY
+    controller: AbortController | null = null
+    resizeObserver: ResizeObserver | null = null
+    frame = 0
 
     reset() {
       this.progressCircle = document.getElementById(
@@ -123,7 +139,7 @@ const { headings } = Astro.props
       this.listElement = document.getElementById('mobile-table-of-contents')
       const tocContainer = document.getElementById('mobile-toc-container')
       this.scrollArea =
-        tocContainer?.querySelector('[data-radix-scroll-area-viewport]') || null
+        tocContainer?.querySelector('[data-scroll-area-viewport]') || null
       this.headings = []
       this.regions = []
       this.activeIds = []
@@ -148,6 +164,7 @@ const { headings } = Astro.props
       if (!contentContainer) {
         state.headings = []
         state.regions = []
+        state.contentEnd = 0
         return
       }
 
@@ -155,25 +172,35 @@ const { headings } = Astro.props
         contentContainer.querySelectorAll<HTMLElement>('h2, h3, h4, h5, h6'),
       )
 
+      const contentEnd =
+        contentContainer.offsetTop + contentContainer.offsetHeight
+      state.contentEnd = contentEnd
+
+      const comments = document.getElementById('comments')
+      state.commentsTop = comments
+        ? comments.offsetTop
+        : Number.POSITIVE_INFINITY
+      state.commentsBottom = comments
+        ? comments.offsetTop + comments.offsetHeight
+        : Number.POSITIVE_INFINITY
+
       if (state.headings.length === 0) {
         state.regions = []
         return
       }
 
-      const contentEnd =
-        contentContainer.offsetTop + contentContainer.offsetHeight
-      state.regions = state.headings.map((heading, index) => {
-        const nextHeading = state.headings[index + 1]
-        return {
-          id: heading.id,
-          start: heading.offsetTop,
-          end: nextHeading ? nextHeading.offsetTop : contentEnd,
-        }
-      })
+      const tops = state.headings.map((heading) => heading.offsetTop)
+      state.regions = state.headings.map((heading, index) => ({
+        id: heading.id,
+        headingTop: tops[index]!,
+        headingBottom: tops[index]! + heading.offsetHeight,
+        start: tops[index]!,
+        end: index + 1 < tops.length ? tops[index + 1]! : contentEnd,
+      }))
     }
 
     static getVisibleIds(): string[] {
-      if (state.headings.length === 0) return []
+      if (state.regions.length === 0) return []
 
       const viewportTop = window.scrollY + HEADER_OFFSET
       const viewportBottom = window.scrollY + window.innerHeight
@@ -184,24 +211,19 @@ const { headings } = Astro.props
         (bottom >= viewportTop && bottom <= viewportBottom) ||
         (top <= viewportTop && bottom >= viewportBottom)
 
-      state.headings.forEach((heading) => {
-        const headingBottom = heading.offsetTop + heading.offsetHeight
-        if (isInViewport(heading.offsetTop, headingBottom)) {
-          visibleIds.add(heading.id)
+      state.regions.forEach((region) => {
+        if (isInViewport(region.headingTop, region.headingBottom)) {
+          visibleIds.add(region.id)
         }
       })
 
       state.regions.forEach((region) => {
         if (region.start <= viewportBottom && region.end >= viewportTop) {
-          const heading = document.getElementById(region.id)
-          if (heading) {
-            const headingBottom = heading.offsetTop + heading.offsetHeight
-            if (
-              region.end > headingBottom &&
-              (headingBottom < viewportBottom || viewportTop < region.end)
-            ) {
-              visibleIds.add(region.id)
-            }
+          if (
+            region.end > region.headingBottom &&
+            (region.headingBottom < viewportBottom || viewportTop < region.end)
+          ) {
+            visibleIds.add(region.id)
           }
         }
       })
@@ -279,15 +301,15 @@ const { headings } = Astro.props
     }
 
     static isCommentsSectionActive() {
-      const comments = document.getElementById('comments')
-      if (!comments) return false
+      if (state.commentsTop === Number.POSITIVE_INFINITY) return false
 
       const viewportTop = window.scrollY + HEADER_OFFSET
       const viewportBottom = window.scrollY + window.innerHeight
-      const commentsTop = comments.offsetTop
-      const commentsBottom = commentsTop + comments.offsetHeight
 
-      return commentsTop <= viewportBottom && commentsBottom >= viewportTop
+      return (
+        state.commentsTop <= viewportBottom &&
+        state.commentsBottom >= viewportTop
+      )
     }
 
     static scrollToActive(activeHeadingId: string) {
@@ -327,36 +349,37 @@ const { headings } = Astro.props
     }
 
     static setupInteraction() {
-      if (!state.listElement) return
+      if (!state.listElement || !state.controller) return
+      const { signal } = state.controller
 
       state.listElement.querySelectorAll('.mobile-toc-item').forEach((item) => {
-        item.addEventListener('click', () => {
-          if (state.detailsElement) {
-            state.detailsElement.open = false
-            state.detailsElement.removeAttribute('open')
-          }
-        })
-      })
-
-      if (state.scrollArea) {
-        state.scrollArea.addEventListener(
-          'scroll',
-          () => TOCHeaderScrollMask.update(),
-          { passive: true },
-        )
-      }
-
-      if (state.detailsElement) {
-        state.detailsElement.addEventListener(
-          'toggle',
+        item.addEventListener(
+          'click',
           () => {
-            if (state.detailsElement?.open) {
-              setTimeout(TOCHeaderScrollMask.update, 100)
+            if (state.detailsElement) {
+              state.detailsElement.open = false
+              state.detailsElement.removeAttribute('open')
             }
           },
-          { passive: true },
+          { signal },
         )
-      }
+      })
+
+      state.scrollArea?.addEventListener(
+        'scroll',
+        () => TOCHeaderScrollMask.update(),
+        { passive: true, signal },
+      )
+
+      state.detailsElement?.addEventListener(
+        'toggle',
+        () => {
+          if (state.detailsElement?.open) {
+            setTimeout(TOCHeaderScrollMask.update, 100)
+          }
+        },
+        { passive: true, signal },
+      )
     }
   }
 
@@ -364,12 +387,8 @@ const { headings } = Astro.props
     static update() {
       if (!state.progressCircle) return
 
-      const contentContainer = document.querySelector<HTMLElement>(
-        '[data-article-content]',
-      )
-      const contentEnd = contentContainer
-        ? contentContainer.offsetTop + contentContainer.offsetHeight
-        : document.documentElement.scrollHeight
+      const contentEnd =
+        state.contentEnd || document.documentElement.scrollHeight
       const scrollableDistance = Math.max(contentEnd - window.innerHeight, 0)
       const scrollProgress =
         scrollableDistance > 0
@@ -384,10 +403,19 @@ const { headings } = Astro.props
   }
 
   class MobileTOCController {
-    static handleScroll() {
+    /* 每帧最多算一次：滚动事件本身可能一帧来好几个 */
+    static onScroll = () => {
+      if (state.frame) return
+      state.frame = requestAnimationFrame(() => {
+        state.frame = 0
+        MobileTOCController.update()
+      })
+    }
+
+    static update() {
       const newActiveIds = HeadingRegions.getVisibleIds()
 
-      if (JSON.stringify(newActiveIds) !== JSON.stringify(state.activeIds)) {
+      if (!sameIds(newActiveIds, state.activeIds)) {
         state.activeIds = newActiveIds
         MobileTOCLinks.update(state.activeIds)
       }
@@ -395,46 +423,52 @@ const { headings } = Astro.props
       ProgressCircle.update()
     }
 
-    static handleResize() {
+    static rebuild = () => {
       HeadingRegions.build()
-
-      const newActiveIds = HeadingRegions.getVisibleIds()
-      if (JSON.stringify(newActiveIds) !== JSON.stringify(state.activeIds)) {
-        state.activeIds = newActiveIds
-        MobileTOCLinks.update(state.activeIds)
-      }
-
-      ProgressCircle.update()
+      MobileTOCController.update()
     }
 
     static init() {
+      if (state.controller) return
       state.reset()
       HeadingRegions.build()
 
       if (!state.currentSectionText) return
 
+      state.controller = new AbortController()
+      const { signal } = state.controller
+
       if (state.headings.length === 0) {
         state.currentSectionText.textContent = INITIAL_OVERVIEW_TEXT
-        window.addEventListener('scroll', ProgressCircle.update, {
-          passive: true,
-        })
-        ProgressCircle.update()
-        return
+      } else {
+        state.activeIds = HeadingRegions.getVisibleIds()
+        MobileTOCLinks.update(state.activeIds)
+        MobileTOCLinks.setupInteraction()
       }
 
-      state.activeIds = HeadingRegions.getVisibleIds()
-      MobileTOCLinks.update(state.activeIds)
       ProgressCircle.update()
 
-      MobileTOCLinks.setupInteraction()
-      window.addEventListener('scroll', this.handleScroll, { passive: true })
-      window.addEventListener('resize', this.handleResize, { passive: true })
+      window.addEventListener('scroll', this.onScroll, { passive: true, signal })
+      window.addEventListener('resize', this.rebuild, { passive: true, signal })
+
+      /* 图片、字体、展开的 details 都会改变正文高度，
+         缓存的几何量要跟着失效重算 */
+      const content = document.querySelector('[data-article-content]')
+      if (content && 'ResizeObserver' in window) {
+        state.resizeObserver = new ResizeObserver(this.rebuild)
+        state.resizeObserver.observe(content)
+      }
     }
 
     static cleanup() {
-      window.removeEventListener('scroll', this.handleScroll)
-      window.removeEventListener('scroll', ProgressCircle.update)
-      window.removeEventListener('resize', this.handleResize)
+      state.controller?.abort()
+      state.controller = null
+      state.resizeObserver?.disconnect()
+      state.resizeObserver = null
+      if (state.frame) {
+        cancelAnimationFrame(state.frame)
+        state.frame = 0
+      }
       state.activeIds = []
       state.headings = []
       state.regions = []
@@ -442,10 +476,6 @@ const { headings } = Astro.props
   }
 
   document.addEventListener('astro:page-load', () => MobileTOCController.init())
-  document.addEventListener('astro:after-swap', () => {
-    MobileTOCController.cleanup()
-    MobileTOCController.init()
-  })
   document.addEventListener('astro:before-swap', () =>
     MobileTOCController.cleanup(),
   )

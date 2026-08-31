@@ -5,12 +5,6 @@ import { buttonVariants } from '@/components/ui/button'
 import { NAV_LINKS } from '@/consts'
 import { Icon } from 'astro-icon/components'
 
-interface Props {
-  class?: string
-}
-
-const { class: className = 'max-w-3xl' } = Astro.props
-
 const navIconMap: Record<string, string> = {
   首页: 'lucide:home',
   作者: 'lucide:users',
@@ -34,10 +28,7 @@ const logoCdnRoot =
 
 <site-header-motion class="site-header-motion">
   <div
-    class:list={[
-      'site-header-inner mx-auto flex w-full items-center justify-between gap-4 px-4 py-3',
-      className,
-    ]}
+    class="site-header-inner mx-auto flex w-full max-w-shell items-center justify-between gap-4 px-4 py-3"
   >
     <span class="site-header-shell" aria-hidden="true"></span>
     <Link

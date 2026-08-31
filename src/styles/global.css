@@ -4,7 +4,8 @@
 
 @theme inline {
   --font-sans:
-    Geist, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    Geist, ui-sans-serif, system-ui, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   --font-mono:
     Geist Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
@@ -16,6 +17,9 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
 
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
 
@@ -23,7 +27,24 @@
   --color-destructive-foreground: var(--destructive-foreground);
 
   --color-border: var(--border);
+  --color-input: var(--input);
   --color-ring: var(--ring);
+}
+
+/* 非 inline：这些需要在运行时以真实自定义属性存在，手写 CSS 里也要 var() 引用 */
+@theme {
+  /* 圆角刻度：全部从 --radius 派生，改一个值就能整站同步 */
+  --radius-sm: calc(var(--radius) - 0.5rem);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-lg: calc(var(--radius) - 0.125rem);
+  --radius-xl: var(--radius);
+  --radius-2xl: calc(var(--radius) + 0.25rem);
+
+  /* 容器刻度：--container-read 阅读宽度，--container-wide 列表宽度，
+     --container-shell 站点 chrome（头部/页脚），不随页面变化 */
+  --container-read: 48rem;
+  --container-wide: 72rem;
+  --container-shell: 72rem;
 }
 
 @font-face {
@@ -43,15 +64,25 @@
 }
 
 :root {
+  /* 尺度令牌 */
+  --radius: 0.75rem;
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+  --card-padding: 1.25rem;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
+  --accent: oklch(0.52 0.11 165);
+  --accent-foreground: oklch(0.985 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: var(--accent);
   --search-highlight: oklch(0.88 0.19 95);
   --search-highlight-foreground: oklch(0.2 0.03 70);
 }
@@ -61,11 +92,14 @@
   --foreground: oklch(0.985 0 0);
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
+  --accent: oklch(0.7 0.1 165);
+  --accent-foreground: oklch(0.205 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
-  --ring: oklch(0.556 0 0);
+  --input: oklch(1 0 0 / 15%);
+  --ring: var(--accent);
   --search-highlight: oklch(0.72 0.17 95);
   --search-highlight-foreground: oklch(0.18 0.03 70);
 }
@@ -99,7 +133,13 @@
   ::before,
   ::backdrop,
   ::file-selector-button {
-    @apply border-border outline-ring/50 tracking-tight;
+    @apply border-border outline-ring/50;
+  }
+
+  /* 中日韩字形是等宽方块，负字距会让正文挤在一起：
+     只给拉丁标题收紧，不再全局施加 tracking-tight */
+  :is(h1, h2, h3):lang(en) {
+    @apply tracking-tight;
   }
 }
 
@@ -112,7 +152,7 @@
   height: 2px;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 160ms ease;
+  transition: opacity var(--duration-fast) ease;
 }
 
 .site-navigation-progress-track {
@@ -122,10 +162,10 @@
   transform-origin: left center;
   background: linear-gradient(
     90deg,
-    var(--foreground),
-    color-mix(in oklab, var(--foreground) 60%, var(--background))
+    var(--accent),
+    color-mix(in oklab, var(--accent) 55%, var(--background))
   );
-  box-shadow: 0 0 16px color-mix(in oklab, var(--foreground) 32%, transparent);
+  box-shadow: 0 0 16px color-mix(in oklab, var(--accent) 32%, transparent);
 }
 
 .site-navigation-progress[data-state='loading'] {
@@ -154,16 +194,16 @@
   padding-top: 0;
   margin-inline: 0;
   transform: translateY(0);
-  transition: transform 300ms ease;
+  transition: transform var(--duration-slow) ease;
 }
 
 .site-page-header {
   --site-header-motion-height: 4rem;
   --site-header-motion-hide-offset: -4.5rem;
   transition:
-    border-radius 300ms ease,
-    background-color 180ms ease,
-    box-shadow 180ms ease;
+    border-radius var(--duration-slow) ease,
+    background-color var(--duration-base) ease,
+    box-shadow var(--duration-base) ease;
 }
 
 .site-page-header[data-header-hidden] .site-header-motion {
@@ -189,7 +229,7 @@
   background-color: transparent;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  transition: border-radius 300ms ease;
+  transition: border-radius var(--duration-slow) ease;
 }
 
 .site-header-shell {
@@ -203,14 +243,14 @@
   -webkit-backdrop-filter: blur(16px) saturate(1.35);
   backdrop-filter: blur(16px) saturate(1.35);
   transition:
-    border-color 150ms ease,
-    background-color 150ms ease,
-    box-shadow 150ms ease;
+    border-color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
   pointer-events: none;
 }
 
 .site-header-motion.not-top .site-header-inner {
-  border-radius: 1rem;
+  border-radius: var(--radius-2xl);
   box-shadow: none;
 }
 
@@ -225,10 +265,10 @@
 .site-header-brand {
   margin-inline-start: 0;
   transition:
-    color 150ms ease,
-    background-color 150ms ease,
-    border-color 150ms ease,
-    box-shadow 150ms ease;
+    color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
 }
 
 .site-header-motion.not-top .site-header-brand {
@@ -245,10 +285,10 @@
   height: 2rem;
   cursor: pointer;
   transition:
-    color 150ms ease,
-    background-color 150ms ease,
-    border-color 150ms ease,
-    box-shadow 150ms ease;
+    color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
 }
 
 .site-header-icon-button:hover,
@@ -273,7 +313,7 @@
   gap: 0.125rem;
   padding: 0.375rem;
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
   background-color: transparent;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -285,9 +325,9 @@
   transform: translateY(-0.25rem) scale(0.98);
   transform-origin: top right;
   transition:
-    opacity 160ms ease,
-    transform 180ms ease,
-    background-color 150ms ease;
+    opacity var(--duration-fast) ease,
+    transform var(--duration-base) ease,
+    background-color var(--duration-fast) ease;
 }
 
 .site-header-menu-panel::before {
@@ -299,7 +339,7 @@
   background-color: color-mix(in oklab, var(--background) 72%, transparent);
   -webkit-backdrop-filter: blur(24px) saturate(1.45);
   backdrop-filter: blur(24px) saturate(1.45);
-  transition: background-color 150ms ease;
+  transition: background-color var(--duration-fast) ease;
 }
 
 .site-header-motion.not-top .site-header-menu-panel::before {
@@ -313,11 +353,11 @@
 }
 
 .site-header-nav-link {
-  border-radius: 0.625rem;
+  border-radius: var(--radius-md);
   padding: 0.375rem 0.125rem;
   transition:
-    color 180ms ease,
-    background-color 180ms ease;
+    color var(--duration-base) ease,
+    background-color var(--duration-base) ease;
 }
 
 .site-header-nav-link:hover,
@@ -331,7 +371,7 @@
   gap: 0.5rem;
   min-height: 2rem;
   padding: 0.375rem 0.5rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   color: color-mix(in oklab, var(--foreground) 70%, transparent);
   font-size: 0.875rem;
   white-space: nowrap;
@@ -351,10 +391,10 @@
   overflow: hidden;
   transform: translateY(0);
   transition:
-    background-color 180ms ease,
-    border-radius 300ms ease,
-    backdrop-filter 180ms ease,
-    transform 300ms ease;
+    background-color var(--duration-base) ease,
+    border-radius var(--duration-slow) ease,
+    backdrop-filter var(--duration-base) ease,
+    transform var(--duration-slow) ease;
 }
 
 .mobile-subposts-header {
@@ -363,10 +403,10 @@
   backdrop-filter: blur(16px) saturate(1.35);
   transform: translateY(0);
   transition:
-    background-color 180ms ease,
-    border-radius 300ms ease,
-    backdrop-filter 180ms ease,
-    transform 300ms ease;
+    background-color var(--duration-base) ease,
+    border-radius var(--duration-slow) ease,
+    backdrop-filter var(--duration-base) ease,
+    transform var(--duration-slow) ease;
 }
 
 .mobile-toc-header-inner,
@@ -391,9 +431,9 @@
 
 .mobile-stack-summary-inner > * {
   transition:
-    color 180ms ease,
-    opacity 180ms ease,
-    transform 300ms ease;
+    color var(--duration-base) ease,
+    opacity var(--duration-base) ease,
+    transform var(--duration-slow) ease;
   will-change: transform;
 }
 
@@ -402,8 +442,8 @@
   overflow: hidden;
   block-size: 0;
   transition:
-    block-size 220ms ease,
-    content-visibility 220ms ease allow-discrete;
+    block-size var(--duration-base) ease,
+    content-visibility var(--duration-base) ease allow-discrete;
 }
 
 .mobile-stack-details[open]::details-content {
@@ -414,8 +454,8 @@
   opacity: 0;
   transform: translateY(-0.375rem);
   transition:
-    opacity 180ms ease,
-    transform 220ms ease;
+    opacity var(--duration-base) ease,
+    transform var(--duration-base) ease;
   will-change: transform, opacity;
 }
 
@@ -462,7 +502,7 @@
     margin-inline: auto;
     isolation: isolate;
     border: 1px solid transparent;
-    border-radius: 1rem;
+    border-radius: var(--radius-2xl);
     background-color: transparent;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -548,7 +588,7 @@
     backdrop-filter: blur(16px) saturate(1.35);
     box-shadow: 0 10px 24px
       color-mix(in oklab, var(--foreground) 8%, transparent);
-    transition: border-radius 300ms ease;
+    transition: border-radius var(--duration-slow) ease;
     pointer-events: none;
   }
 
@@ -635,6 +675,28 @@
 }
 
 @layer components {
+  /* 全站唯一的卡片表面：圆角、内边距、hover 反馈都从令牌来，
+     避免 rounded-md/rounded-xl + p-4/p-5/p-6 各自漂移 */
+  .surface-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: var(--card-padding);
+    transition:
+      border-color var(--duration-base) ease,
+      background-color var(--duration-base) ease;
+  }
+
+  .surface-card-interactive:hover,
+  .surface-card-interactive:has(a:hover) {
+    border-color: color-mix(in oklab, var(--accent) 32%, var(--border));
+    background-color: color-mix(in oklab, var(--muted) 50%, transparent);
+  }
+
+  /* 媒体卡片：内容自己贴边，内边距交给内层 */
+  .surface-card-flush {
+    padding: 0;
+  }
+
   .search-shell {
     display: flex;
     align-items: stretch;
@@ -661,15 +723,15 @@
     min-height: 2.75rem;
     padding: 0.625rem 2.75rem;
     border: 1px solid var(--border);
-    border-radius: 0.75rem;
+    border-radius: var(--radius-xl);
     background-color: color-mix(in oklab, var(--background) 94%, transparent);
     color: var(--foreground);
     font-size: 0.9375rem;
     outline: none;
     transition:
-      border-color 160ms ease,
-      box-shadow 160ms ease,
-      background-color 160ms ease;
+      border-color var(--duration-fast) ease,
+      box-shadow var(--duration-fast) ease,
+      background-color var(--duration-fast) ease;
   }
 
   .search-input::placeholder {
@@ -698,11 +760,11 @@
     justify-content: center;
     width: 2rem;
     height: 2rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     color: var(--muted-foreground);
     transition:
-      color 160ms ease,
-      background-color 160ms ease;
+      color var(--duration-fast) ease,
+      background-color var(--duration-fast) ease;
   }
 
   .search-clear:hover,
@@ -714,7 +776,7 @@
 
   .search-submit {
     min-height: 2.75rem;
-    border-radius: 0.75rem;
+    border-radius: var(--radius-xl);
   }
 
   .search-status {
@@ -741,15 +803,15 @@
     gap: 0.5rem;
     padding: 1rem;
     border: 1px solid var(--border);
-    border-radius: 0.75rem;
+    border-radius: var(--radius-xl);
     background-color: color-mix(in oklab, var(--background) 96%, transparent);
     transition:
-      border-color 160ms ease,
-      background-color 160ms ease;
+      border-color var(--duration-fast) ease,
+      background-color var(--duration-fast) ease;
   }
 
   .search-result-card:hover {
-    border-color: color-mix(in oklab, var(--foreground) 24%, var(--border));
+    border-color: color-mix(in oklab, var(--accent) 32%, var(--border));
     background-color: color-mix(in oklab, var(--muted) 38%, transparent);
   }
 
@@ -783,7 +845,7 @@
 
   .search-result-title-link:hover,
   .search-result-title-link:focus-visible {
-    color: color-mix(in oklab, var(--foreground) 72%, var(--primary));
+    color: var(--accent);
     text-decoration: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 0.2em;
@@ -813,7 +875,7 @@
   .search-result-highlight {
     display: inline;
     padding: 0.08em 0.22em;
-    border-radius: 0.25rem;
+    border-radius: var(--radius-sm);
     background-color: var(--search-highlight);
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
@@ -856,12 +918,12 @@
     height: 2.25rem;
     align-items: center;
     justify-content: center;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-sm);
     color: var(--muted-foreground);
     font-size: 0.875rem;
     transition:
-      color 160ms ease,
-      background-color 160ms ease;
+      color var(--duration-fast) ease,
+      background-color var(--duration-fast) ease;
   }
 
   .search-page-number:hover,
@@ -872,8 +934,8 @@
   }
 
   .search-page-number[aria-current='page'] {
-    background-color: var(--foreground);
-    color: var(--background);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
   }
 
   .search-page-control {
@@ -889,7 +951,7 @@
     padding: 0;
     overflow: hidden;
     border: 1px solid var(--border);
-    border-radius: 1rem;
+    border-radius: var(--radius-2xl);
     background: var(--background);
     color: var(--foreground);
     box-shadow: 0 24px 80px

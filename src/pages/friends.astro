@@ -16,7 +16,7 @@ const siteScreenshot =
   'https://cdn.jsdmirror.com/npm/p-hosting-for-xp@1.0.25/20230508/Snipaste_2023-05-08_00-59-44.2lzfpy52dcu0.webp'
 ---
 
-<Layout class="max-w-5xl">
+<Layout class="max-w-wide">
   <PageHead
     slot="head"
     title="友链"
@@ -42,14 +42,14 @@ const siteScreenshot =
           ))}
         </div>
       ) : (
-        <div class="text-muted-foreground rounded-xl border p-6 text-sm">
+        <div class="surface-card text-muted-foreground text-sm">
           暂时没有读取到友链数据，可以稍后再试。
         </div>
       )
     }
 
     <section class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-      <div class="rounded-xl border p-5">
+      <div class="surface-card">
         <div class="mb-4 flex items-center gap-2 font-medium">
           <Icon
             name="lucide:clipboard-check"
@@ -75,7 +75,7 @@ const siteScreenshot =
       </div>
 
       <aside class="flex flex-col gap-4">
-        <div class="rounded-xl border p-5">
+        <div class="surface-card">
           <div class="mb-4 flex items-center gap-2 font-medium">
             <Icon
               name="lucide:badge-info"

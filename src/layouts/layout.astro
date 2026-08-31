@@ -30,7 +30,7 @@ const { class: className } = Astro.props
   <body class="flex h-fit min-h-screen flex-col gap-y-6 font-sans">
     <NavigationProgress />
     <header class="site-page-header sticky top-0 z-50">
-      <Header class={className} />
+      <Header />
       <slot name="subposts-navigation" />
       <slot name="table-of-contents" />
     </header>
