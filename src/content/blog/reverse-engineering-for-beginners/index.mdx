@@ -1,0 +1,370 @@
+---
+title: '写给新人的逆向入门：从一个小程序开始读懂二进制'
+description: '用一个可以自己编译的小程序，走完识别文件、寻找线索、定位判断、调试验证和 Python 算法还原的完整流程。先学会用证据解释程序，再考虑更复杂的工具。'
+date: 2026-10-04
+tags: ['逆向工程', '学习笔记']
+keywords: ['逆向入门', '静态分析', '动态调试', 'Ghidra', 'GDB', '二进制分析']
+authors: ['xingpingcn']
+draft: true
+---
+
+第一次打开反汇编工具，最容易产生的感觉是：每个字都认识，连在一起完全不知道在干什么。
+
+屏幕上有地址、寄存器、跳转，还有一堆像乱码一样的函数名。教程却经常直接跳到“找到关键函数，改一下就好了”。问题恰恰在这里：**新人不知道关键函数为什么关键，也不知道怎样证明自己找对了。**
+
+这篇文章不追求一次讲完所有技术。我们只做一件事：拿一个自己编译的小程序，从输入一路追到判断结果，再把观察到的逻辑写成独立脚本。
+
+完成之后，你应该能回答三个问题：
+
+- 输入从哪里进入程序，经过了哪些处理？
+- 哪个条件决定成功或失败？
+- 我的解释有哪些运行结果可以佐证？
+
+## 逆向不是把机器码变回原来的源码
+
+正向开发是“想法 → 源码 → 编译 → 程序”。逆向则是从程序的行为和产物出发，推断它的结构与规则。
+
+反汇编把机器码转成汇编指令；反编译进一步尝试给出类似 C 的表达。它们都不是时光机：注释、原始变量名、部分类型信息和设计意图，编译后可能已经丢了。
+
+所以，逆向的目标通常不是恢复一模一样的源码，而是建立一个**足够准确、可以验证的行为模型**。例如：某个字段怎样解码、文件格式怎样组织、一个输入为什么被接受。
+
+本文只用自建教学样本。分析来历不明的程序时，先在可丢弃的虚拟机里操作，不挂载私人目录、不放凭据，并默认断网。静态分析通常风险更低，但解析器也可能存在漏洞；不要因为“还没双击”就完全放松隔离。
+
+## 先分清几件常常混在一起的事
+
+| 概念     | 在做什么                             | 不能直接推出什么               |
+| -------- | ------------------------------------ | ------------------------------ |
+| 静态分析 | 不运行样本，读文件结构、字符串和指令 | 看见一段代码，不等于它一定执行 |
+| 动态分析 | 运行样本，观察参数、内存、调用和分支 | 一次成功，不等于覆盖了所有路径 |
+| 反编译   | 根据机器码推导高级语言形式           | 伪代码不保证是原始源码         |
+| 算法还原 | 用另一份代码表达观察到的规则         | 拟合几个样例，不等于规则已证明 |
+| 补丁     | 修改指令或数据，让行为改变           | 改到成功，不等于理解原判断逻辑 |
+
+新人第一轮建议先不打补丁。先让“我猜它是这样”变成“我有证据说明它是这样”。
+
+## 准备一个能反复验证的小样本
+
+练习环境是 Linux，准备 C 编译器、Python 3，以及 `file`、GNU Binutils、GDB。Ghidra 用于图形化阅读，暂时没有也可以先完成命令行部分。
+
+下面的样本可在 Linux x86-64 和 ARM64 上编译；两种架构的反汇编指令不同，不要照抄别人的寄存器和地址。本文的调试步骤使用函数名和参数名，避免依赖某种架构的传参寄存器。
+
+新建一个练习目录，把下面的代码保存成 `lesson.c`：
+
+```c title="lesson.c"
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
+static int check_input(const char *s) {
+    static const uint8_t expected[] = {
+        0x36, 0x40, 0x3d, 0x2b, 0x38, 0x7c, 0x2e, 0x46
+    };
+
+    if (strlen(s) != sizeof(expected)) {
+        return 0;
+    }
+
+    for (size_t i = 0; i < sizeof(expected); ++i) {
+        uint8_t value = (uint8_t)(((uint8_t)s[i] ^ 0x5a) + i);
+        if (value != expected[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        puts("usage: lesson <input>");
+        return 2;
+    }
+
+    if (check_input(argv[1])) {
+        puts("accepted");
+        return 0;
+    }
+
+    puts("rejected");
+    return 1;
+}
+```
+
+编译一份保留调试信息的版本，再复制一份去掉符号，作为第二轮练习：
+
+```bash
+cc -std=c11 -Wall -Wextra -O0 -g lesson.c -o lesson-debug
+cp lesson-debug lesson-stripped
+strip --strip-all lesson-stripped
+sha256sum lesson-debug lesson-stripped
+```
+
+`-O0` 关闭优化，方便把源码结构与指令对应起来；`-g` 保留调试信息。`strip` 操作只作用于副本，原始练习版本仍然保留。
+
+为什么提供源码？因为新人需要一个能核对的答案。建议先编译，然后把源码关掉，按照下面的步骤分析，最后再打开对照。第一轮练的是方法，不是猜谜。
+
+## 第一步：先认识文件，不要急着运行
+
+```bash
+file lesson-debug
+readelf -h lesson-debug
+strings -a lesson-debug | grep -E 'usage|accepted|rejected'
+nm lesson-debug | grep -E 'main|check_input'
+```
+
+这一轮只回答几个基础问题：
+
+1. 文件是什么格式？本例应是 ELF，而不是 Windows 的 PE 或 macOS 的 Mach-O。
+2. 它面向什么架构、多少位、什么字节序？
+3. 是否还保留符号或调试信息？
+4. 有没有能帮助定位用户交互的字符串？
+
+这里应该能发现 `accepted` 和 `rejected`。它们是很好的路标，但不是最终结论：程序里可能存在未使用的字符串，也可能有多个分支打印同一句话。
+
+再对 `lesson-stripped` 执行相同检查。去掉符号后，`nm` 找不到普通函数名是正常的；动态链接所需的信息与所有可读字符串并不会因此一起消失。
+
+记住一个习惯：**记录文件哈希、架构和构建方式。** 否则两个版本的地址不同，你可能会把“样本变了”误认为“分析错了”。
+
+## 第二步：从输出往回找判断
+
+命令行可以先读主函数与检查函数：
+
+```bash
+objdump -d --disassemble=main lesson-debug
+objdump -d --disassemble=check_input lesson-debug
+```
+
+如果使用 Ghidra，可以建立一个本地工程，导入样本，确认识别出的架构，运行自动分析。带符号版本可直接寻找 `main` 和 `check_input`；无符号版本则尝试搜索 `accepted` 字符串，查看引用它的位置，再往前追踪决定输出的条件。
+
+不要为了方便，把未公开的商业程序或带内部信息的样本上传到在线反编译网站。
+
+你要拼出来的是这条路径，而不是一次读懂每条指令：
+
+```text
+命令行参数 argv[1]
+    ↓
+检查输入长度是不是 8 字节
+    ↓
+循环读取每个输入字节
+    ↓
+异或 0x5a，再加当前位置 i，保留低 8 位
+    ↓
+与 expected[i] 比较
+    ↓
+全部相等 → 返回 1 → accepted
+任意失败 → 返回 0 → rejected
+```
+
+本文的关键检查函数就是 `check_input`。在其他样本的笔记里，你可以先用 `CHECK_FN` 作为临时名字，等证据足够后再改成有含义的名称。不要因为一个函数看起来复杂，就认定它是核心。
+
+这里有个很容易混淆的细节：**检查函数用 1 表示通过，但进程退出码用 0 表示成功。** 同一个数字放在不同层级，含义不一样。
+
+### 不认识汇编时，先认模式
+
+第一轮不用背完整指令集。先学会识别函数调用、取数据、比较、条件跳转和循环回边。
+
+在 x86-64 上，你可能看到 `call`、`cmp`、`test`、`jne`；ARM64 上则可能看到 `bl`、`cmp`、`b.ne`。具体组合依赖编译器和编译选项，不能要求你的输出与教程逐行相同。
+
+反编译器也可能把变量叫作 `local_18`、把数组识别成几个整数。先看数据怎样流动，再根据使用方式修正类型与名字。一个长度为 8 的字节表，被显示成 64 位整数时，还需要注意内存字节序。
+
+## 第三步：让程序停在判断现场
+
+调试自己编译的 `lesson-debug`：
+
+```bash
+gdb -q ./lesson-debug
+```
+
+进入 GDB 后输入：
+
+```text
+break check_input
+run aaaaaaaa
+x/s s
+disassemble check_input
+finish
+continue
+quit
+```
+
+这些命令分别做什么？
+
+- `break check_input`：在检查函数设置符号断点。
+- `run aaaaaaaa`：用八个字符启动程序，避免只走长度错误的路径。
+- `x/s s`：把参数 `s` 指向的内存按以零结尾的字符串显示。
+- `disassemble check_input`：观察当前函数的汇编。
+- `finish`：运行到当前函数返回；调试信息可用时，会显示返回值。
+- `continue`：让调用方继续执行，观察最终输出。
+
+这组输入应让检查函数返回 0，程序输出 `rejected`。等下一节恢复出正确输入，再重新启动 GDB，把 `run` 的参数替换掉，比较两次返回结果。
+
+这里能用 `s`，是因为我们保留了参数名与调试信息。对已经去掉符号的版本，照抄 `break check_input` 或 `x/s s` 很可能失败。那时需要从代码位置、调用约定和运行时地址继续分析，而不是认为工具坏了。
+
+### 地址为什么会变？
+
+PIE 与 ASLR 可能让同一个程序在不同运行中的加载地址发生变化。文件偏移、反汇编地址、运行时虚拟地址是三个不同概念，不能直接混用。
+
+本轮使用函数名断点，不需要记录一个固定的绝对地址。后续必须按地址下断点时，应先确认模块加载位置与对应偏移，不要照抄别人的地址，更不要直接把运行时地址当成文件偏移去修改文件。
+
+## 第四步：把观察到的逻辑写成 Python
+
+从前面的分析，可以把每个位置的变换记成：
+
+```text
+target[i] = ((input[i] XOR 0x5a) + i) mod 256
+```
+
+倒过来推，先撤销加法，再撤销异或：
+
+```text
+input[i] = ((target[i] - i) mod 256) XOR 0x5a
+```
+
+异或同一个数两次会得到原值。加法与异或的顺序不能交换：原来先异或、后加法，还原时就得先减法、后异或。
+
+把下面代码保存成 `solve.py`，与两个样本放在同一个目录运行：
+
+```python title="solve.py"
+from pathlib import Path
+import subprocess
+
+TARGET = bytes([0x36, 0x40, 0x3D, 0x2B, 0x38, 0x7C, 0x2E, 0x46])
+
+
+def transform(data: bytes) -> bytes:
+    return bytes(((value ^ 0x5A) + i) & 0xFF
+                 for i, value in enumerate(data))
+
+
+candidate = bytes(((value - i) & 0xFF) ^ 0x5A
+                  for i, value in enumerate(TARGET))
+assert transform(candidate) == TARGET
+print("恢复的输入：", candidate.decode("ascii"))
+
+cases = [
+    (candidate.decode("ascii"), 0, "accepted"),
+    ("aaaaaaaa", 1, "rejected"),
+    ("short", 1, "rejected"),
+    ("", 1, "rejected"),
+    ("learn-rf", 1, "rejected"),
+    ("learn-re!", 1, "rejected"),
+]
+
+for name in ("lesson-debug", "lesson-stripped"):
+    executable = Path(name).resolve()
+    for value, expected_code, expected_output in cases:
+        result = subprocess.run(
+            [str(executable), value],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+        assert result.returncode == expected_code, (name, value, result)
+        assert result.stdout.strip() == expected_output, (name, value, result)
+    print(f"{name}: {len(cases)} 个用例通过")
+```
+
+```bash
+python3 solve.py
+```
+
+预期输出：
+
+```text
+恢复的输入： learn-re
+lesson-debug: 6 个用例通过
+lesson-stripped: 6 个用例通过
+```
+
+这里的 `& 0xFF` 对应 C 中保留低 8 位的效果。Python 整数不会自动按字节溢出，如果省掉这个约束，就可能得到一份“常见输入能跑，边界情况不对”的实现。
+
+这不是密码学意义上的安全加密，也不是通用的许可证生成方法。它只是一个便于手工推导的可逆字节变换。真实程序若使用公钥验证数字签名，读懂验证流程并不意味着能由公钥生成合法签名。
+
+## 第五步：验证的不只是正确答案
+
+脚本故意检查了六组输入：正确输入、同长度错误输入、过短、空字符串、只改最后一位、过长。
+
+它们各有用途。只测一个正确输入，只能说明“存在一条通过路径”；只改最后一位，则能帮助检查我们是否遗漏了循环尾部的比较。
+
+还可以单独验证没有提供参数的情况：
+
+```bash
+./lesson-debug
+printf 'exit=%s\n' "$?"
+```
+
+应显示使用说明，并以 2 退出。注意：`./lesson-debug ""` 传入了一个空参数，和完全不传参数是两种情况。
+
+整个闭环应该是：
+
+```text
+静态读到的规则
+    +
+调试看到的参数与返回值
+    +
+独立脚本的正向回算
+    +
+原始二进制的正例与反例
+    =
+可以复查的分析结论
+```
+
+不过，这些用例还不是对任意输入的完整证明。遇到状态、文件、网络或时间参与判断的程序，需要把这些额外条件一起记录和验证。
+
+## 新人最常见的几个坑
+
+### 搜到字符串，就以为找到了答案
+
+字符串只是线索。继续看谁引用它、什么时候能走到它、是否还有后续判断。
+
+### 把伪代码当原始源码
+
+数组类型、符号扩展、无符号比较、运算宽度，都可能影响结果。遇到不合理的伪代码，回到指令和实际内存检查，不要强行解释。
+
+### 把字节长度当字符数量
+
+本例的 `strlen` 统计到第一个零字节为止的字节数。英文 ASCII 里，一个字符通常就是一个字节；UTF-8 中文则不一定。命令行参数也不能直接携带内嵌零字节，因此本例并不覆盖任意二进制输入。
+
+### 第一天就装十几个工具
+
+先用一个静态分析工具和一个调试器，把一次输入到输出的路径走通。工具越多，不一定越接近答案。
+
+### 一看优化后的代码就怀疑人生
+
+优化会内联函数、合并分支、展开循环，也可能让局部变量无法直接查看。先读懂 `-O0 -g` 版本，再比较优化版本。难度应该逐级增加，而不是第一天挑战复杂壳和虚拟机混淆。
+
+### 改完以后没有原件可以对照
+
+保留原始副本、文件哈希和实验记录。本文不修改检查逻辑；如果后续研究补丁，也应只在实验副本上进行，并单独记录每次修改前后的字节与验证结果。
+
+## 做完这篇之后，下一步练什么？
+
+按下面顺序推进，每轮只增加一个变量：
+
+1. 关掉源码，用 `lesson-stripped` 从成功字符串的交叉引用找回判断路径。
+2. 把常量或输入长度改掉，重新编译，再根据新二进制恢复规则。
+3. 用 `-O2` 生成一个独立版本，观察检查函数是否被内联、控制流怎样改变。
+4. 找一个公开的入门 crackme 或 CTF 逆向题，复用同一套记录方式。
+
+每次练习留下一份短笔记就够了：
+
+```text
+样本：文件名、SHA-256、架构、构建信息
+目标：这次要回答的具体问题
+入口：输入从哪里进入
+判断：关键函数或代码位置、通过条件
+证据：静态引用、调试观察、测试输出
+模型：独立实现与已知限制
+待确认：哪些结论还只是猜测
+```
+
+逆向最重要的能力，不是看见一条陌生指令也能立刻背出含义，而是知道下一步该找什么证据。
+
+先定位，再解释，再验证。能把这三件事做扎实，就已经走过了入门最难的一段。
+
+## 参考资料
+
+- [GDB 官方手册](https://sourceware.org/gdb/current/onlinedocs/gdb.html/)：查断点、内存查看和调试命令。
+- [GDB 的继续与单步执行](https://sourceware.org/gdb/current/onlinedocs/gdb.html/Continuing-and-Stepping.html)：确认 `finish` 等命令的行为。
+- [GNU Binutils 官方手册](https://sourceware.org/binutils/docs/)：查 `objdump`、`readelf`、`nm`、`strings` 等工具。
+- [Ghidra 官方仓库](https://github.com/NationalSecurityAgency/ghidra)：获取工具与配套文档。
