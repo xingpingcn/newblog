@@ -20,7 +20,6 @@ draft: true
 
 借助ai小白也能搞js逆向，本次逆向的目的是在仅通过node环境在不使用真实浏览器的情况下过datadome的盾，减少资源占用。大体思路就是拿到足够的正样本，然后模拟真实浏览器获得挑战并通过挑战，拿到cookie来复用，可以在node里复用也可以在curl_cffi里复用。
 
-
 :::note
 本文会借助ai写大部分的内容，同时我也会校对，写为一篇记录与ai边做边学的博客
 
@@ -42,13 +41,17 @@ draft: true
 
 先用同一段伪代码区分两件事。下面的名字仅用于讲解，不是 DataDome 原始变量名：
 
-```text title="伪代码：同一段程序的两种读法"
-width = environment.width
-if width > 0:
+```js title="伪代码：同一段程序的两种读法"
+function calculate(environment) {
+  const width = environment.width
+  let result
+  if (width > 0) {
     result = encode(width)
-else:
-    result = "unavailable"
-return result
+  } else {
+    result = 'unavailable'
+  }
+  return result
+}
 ```
 
 **控制流**关心执行顺序：先读 `width`，再判断，条件成立走 `encode`，不成立走另一条分支，最后返回。**数据流**关心值的来去：`width` 来自环境，经由判断或编码，影响最终的 `result`。一个值可以同时决定走哪条路、算出什么结果。
@@ -64,6 +67,8 @@ return result
 | 第 9 节     | 数据依赖与因果验证             | 中间值变了，为什么结果没变？       |
 | 第 10 节    | 环境语义对两条线的影响         | 对象、异常和异步时序为什么重要？   |
 | 第 11—12 节 | HTTP 状态与验收边界            | 本地计算完成以后，还有哪些关要过？ |
+
+伪代码也使用 JavaScript 写法与语法高亮；标题里的“伪代码”仍表示它依赖省略的上下文，并非可直接运行的完整程序。
 
 下文把代码块分成两类：标为“**伪代码**”的只说明关系，函数名不代表现成工具；标为“**可运行**”的短例子可以独立运行。所有教学字节、属性名和示意数组都不冒充真实挑战材料。
 
@@ -95,10 +100,10 @@ window.plv3
 
 其中一个赋值关系等价于：
 
-```text title="伪代码：从消费端逐级找生产者"
-request.fields.plv3 = window.plv3       // 这里消费结果，不一定在这里计算
-window.plv3 = o.r                      // 继续查 o 的赋值
-o = runEnvironmentModule()            // 再进入返回 o 的那个模块
+```js title="伪代码：从消费端逐级找生产者"
+request.fields.plv3 = window.plv3 // 这里消费结果，不一定在这里计算
+window.plv3 = o.r // 继续查 o 的赋值
+o = runEnvironmentModule() // 再进入返回 o 的那个模块
 ```
 
 分析时是从第一行往下追来源；实际执行时，通常先算出 `o`，再赋值，最后组装请求。**逆向追查方向不等于运行方向。** `runEnvironmentModule` 是便于讲解起的名字，不是说在混淆源码里能直接搜索到它。
@@ -132,15 +137,15 @@ o = runEnvironmentModule()            // 再进入返回 o 的那个模块
 
 用一个装载过程的伪代码看会更直观：
 
-```text title="伪代码：注册回调不等于立即执行回调"
+```js title="伪代码：注册回调不等于立即执行回调"
 // HTML 内联脚本：此时只是登记一个以后执行的函数。
-on("DOMContentLoaded", () => calculate(config))
+on('DOMContentLoaded', () => calculate(config))
 
 // 外部 defer 脚本：在 DOMContentLoaded 之前准备数据。
 config = initializeFromPage()
 
 // 文档解析与相应 defer 脚本完成后，浏览器派发事件。
-dispatch("DOMContentLoaded")           // 这时 calculate 才读 config
+dispatch('DOMContentLoaded') // 这时 calculate 才读 config
 
 // 错误的离线调度：若在第二步之前派发事件，读到的可能还是 undefined。
 ```
@@ -208,7 +213,7 @@ dispatch("DOMContentLoaded")           // 这时 calculate 才读 config
 
 下面把指令数据和解释器放在一起，可直接运行：
 
-```javascript title="可运行：一套只有三种指令的教学 VM"
+```js title="可运行：一套只有三种指令的教学 VM"
 function runToyVm(program) {
   let ip = 0 // 下一次读取的字节偏移，不是源码行号
   let halted = false
@@ -269,10 +274,10 @@ console.assert(runToyVm(program) === 8)
 
 **“认识指令”与“读懂程序”相差在哪里？** 第 3 节只要知道 PUSH 与 ADD，就能读懂 `3 + 5`。但如果另一个 handler 表示“从某个对象上读取某个属性”，你还得知道对象和属性名是从哪来的，才能判断它究竟在读屏幕尺寸还是权限状态。
 
-```text title="伪代码：同一种 READ_PROPERTY 指令，业务含义可能完全不同"
-key = stack.pop()
-object = stack.pop()
-value = object[key]
+```js title="伪代码：同一种 READ_PROPERTY 指令，业务含义可能完全不同"
+const key = stack.pop()
+const object = stack.pop()
+const value = object[key]
 stack.push(value)
 
 // 如果 object 是 screen、key 是 "width"，读取的是宽度。
@@ -284,13 +289,15 @@ stack.push(value)
 
 在教学 VM 的基础上，假设增加一个 `JUMP_IF_ZERO`。它的 handler 可以这样写：
 
-```text title="伪代码：带一个字节目标地址的条件跳转"
-function JUMP_IF_ZERO():
-    target = readByte()       // 取出跳转目的偏移
-    value = stack.pop()
-    if value == 0:
-        ip = target          // 改变下一条指令的位置
-    // 否则不改 ip，继续读取后面的指令
+```js title="伪代码：带一个字节目标地址的条件跳转"
+function JUMP_IF_ZERO() {
+  const target = readByte() // 取出跳转目的偏移
+  const value = stack.pop()
+  if (value === 0) {
+    ip = target // 改变下一条指令的位置
+  }
+  // 否则不改 ip，继续读取后面的指令
+}
 ```
 
 它只说明跳转规则。结合一段教学字节码，才知道具体的两条路：
@@ -334,17 +341,51 @@ input == 0：0 → 2 → 8 → 10
 
 **现在把数据类型与控制流接起来。** 识别出解释器后，一个自然想法是：把原脚本放进 Node，缺哪个浏览器对象，就补哪个。
 
-这类临时替代实现叫 stub，也就是占位实现。最省事的版本让所有未知属性都返回一个函数，以免继续访问或调用时立刻报错：
+这类临时替代实现叫 stub，也就是占位实现。**下面的 `readMissingProperty` 是本文为了讲解临时起的名字，不是 DataDome 原函数，也不是解完所有 handler 后自动生成的还原脚本。**
 
-```text title="伪代码：万能占位对象掩盖了本来不同的类型"
-function readMissingProperty(name):
-    return placeholderFunction
+这里有两个不同的工作：
 
-width = readMissingProperty("width")  // 预期可能是数字，实际却拿到函数
-if (width & 255) == 0:
-    enterBranchA()
-else:
-    enterBranchB()
+- 还原 handler：解释原程序的一条“读属性”指令怎样操作栈和对象。
+- 编写宿主环境：由我们提供被读取的 `document`、`navigator` 等对象，以及缺失访问的处理行为。
+
+原指令最终可能只是执行 `object[key]`。若这个 object 是我们提供的 Proxy，占位返回值就来自 Proxy 的 `get` 拦截器，而不是来自另一条“已经逆出来的函数”：
+
+```js title="伪代码：原程序读属性，宿主模型决定它读到什么"
+const syntheticObject = new Proxy(
+  {},
+  {
+    get(target, key) {
+      return placeholderFunction // 错误的万能占位策略，不是真实浏览器实现
+    },
+  },
+)
+
+function READ_PROPERTY(stack) {
+  const key = stack.pop()
+  const object = stack.pop()
+  stack.push(object[key]) // 原 handler 的等价语义；这里触发上面的 get
+}
+
+const stack = [syntheticObject, 'width']
+READ_PROPERTY(stack)
+// 栈顶现在是占位函数，而不是预期的数字。
+```
+
+`width` 仍是教学属性名，并不表示旧样本中那处尚未完全归因的属性已被确认是宽度。实际研究可以先运行原 JS、观察环境访问，再按需要理解有关 handler；两项工作往往交替推进，不必等全部指令都读懂才开始搭环境。
+
+前面的名字如果缩写成一个函数，表达的就是下面这种**错误占位策略**：
+
+```js title="伪代码：万能占位对象掩盖了本来不同的类型"
+function readMissingProperty(name) {
+  return placeholderFunction
+}
+
+const width = readMissingProperty('width') // 预期可能是数字，实际却拿到函数
+if ((width & 255) === 0) {
+  enterBranchA()
+} else {
+  enterBranchB()
+}
 ```
 
 8 月旧样本的固定 stub 路径就发生过类似问题：本来参与数值运算的属性读取拿到了占位函数，类型转换后进入错误分支，异常又被 VM 内部捕获。外层没抛出异常，不代表里面已经算对。
@@ -353,7 +394,7 @@ else:
 
 `Number(value)` 是 JavaScript 内置的**数值转换函数**，尝试把一个值转换成数字。这里没有 `new`，不是创建包装对象，也不是自动调用作为参数传入的函数。
 
-```javascript title="可运行：先看最普通的数值转换"
+```js title="可运行：先看最普通的数值转换"
 console.log(Number('123')) // 123：数字字符串转数字
 console.log(Number('hello')) // NaN：无法转换成有效数字
 console.log(Number(undefined)) // NaN
@@ -361,7 +402,7 @@ console.log(Number(undefined)) // NaN
 
 `NaN` 全称是 Not-a-Number，是数值类型里的一个特殊值，表示无效的数值结果。`Number.isNaN(value)` 则只检查“这个值是否已经是 NaN”，**它自己不做数值转换**。
 
-```javascript title="可运行：函数本身和函数调用结果不是同一个值"
+```js title="可运行：函数本身和函数调用结果不是同一个值"
 const stub = () => 123
 
 console.log(stub()) // 123：加括号才调用函数
@@ -383,7 +424,7 @@ console.assert(conversionFailed) // 第三步：验证我们预期的现象
 
 `&` 是按位与，`>>>` 是无符号右移。在本例中，它们会先按各自规则把操作数转成 32 位整数；`NaN` 在这种整数转换中会成为 0：
 
-```javascript title="可运行：不正确的类型怎样变成不正确的分支输入"
+```js title="可运行：不正确的类型怎样变成不正确的分支输入"
 const stub = () => 123
 console.log(stub & 255) // 0：没有调用 stub，而是转换函数对象
 console.log(stub() & 255) // 123：先调用，拿真实返回的数字运算
@@ -398,13 +439,25 @@ console.log(undefined >>> 0) // 0：undefined 经数值与整数转换
 
 ## 6. 306 个字符和 149 个函数，具体是在比较什么？
 
-**这一节转回数据流。** 合成路径正常结束后，`r` 终于是字符串了，但同一个 8 月旧样本中，合成结果长度为 1,391，浏览器结果为 407。这些都是当时那个版本的观察，不是新版应满足的固定长度。
+**这一节转回数据流，先把两次运行的身份说清楚。** 这里比较的是同一个 8 月旧样本在真实 Chromium 中的运行，与它在我们提供合成浏览器环境的 Node 中的运行。**“合成”指 Node 的宿主环境，不是说真实浏览器那边的数据是我们编造的。**
+
+| 观察项           | 真实 Chromium 运行         | Node + 合成宿主环境运行           |
+| ---------------- | -------------------------- | --------------------------------- |
+| 研究对象如何运行 | 真实浏览器                 | Node 中旧 VM／handler 的离线执行  |
+| 环境从哪里来     | 浏览器自身的实现与本次状态 | 我们提供的模型、替代实现与配置    |
+| 末端对应数组     | 306 个已观察到的元素位置   | 长度 149，观察到索引 0—148 的写入 |
+| 元素是什么       | 每个是长度 1 的字符串      | 值的类型被记录为 `function`       |
+| 最终字符串长度   | 407                        | 1,391                             |
+
+这些都是那个旧样本的观察，不是新版应满足的固定长度；真实浏览器运行也不能仅凭这一段数组记录就被称为服务端接受的正样本。
+
+**149 不是“逆向出了 149 个函数”，306 也不是“应该还原 306 个 handler”。** 103 种 handler 是指令实现种类，149/306 是这里的数组元素／写入数量，三者不是一个计数。149 个位置存着函数类型的值，甚至不必对应 149 个不同的函数对象。
 
 既然知道末端会做数组拼接，就在 `join` 之前检查数组，而不是只盯最终字符串长度：
 
-```text title="伪代码：从结果倒查到数组写入点"
+```js title="伪代码：从结果倒查到数组写入点"
 result = replaceCharacters(btoa(joined))
-joined = chars.join("")
+joined = chars.join('')
 chars[index] = oneValue
 oneValue = producer(input)
 ```
@@ -417,29 +470,65 @@ oneValue = producer(input)
 
 用脱敏伪代码重画，类似这样：
 
-```text title="伪代码：只表达观测到的形状，不猜测字符原值"
-浏览器路径：
-    chars = new Array(306)
-    for 每个实际观察到的索引 i:
-        value = 某次生产调用的返回值
-        // 观测：typeof value == "string"，value.length == 1
-        chars[i] = value
-    joined = chars.join("")
+```js title="伪代码：只表达观测到的形状，不猜测字符原值"
+// 浏览器路径：browserWrites 代表实际观察到的写入记录。
+const browserChars = new Array(306)
+for (const { index, value } of browserWrites) {
+  // 观测：typeof value === 'string'，value.length === 1
+  // value 对应某次生产调用的返回值，字符原值不在这里公开。
+  browserChars[index] = value
+}
+const browserJoined = browserChars.join('')
 
-合成 Node 路径：
-    chars = new Array(149)
-    for 每个实际观察到的索引 i:
-        value = 对应合成路径得到的值
-        // 观测：typeof value == "function"
-        chars[i] = value
-    joined = chars.join("")
+// 合成 Node 路径：nodeWrites 代表对应合成路径的写入记录。
+const nodeChars = new Array(149)
+for (const { index, value } of nodeWrites) {
+  // 观测：typeof value === 'function'
+  nodeChars[index] = value
+}
+const nodeJoined = nodeChars.join('')
 ```
 
-这不证明两个循环原本都应固定运行 306 次，也不证明合成路径的每个函数都来自同一个属性。它只表达当时已确认的**容器长度、元素类型与写入关系**。
+这不证明两个循环原本都应固定运行 306 次，也不证明合成路径的每个函数都来自同一个属性。它只表达当时已确认的**容器长度、元素类型与写入关系**。因此，“形状不对”在这里有具体含义：Node 数组的长度和元素类型，都没有复现该浏览器对照中的末端数组。它还不是全部服务端拒绝原因的证明。
+
+### 为什么不是 306 个函数？当时并没有查明完整原因
+
+“元素为什么是函数”与“为什么只有 149 个位置”是两个问题。把一个返回值从字符串换成函数，本身不会自动让数组长度变短；反过来，把长度强制改成 306，也不会让函数变成正确字符。
+
+旧记录已经在 Node 的数组构造处看到长度 149，随后写入 0—148。因此不只是最终 Base64 多了或少了几个字符。下一步应分别追踪：
+
+1. 数组构造的长度参数由谁算出？
+2. 循环边界、分支和上游输入怎样影响写入数量？
+3. 负责生产元素的调用为什么返回函数形状的值？
+
+下面只是说明这两个维度**可以怎样分别变化**的伪代码，不是宣称旧程序已经被还原成这段逻辑：
+
+```js title="伪代码：输入条目数与元素类型，是两条待追踪的依赖"
+function assemble(environment) {
+  const items = collectInputs(environment) // 条目数可能受采集路径影响
+  const chars = new Array(items.length)
+  for (let i = 0; i < items.length; i += 1) {
+    chars[i] = produceElement(items[i], environment) // 另查返回值的类型与来源
+  }
+  return chars
+}
+```
+
+当时尚未完成这两条依赖的全部归因，不能把少掉的 157 个位置解释成“缺了 157 个 API”或“少逆了 157 个函数”。也不能用后来另一版本 interstitial 的成功，反推这个旧 VM 的 149 已经被逐项修成 306。
+
+函数元素数量与不同函数数量的区别，可以用一个独立例子验证；它不复现旧样本的具体引用关系：
+
+```js title="可运行：149 个函数类型元素，可以只引用同一个函数"
+const placeholder = () => undefined
+const values = new Array(149).fill(placeholder)
+console.assert(values.length === 149)
+console.assert(values.every((value) => typeof value === 'function'))
+console.assert(new Set(values).size === 1) // 不同函数对象只有一个
+```
 
 更小的可运行示意能解释为什么“两边最终都是字符串”仍然不够：
 
-```javascript title="可运行：join 会转成字符串，不会替你调用数组里的函数"
+```js title="可运行：join 会转成字符串，不会替你调用数组里的函数"
 const browserLike = ['A', 'B', 'C'] // A/B/C 是教学字符，不是真实样本
 const nodeLike = [() => 'A', () => 'B']
 
@@ -454,15 +543,43 @@ console.assert(nodeLike.join('') !== 'AB')
 
 上例解释普通函数的行为；真实占位对象还可能有自定义转换，不能拿这个例子的源码长度去复算旧样本的 1,391。但结论已经够用：**上游传入了不同形状的数据，同样得到 string 类型不代表内容正确。**
 
-### 怎样确认两条日志说的是同一次写入？
+### 为什么还要把“生产调用”和“目标数组写入”关联起来？
+
+前面的排查已经从“最终字符串不一样”缩小到“编码前数组不一样”。接下来要决定改哪里：究竟是生产元素的函数返回错了，还是数组写入拿错了值，或者我们看错了数组？
+
+所以这里不是忽然插入一节日志教程，也不是要证明浏览器与 Node 的日志发生了“同一次写入”。它要在**各自的一次运行内部**证明：某次调用的返回值，确实写进了最后被 `join` 消费的那个数组。之后才比较两次运行中对应的来源链；对象 ID 不能直接跨进程对齐。
+
+为什么不能只看日志相邻？下面的反例中，生产调用成功返回了一个值，但被编码的数组根本没使用它：
+
+```js title="伪代码：相邻发生的调用与写入，可能不属于目标来源链"
+const temporary = []
+const chars = []
+const value = producer(input)
+temporary[0] = value // 它被写进了另一个数组
+chars[0] = fallbackValue // 最终目标数组使用的是另一个值
+const result = chars.join('')
+```
+
+如果只记录“调用返回了字符”以及“随后发生数组写入”，就会错误地把 `producer` 当成最终元素的来源。即使确实写入目标数组，也还可能被后续写入覆盖。
+
+旧浏览器记录通过相关调用返回、数字索引写入以及目标数组的消费关系，支持了“这条末端路径消费单字符字符串”的结论；Node 对应位置却记录为函数类型，才有理由继续向生产调用的输入和环境读取追查，而不是先改 `btoa`。
 
 下面是追踪工具可以生成的事件格式示意。`array#1`、`call#1`、序号都是教学编号；这里只记录形状，不公开原值：
 
-```text title="事件示意：时间相邻只是线索，仍要关联对象和调用"
-{ seq: 40, kind: "call_return", call: "call#1", type: "string", length: 1 }
-{ seq: 41, kind: "array_write", array: "array#1", index: 0,
-  fromCall: "call#1", type: "string", length: 1 }
-{ seq: 42, kind: "join", array: "array#1" }
+```js title="事件示意：时间相邻只是线索，仍要关联对象和调用"
+const trace = [
+  { seq: 40, kind: 'call_return', call: 'call#1', type: 'string', length: 1 },
+  {
+    seq: 41,
+    kind: 'array_write',
+    array: 'array#1',
+    index: 0,
+    fromCall: 'call#1',
+    type: 'string',
+    length: 1,
+  },
+  { seq: 42, kind: 'join', array: 'array#1' },
+]
 ```
 
 数组对象身份区分“同一个数组”和“另一个内容相似的数组”；调用编号与帧内值传递帮助区分“同一生产者”与“只是时间靠近”。字符串是原始值，没有数组那样的对象身份，不能仅凭两个单字符相等就断言来源相同。
@@ -501,7 +618,7 @@ Python 不是必须的，也可以用另一份独立 JavaScript 实现。关键�
 
 9 月一些固定样本中的 cyrb53 是一个把输入压缩成数值的哈希子过程，不是整个字段。它使用的 `charCodeAt` 按 UTF-16 码元读字符串。码元是编码单位，不总是人眼看见的一个字符：
 
-```javascript title="可运行：JavaScript 把这个字符表示成两个 UTF-16 码元"
+```js title="可运行：JavaScript 把这个字符表示成两个 UTF-16 码元"
 const text = '😀'
 console.log(text.length) // 2
 console.log(text.charCodeAt(0)) // 55357，即十六进制 0xd83d
@@ -524,7 +641,7 @@ assert units == [0xD83D, 0xDE00]
 
 `Math.imul(a, b)` 做 32 位整数乘法并给出有符号结果；`>>> 0` 再把对应的低 32 位按无符号整数解释：
 
-```javascript title="可运行：同一组比特的有符号与无符号读法"
+```js title="可运行：同一组比特的有符号与无符号读法"
 const signed = Math.imul(0xffffffff, 5)
 const unsigned = signed >>> 0
 console.log(signed) // -5
@@ -542,7 +659,7 @@ assert unsigned == 4294967291
 
 还有末端的 `btoa`：它把“每个字符表示一个字节”的字符串转成 Base64，并不自动把所有 Unicode 文本按 UTF-8 编码。在支持 `btoa` 的现代 Node 或浏览器中：
 
-```javascript title="可运行：编码成功不等于前面的输入正确"
+```js title="可运行：编码成功不等于前面的输入正确"
 console.log(btoa('ABC')) // QUJD
 try {
   btoa('😀') // 码元超过单字节范围，不是这个接口接受的二进制字符串
@@ -575,28 +692,33 @@ try {
 
 下面所有位置、对象和槽号都是教学数值，不是可套用到真实样本的固定地址：
 
-```text title="伪代码：允许相关来源跨出 IP 窗口，不只截取几行"
-watchArray = "array#1"
-watchSlots = {7}
-startIP = 100
-endIP = 140
-remainingFollowingSteps = 0
+```js title="伪代码：允许相关来源跨出 IP 窗口，不只截取几行"
+const watchArray = 'array#1'
+const watchSlots = new Set([7])
+const startIP = 100
+const endIP = 140
+let remainingFollowingSteps = 0
+let filteredOut = 0
 
-function onEvent(event):
-    inWindow = startIP <= event.ip <= endIP
-    followsJump = remainingFollowingSteps > 0
-    arrayRelated = event.arrayId == watchArray
-    slotRelated = event.slotId in watchSlots
+function onEvent(event) {
+  const inWindow = startIP <= event.ip && event.ip <= endIP
+  const followsJump = remainingFollowingSteps > 0
+  const arrayRelated = event.arrayId === watchArray
+  const slotRelated = watchSlots.has(event.slotId)
 
-    if event.kind == "instruction" and remainingFollowingSteps > 0:
-        remainingFollowingSteps -= 1
-    if event.kind == "instruction" and event.ip == endIP:
-        remainingFollowingSteps = 8  // 教学预算：再跟实际执行的 8 条指令
+  if (event.kind === 'instruction' && remainingFollowingSteps > 0) {
+    remainingFollowingSteps -= 1
+  }
+  if (event.kind === 'instruction' && event.ip === endIP) {
+    remainingFollowingSteps = 8 // 教学预算：再跟实际执行的 8 条指令
+  }
 
-    if inWindow or followsJump or arrayRelated or slotRelated:
-        boundedRecord(event)
-    else:
-        filteredOut += 1             // 主动过滤，和容量溢出不是一回事
+  if (inWindow || followsJump || arrayRelated || slotRelated) {
+    boundedRecord(event)
+  } else {
+    filteredOut += 1 // 主动过滤，和容量溢出不是一回事
+  }
+}
 ```
 
 **IP 窗口按代码位置筛选，后继步数按实际执行顺序筛选。** 假如窗口末端跳到了 IP 900，只记录 100—140 就会丢掉后继；多保留有限的实际后继步骤，可以看到那个跳转后的局部结果。它不是自动追完所有可能分支。
@@ -623,9 +745,9 @@ function onEvent(event):
 
 这是教学计数模型，不要求项目所有历史报告都恰好采用同一字段或口径。在这个模型里，前四项满足 `total = filteredOut + retained + dropped`；`thrown` 是事件的附加分类，不另加到总数里。
 
-```text title="示意统计：这些数字不是一次真实实验结果"
-宽范围：total=10000, filteredOut=0,    retained=1000, dropped=9000
-窄范围：total=10000, filteredOut=9600, retained=400,  dropped=0
+```js title="示意统计：这些数字不是一次真实实验结果"
+const wide = { total: 10000, filteredOut: 0, retained: 1000, dropped: 9000 }
+const narrow = { total: 10000, filteredOut: 9600, retained: 400, dropped: 0 }
 ```
 
 后者能说明“被选中的事件没有因容量溢出丢失”，不能说明被主动过滤的 9,600 条没有执行，也不能说明钩子安装之前没有事件。
@@ -640,7 +762,7 @@ function onEvent(event):
 
 下面这个教学例子能说明，为什么“被使用”与“改变最终结果”不是同一件事：
 
-```javascript title="可运行：不同中间值可以经过掩码后变得相同"
+```js title="可运行：不同中间值可以经过掩码后变得相同"
 function consume(hash) {
   return hash & 255 // 只保留低 8 位
 }
@@ -653,18 +775,26 @@ console.assert(consume(513) === 1)
 
 反事实实验的意思是“在可控条件下改变一个因素，看会怎样”。要避免把随机变化当成时区影响，实验安排至少应类似这样：
 
-```text title="伪代码：先确认基线可重复，再做单因素改动"
-baseline = {sample: 同一份字节, clock: 固定值, randomSeed: 固定值, timezone: A}
-a1 = runOffline(baseline)
-a2 = runOffline(baseline)
-先检查 a1 与 a2 是否一致，否则先研究基线波动
+```js title="伪代码：先确认基线可重复，再做单因素改动"
+const baseline = {
+  sample: fixedSample, // 同一份脚本字节
+  clock: fixedClock,
+  randomSeed: fixedSeed,
+  timezone: timezoneA,
+}
+const a1 = runOffline(baseline)
+const a2 = runOffline(baseline)
+if (!sameResults(a1, a2)) {
+  throw new Error('先研究基线波动，不急着归因')
+}
 
-changed = copy(baseline)
-changed.timezone = B
-b = runOffline(changed)
-a3 = runOffline(baseline)          // 恢复基线，再验证
+const changed = copy(baseline)
+changed.timezone = timezoneB
+const b = runOffline(changed)
+const a3 = runOffline(baseline) // 恢复基线，再验证
 
-比较各次的中间结果、消费路径与最终结果，而不只比较最终字符串
+// 比较中间结果、消费路径与最终结果，而不只比较最终字符串。
+compareRuns([a1, a2, b, a3])
 ```
 
 如果时间、随机源、脚本版本或走到的分支也变了，就不是干净的单因素对照。**变化告诉你哪里敏感；完整的来源与消费链，才帮助你解释它为何影响或没有影响输出。**
@@ -673,9 +803,51 @@ a3 = runOffline(baseline)          // 恢复基线，再验证
 
 我们已经看到类型能改变分支。接下来三类环境语义，会同时影响控制流和数据流，不能靠“这个 API 名字存在”判断模型正确。
 
+### 到 10 月初，Node 侧实际具备了哪些环境？
+
+“补全浏览器环境”容易让人以为我们重写了一个 Chromium。更准确地说，**我们实现或接入了已研究路径所需的一部分宿主接口与行为**。下面依据仓库实现及 9 月底到 10 月初的修复记录归类，不是今天又对生产做了一轮在线验收，也不是所有接口都完全兼容。
+
+| 环境层           | 已实现或接入的内容                                                                                               | 仍需保留的边界                                                               |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 资源装载与 DOM   | 外部／内联脚本顺序、文档事件；`Document`、`HTMLDocument`、`Element` 等模型；iframe 的独立上下文                  | 不是完整 HTML 浏览器或通用 DOM 实现                                          |
+| XML 接口         | `XMLDocument` 身份、`DOMParser` 对应 MIME 的返回类型、非法类型检查、Window/Worker 暴露范围                       | XML 树解析仍是部分模型                                                       |
+| 身份与能力接口   | `navigator`、`screen`、窗口尺寸等；`NavigatorUAData` 的只读属性、查询与 `toJSON`；标准 PDF 插件／MIME 的对象关系 | 一些值是显式声明的模型配置，不是宿主硬件实测；未知完整版本等不能补造         |
+| CSS 与几何       | 已测路径的样式级联、inline/computed 区分、尺寸／位置、部分动画和 SVG 几何、系统字体／颜色／滚动条规则            | 是限定范围的解析与计算，不是完整 Blink 布局引擎                              |
+| Canvas 2D        | 成功路线接入原生 `canvas` 后端，支持实际绘制、文字测量与图像输出；外围接口由模型适配                             | 仍保留 stub 模式；使用原生 Canvas 不等于复制 Chromium 的全部字体与栅格化行为 |
+| WebGL            | 软件 GLES 支撑的 WebGL1 路径，着色器、buffer、uniform、像素结果；接口实例与私有句柄绑定                          | 不是全量 GPU 浏览器；该软件适配路径不提供 WebGL2                             |
+| 事件、时间与异步 | 事件分发、焦点、相关输入事件、定时器和动画帧；`Date`、`performance`、随机相关输入的模型与调度                    | 离线实验可固定输入，实际运行不能靠冻结旧答案；调度仍不等于完整浏览器事件循环 |
+| 可复用标准实现   | JavaScript 内建由引擎执行；`WritableStream`、writer、controller 接入 Node 标准实现                               | 不是所有 Web API 都天然存在，接口内部布局与浏览器也不保证完全相同            |
+
+此外，权限、媒体等能力有显式的可用／不可用分支和有限模型。**“对象存在”“方法能调用”“行为测试通过”“完整浏览器等价”是四种不同强度的说法，不能混用。**
+
+代码上，主入口可从 `createSandbox`、`runBundleSource` 看；PDF 模型看 `buildPluginSurface`，UA-CH 接口看 `createNavigatorUAData`，Canvas 看 `createCanvasContext`，CSS 与软件 WebGL 另有独立模块。以上是真实项目中的入口名，和第 5 节为了教学临时起的 `readMissingProperty` 不同。
+
+如果只画职责，Node 这一层类似下面这样；函数名除上述明确列出的入口外，均为说明职责的伪代码：
+
+```js title="伪代码：原脚本负责计算，宿主模型负责回答环境访问"
+const environment = {
+  document: buildPartialDocumentModel(),
+  navigator: buildDeclaredNavigatorModel(),
+  screen: buildScreenModel(),
+  graphics: attachCanvasAndSoftwareGLES(),
+  scheduling: buildEventAndTimerModel(),
+  streams: reuseNodeWebStreams(),
+}
+
+// 执行的仍是当轮原始 JS；不是将所有 handler 翻译成一份新业务脚本。
+const material = await executeOriginalScripts(resources, environment)
+
+// 网络会话归 HTTP 控制器管理，不属于伪装出来的 DOM 或 GPU。
+await controller.submitAndValidate(material)
+```
+
+也要注意历史顺序：**10 月 2 日 interstitial 成功那一轮没有继续补一批新 API 才突然通过**。复盘记录说，已有 DOM、事件、Canvas 与 GLES 模型构成基础；那一轮重点改变了对照条件、挑战路线选择及结果交接。它既不证明所有模型都正确，也不证明每一项模型都是通过的必要条件。请求头、压缩和 Cookie 交接属于下一节 HTTP 客户端这一层，不要列成 Node 已模拟的浏览器接口。
+
+下面三个短例子，再说明这些实现为什么不能只停在“字段名字补上了”。
+
 ### 对象身份：内容一样，不等于同一个对象
 
-```javascript title="可运行：一个保持身份的属性与每次新建的属性"
+```js title="可运行：一个保持身份的属性与每次新建的属性"
 const stableScreen = { width: 100 }
 const stable = {
   get screen() {
@@ -696,26 +868,27 @@ console.assert(fresh.screen !== fresh.screen) // 内容相似，却是两个对�
 
 iframe 还可能处于独立的 realm，即拥有自己的全局对象和一组内建构造器的 JavaScript 环境。同源且可访问的独立 iframe 可以出现这样的关系：
 
-```text title="伪代码：不同 realm 的 Array 构造器不是同一个对象"
-parentArray = parentRealm.Array
-childArray = childRealm.Array
-parentArray !== childArray
+```js title="伪代码：不同 realm 的 Array 构造器不是同一个对象"
+const parentArray = parentRealm.Array
+const childArray = childRealm.Array
+console.assert(parentArray !== childArray)
 
-childValue = new childArray()
-childValue instanceof childArray   // true
-childValue instanceof parentArray  // false
+const childValue = new childArray()
+console.assert(childValue instanceof childArray) // true
+console.assert(!(childValue instanceof parentArray)) // 跨 realm 不成立
 ```
 
 把所有 iframe 都指向同一套构造器，会改变这类判断。`instanceof` 在这里依赖构造器的原型关系，不是只检查变量“长得像数组”。
 
 ### 异常：访问失败也是程序的一种输入
 
-```text title="伪代码：错误地总返回成功，会让 catch 分支消失"
-try:
-    value = frame.localStorage.getItem("demo")
-    report({storage: "available"})
-catch error:
-    report({storage: "unavailable", errorName: error.name})
+```js title="伪代码：错误地总返回成功，会让 catch 分支消失"
+try {
+  const value = frame.localStorage.getItem('demo')
+  report({ storage: 'available' })
+} catch (error) {
+  report({ storage: 'unavailable', errorName: error.name })
+}
 ```
 
 某次跨站挑战帧的实测里，访问存储受到限制。若模型总是返回一个可用对象，就走了与当时浏览器不同的分支。但这不等于所有页面都该禁用存储；要按版本、权限和页面上下文记录实际行为。
@@ -724,7 +897,7 @@ catch error:
 
 ### 异步：正确值晚到一步，也可能没有进入输出
 
-```javascript title="可运行：相同的对象，在不同时间读到的内容不同"
+```js title="可运行：相同的对象，在不同时间读到的内容不同"
 const collected = []
 Promise.resolve().then(() => collected.push('ready'))
 
@@ -747,20 +920,29 @@ setTimeout(() => {
 
 项目要求候选 Cookie 在 Reuters 首页、栏目页、文章页上分别通过真实文档验证。严格 `3/3` 的意思不是三个任意 200，而是三类页面都不是挑战页、空壳或错误页。这是项目验收规则，不是 DataDome 官方协议。
 
-```text title="伪代码：传输失败、挑战页与正常文档分开计数"
-for pageClass in [首页, 栏目页, 文章页]:
-    try:
-        response = session.request(pageClass)
-    catch transportError:
-        record(pageClass, "transport_error")
-        continue
+```js title="伪代码：传输失败、挑战页与正常文档分开计数"
+async function probeDocuments(session) {
+  const results = []
+  for (const pageClass of ['首页', '栏目页', '文章页']) {
+    let response
+    try {
+      response = await session.request(pageClass)
+    } catch (transportError) {
+      record(pageClass, 'transport_error')
+      results.push('transport_error')
+      continue
+    }
 
-    if isExpectedDocument(response, pageClass):
-        record(pageClass, "usable")
-    else:
-        record(pageClass, "not_usable")
+    const status = isExpectedDocument(response, pageClass)
+      ? 'usable'
+      : 'not_usable'
+    record(pageClass, status)
+    results.push(status)
+  }
 
-只有三个 pageClass 都为 usable，才报告 3/3
+  // 只有三个 pageClass 都为 usable，才报告 3/3。
+  return results.every((status) => status === 'usable')
+}
 ```
 
 `isExpectedDocument` 是正文验证逻辑的代称，不是只判断状态码的库函数。没取得候选、没有运行探针时，应报告“未运行”，不能混写成已测三个页面全部失败。
@@ -771,51 +953,57 @@ for pageClass in [首页, 栏目页, 文章页]:
 
 Cookie 可以理解为会话里的一部分数据，而 Session 还管理“怎样把请求送出去”。用伪代码展开如下；它不对应某个库的真实构造参数：
 
-```text title="伪代码：Session 不等于一串 Cookie 文本"
-Session = {
-    cookieJar: Cookie 容器，按域名、路径、有效期等选择发送内容,
-    clientConfig: {
-        客户端版本、声明身份、传输 profile、代理和路由设置
-    },
-    requestPolicy: {
-        导航、脚本、接口等不同请求如何组织 headers,
-        Referer/Origin 规则、语言与压缩协商设置
-    },
-    applicationState: {
-        按 origin 保存的 Client Hints 协商状态、目标地址映射等
-    },
-    connectionPool: 活跃连接及相关传输状态
+```js title="伪代码：Session 不等于一串 Cookie 文本"
+const session = {
+  cookieJar, // 按域名、路径、有效期等选择发送内容的 Cookie 容器
+  clientConfig: {
+    version: clientVersion,
+    identity: declaredIdentity,
+    profile: transportProfile,
+    proxy: proxyConfig,
+    routing: routingConfig,
+  },
+  requestPolicy, // 管理导航／脚本／接口请求的头、来源、语言与压缩设置
+  applicationState: {
+    clientHintsByOrigin, // 按来源保存的协商状态
+    targetAddressMappings,
+  },
+  connectionPool, // 活跃连接及相关传输状态
 }
 
-function request(session, resource, kind):
-    headers = session.requestPolicy.build(resource, kind)
-    cookies = session.cookieJar.selectFor(resource)
-    return transport.send(
-        resource, headers, cookies,
-        session.clientConfig, session.connectionPool
-    )
+function request(session, resource, kind) {
+  const headers = session.requestPolicy.build(resource, kind)
+  const cookies = session.cookieJar.selectFor(resource)
+  return transport.send({
+    resource,
+    headers,
+    cookies,
+    config: session.clientConfig,
+    pool: session.connectionPool,
+  })
+}
 ```
 
 这里的 `profile` 指客户端采用的一组传输行为配置，不是用户账户。`origin` 指协议、主机和端口组成的来源。`headers` 是请求元数据；请求上下文在这里表示“这是导航、脚本还是接口请求，来自哪里”，不能全部塞入同一组固定头。`Client Hints` 是浏览器／客户端可协商提供的身份与能力信息，相关状态还可能按 origin 区分。连接池则是为了复用已经建立的连接，不是一份可以靠复制 Cookie 顺便复制的对象。
 
 ### “复制 Cookie”与“完整新 Session”怎么对照？
 
-```text title="伪代码：复制应用层状态，不伪称复制活跃 TCP/TLS 连接"
-original = 生成端已经通过 3/3 的 Session
+```js title="伪代码：复制应用层状态，不伪称复制活跃 TCP/TLS 连接"
+const original = validatedSession // 生成端已经通过 3/3 的 Session
 
-cookieOnly = createSession(defaultConfig)
+const cookieOnly = createSession(defaultConfig)
 cookieOnly.cookieJar = clone(original.cookieJar)
 // 请求策略、配置和协商状态仍可能与 original 不同。
 
-matched = createSession(copy(original.clientConfig))
+const matched = createSession(copy(original.clientConfig))
 matched.cookieJar = clone(original.cookieJar)
 matched.requestPolicy = copy(original.requestPolicy)
 matched.applicationState = copy(original.applicationState)
 // matched 使用自己的新连接池，没有复制 original 的活跃连接。
 
-probe(original)        // 正对照：确认候选此时仍可用
-probe(matched)         // 检查复制完整配置与状态后的复用
-probe(original)        // 后置对照：避免把候选失效误归因于 matched
+await probe(original) // 正对照：确认候选此时仍可用
+await probe(matched) // 检查复制完整配置与状态后的复用
+await probe(original) // 后置对照：避免把候选失效误归因于 matched
 ```
 
 在所测记录里，两枚独立候选都曾在完整配置的新 Session 中通过 `3/3`。因此，那个条件下并不要求保留原 TCP 连接才能复用。它不是说任何 Cookie 都能随便跨环境使用。
@@ -824,15 +1012,17 @@ probe(original)        // 后置对照：避免把候选失效误归因于 match
 
 消融就是从已能工作的条件里拿掉一部分，再看结果。本项目的 `_RequestContextSession` 是自己写的包装器，不是 `curl_cffi` 自带功能；它同时管理请求头上下文和压缩设置等行为。
 
-```text title="伪代码：一次移除组件，不等于只改了一个请求头"
-control = cloneConfigurationIntoNewSession(original)
-assert probe(control) == "3/3"
+```js title="伪代码：一次移除组件，不等于只改了一个请求头"
+const control = cloneConfigurationIntoNewSession(original)
+if ((await probe(control)) !== '3/3') {
+  throw new Error('完整配置的正对照未通过，先停止归因')
+}
 
-variant = cloneConfigurationIntoNewSession(original)
+const variant = cloneConfigurationIntoNewSession(original)
 variant.requestPolicy = policyWithoutRequestContextWrapper()
-probe(variant)
-probe(original)
-probe(cloneConfigurationIntoNewSession(original))
+await probe(variant)
+await probe(original)
+await probe(cloneConfigurationIntoNewSession(original))
 ```
 
 两枚独立候选移除这个包装器后，都出现三个 401；原 Session 复测仍为 `3/3`。但其中一轮后置完整新 Session 对照还出现了传输错误，不能润色成所有对照全部成功。
@@ -898,8 +1088,6 @@ DataDome 只是这次的案例。真正可以带走的方法，是把一个巨�
 
 本文中的实验事实来自项目研究记录；其中的历史章节必须按章节日期阅读，不能当作今天的在线结果。以下项目链接固定到整理时的仓库版本：
 
-
-
 :::warning
 私有repo不公开
 :::
@@ -908,6 +1096,8 @@ DataDome 只是这次的案例。真正可以带走的方法，是把一个巨�
 - [9 月研究台账（固定历史版本）](https://github.com/xingpingcn/newsjoin/blob/bf5dc601fafd8168730f0ffef4b110a1dc6fb5b4/docs/reuters-datadome-reverse-ledger.md)：哈希消费、截断日志与固定样本的局部数据流实验。
 - [10 月 2 日 Cookie 交接对照](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-cookie-handoff-2026-10-02.md)：Session 复用、消融结果及未控制的变量。
 - [10 月 1 日请求停留阶段记录](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-browserless-check-stage-2026-10-01.md)：请求事件、响应与代理隧道的证据区别。
+- [10 月初环境接口修复](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-browserless-interfaces-2026-10-01.md)、[XML 接口修复](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-browserless-xml-2026-10-01.md)、[WebGL 修复及限制](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-browserless-webgl-controls-2026-10-01.md)：区分模型已修复与服务端已接受。
+- [10 月 2 日策略复盘](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-browserless-strategy-change-2026-10-02.md)：已有环境模型与当轮成功之间的证据边界。
 - [Node.js：VM 文档](https://nodejs.org/api/vm.html)：执行上下文与安全边界。
 - [MDN：Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)、[Number.isNaN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isNaN)：数值转换与检查的区别。
 - [MDN：charCodeAt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/charCodeAt)、[Math.imul](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul)、[btoa](https://developer.mozilla.org/en-US/docs/Web/API/Window/btoa)：独立复算时容易遗漏的语言语义。
