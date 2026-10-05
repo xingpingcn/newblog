@@ -15,7 +15,7 @@ keywords:
   - 浏览器环境
   - 数据流分析
 pinned: false
-draft: true
+draft: false
 ---
 
 借助ai小白也能搞js逆向，本次逆向的目的是在仅通过node环境在不使用真实浏览器的情况下过datadome的盾，减少资源占用。大体思路就是拿到足够的正样本，然后模拟真实浏览器获得挑战并通过挑战，拿到cookie来复用，可以在node里复用也可以在curl_cffi里复用。
