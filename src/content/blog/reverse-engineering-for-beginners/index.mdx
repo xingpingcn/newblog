@@ -18,12 +18,15 @@ pinned: false
 draft: false
 ---
 
+import Callout from '@/components/callout.astro'
+
 借助ai小白也能搞js逆向，本次逆向的目的是在仅通过node环境在不使用真实浏览器的情况下过datadome的盾，减少资源占用。大体思路就是拿到足够的正样本，然后模拟真实浏览器获得挑战并通过挑战，拿到cookie来复用，可以在node里复用也可以在curl_cffi里复用。
 
-:::note
+<Callout variant="note">
+
 本文会借助ai写大部分的内容，同时我也会校对，写为一篇记录与ai边做边学的博客
 
-:::
+</Callout>
 
 逆向 DataDome 时，有一个很容易让人提前庆祝的时刻：JavaScript 跑完了，请求也返回了 200，甚至拿到了新的 Cookie。
 
@@ -1062,9 +1065,11 @@ await probe(cloneConfigurationIntoNewSession(original))
 这里有个重要区别：**用 Node 执行原始脚本并建模所需环境，和把整个算法独立重写，是两种不同成果。** 前者的服务端成功，不能替代后者尚未完成的数据流解释。
 
 
-:::note
+<Callout variant="note">
+
 以下是ai自己的总结
-:::
+
+</Callout>
 
 
 ## 如果从头再做一次，我会怎样开始？
@@ -1088,9 +1093,11 @@ DataDome 只是这次的案例。真正可以带走的方法，是把一个巨�
 
 本文中的实验事实来自项目研究记录；其中的历史章节必须按章节日期阅读，不能当作今天的在线结果。以下项目链接固定到整理时的仓库版本：
 
-:::warning
+<Callout variant="warning">
+
 私有repo不公开
-:::
+
+</Callout>
 
 - [DataDome 研究笔记与历史 VM 分析](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-datadome-ctf-newcomer-notes-2026-08-09.md)：字段来源、旧 VM、环境语义与阶段性结论。
 - [9 月研究台账（固定历史版本）](https://github.com/xingpingcn/newsjoin/blob/bf5dc601fafd8168730f0ffef4b110a1dc6fb5b4/docs/reuters-datadome-reverse-ledger.md)：哈希消费、截断日志与固定样本的局部数据流实验。
