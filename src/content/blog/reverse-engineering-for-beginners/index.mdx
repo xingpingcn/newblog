@@ -1,20 +1,30 @@
 ---
-title: '从 DataDome 逆向开始，学会分析一段看不懂的 JavaScript'
-description: '以一次 DataDome 客户端逆向为主线，从定位 plv3 的来源，到拆解自定义 VM、追踪数据流、理解浏览器环境，再到解释为什么拿到 Cookie 仍不算成功，在具体问题中学习逆向。'
+title: 从 DataDome 逆向开始，学会分析一段看不懂的 JavaScript
+description: 以一次 DataDome 客户端逆向为主线，从定位 plv3 的来源，到拆解自定义 VM、追踪数据流、理解浏览器环境，再到解释为什么拿到 Cookie 仍不算成功，在具体问题中学习逆向。
 date: 2026-10-04
-tags: ['逆向工程', 'JavaScript', 'DataDome']
+tags:
+  - 逆向工程
+  - DataDome
+authors:
+  - xingpingcn
 keywords:
-  [
-    'DataDome 逆向',
-    'JavaScript 混淆',
-    '虚拟机逆向',
-    '动态分析',
-    '浏览器环境',
-    '数据流分析',
-  ]
-authors: ['xingpingcn']
+  - DataDome 逆向
+  - JavaScript 混淆
+  - 虚拟机逆向
+  - 动态分析
+  - 浏览器环境
+  - 数据流分析
+pinned: false
 draft: true
 ---
+
+借助ai小白也能搞js逆向，本次逆向的目的是在仅通过node环境在不使用真实浏览器的情况下过datadome的盾，减少资源占用。大体思路就是拿到足够的正样本，然后模拟真实浏览器获得挑战并通过挑战，拿到cookie来复用，可以在node里复用也可以在curl_cffi里复用。
+
+
+:::note
+本文会借助ai写大部分的内容，同时我也会校对，写为一篇记录与ai边做边学的博客
+
+:::
 
 逆向 DataDome 时，有一个很容易让人提前庆祝的时刻：JavaScript 跑完了，请求也返回了 200，甚至拿到了新的 Cookie。
 
@@ -22,7 +32,7 @@ draft: true
 
 如果只把逆向理解成“把一段混淆代码还原出来”，这件事就很难解释。代码不是已经能跑了吗？字段不是已经生成了吗？究竟还有哪里不对？
 
-这篇文章想借我们分析 Reuters 页面中 DataDome 客户端的经历，讲清楚这些问题。不是先摆一整章术语，再让你自己寻找它们的用途，而是沿着调查往前走：**遇到什么现象，为什么看这个位置，用到什么知识，最后能下什么结论。**
+这篇文章想借分析 Reuters 页面中 DataDome 客户端的经历，讲清楚这些问题。不是先摆一整章术语，再让你自己寻找它们的用途，而是沿着调查往前走：**遇到什么现象，为什么看这个位置，用到什么知识，最后能下什么结论。**
 
 你只需要会读基本的 JavaScript，知道对象、数组、函数和 HTTP 请求是什么。不需要先背汇编指令，也不需要一开始就会写反编译器。
 
@@ -30,7 +40,7 @@ draft: true
 
 ## 1. 面对几十万字节的代码，第一件事不是从头读
 
-我们最初关心的问题很具体：浏览器提交给 DataDome 的动态字段，是怎么生成的？
+最初关心的问题很具体：浏览器提交给 DataDome 的动态字段，是怎么生成的？
 
 在一个旧版 CAPTCHA 样本中，请求里有两个值得追踪的名字：`ddCaptchaEncodedPayload` 和 `plv3`。前者涉及行为数据等内容，后者在这个样本里来自环境检测相关的计算。这里只把它们作为该版本的定位线索，不把名字当作所有版本通用的协议定义。
 
@@ -125,6 +135,8 @@ while (!state.halted) {
 这就像先知道每个汉字怎么读，再理解一篇文章。认识所有字，并不等于理解文章在说什么。
 
 ## 4. 找到 103 个 handler，为什么还不算读懂程序？
+
+分析vm的话只能靠ai了。
 
 2026 年 8 月 9 日那个旧样本里，研究记录确认了 103 种有效 opcode handler。这个数字只属于那个样本，不是 DataDome 的固定规格。
 
@@ -430,6 +442,12 @@ DataDome 只是这次的案例。真正可以带走的方法，是把一个巨�
 ## 资料与证据边界
 
 本文中的实验事实来自项目研究记录；其中的历史章节必须按章节日期阅读，不能当作今天的在线结果。以下项目链接固定到整理时的仓库版本：
+
+
+
+:::warning
+私有repo不公开
+:::
 
 - [DataDome 研究笔记与历史 VM 分析](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-datadome-ctf-newcomer-notes-2026-08-09.md)：字段来源、旧 VM、环境语义与阶段性结论。
 - [9 月研究台账（固定历史版本）](https://github.com/xingpingcn/newsjoin/blob/bf5dc601fafd8168730f0ffef4b110a1dc6fb5b4/docs/reuters-datadome-reverse-ledger.md)：哈希消费、截断日志与固定样本的局部数据流实验。
