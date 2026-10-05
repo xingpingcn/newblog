@@ -38,6 +38,37 @@ draft: true
 
 > 本文依据 2026 年 8 月至 10 月初的研究记录整理，不是一次新的在线复测。不同日期的脚本与挑战类型会变化，下文会把旧样本的结论标清楚。代码片段用于解释局部语义，不是 DataDome 原始源码，也不包含 Cookie、完整挑战请求或可复用的证明值。实际实验应在自有或获授权的环境中进行。
 
+## 阅读地图：我们会沿着哪两条线走？
+
+先用同一段伪代码区分两件事。下面的名字仅用于讲解，不是 DataDome 原始变量名：
+
+```text title="伪代码：同一段程序的两种读法"
+width = environment.width
+if width > 0:
+    result = encode(width)
+else:
+    result = "unavailable"
+return result
+```
+
+**控制流**关心执行顺序：先读 `width`，再判断，条件成立走 `encode`，不成立走另一条分支，最后返回。**数据流**关心值的来去：`width` 来自环境，经由判断或编码，影响最终的 `result`。一个值可以同时决定走哪条路、算出什么结果。
+
+| 章节        | 主要看什么                     | 你要带着的问题                     |
+| ----------- | ------------------------------ | ---------------------------------- |
+| 第 1 节     | 数据流：从输出找生产者         | `plv3` 是谁赋值的？                |
+| 第 2 节     | 装载与执行顺序                 | 哪段脚本先运行，计算何时开始？     |
+| 第 3—4 节   | 控制流为主，配合栈上的数据变化 | VM 在哪里，字节码怎样决定下一步？  |
+| 第 5 节     | 数据类型怎样改变控制流         | 占位函数为什么让分支走错？         |
+| 第 6—7 节   | 数据流与局部算法复算           | 数组里到底是什么，怎样核对变换？   |
+| 第 8 节     | 两条线共用的观测方法           | 怎样只追有关位置，又不丢掉来源？   |
+| 第 9 节     | 数据依赖与因果验证             | 中间值变了，为什么结果没变？       |
+| 第 10 节    | 环境语义对两条线的影响         | 对象、异常和异步时序为什么重要？   |
+| 第 11—12 节 | HTTP 状态与验收边界            | 本地计算完成以后，还有哪些关要过？ |
+
+下文把代码块分成两类：标为“**伪代码**”的只说明关系，函数名不代表现成工具；标为“**可运行**”的短例子可以独立运行。所有教学字节、属性名和示意数组都不冒充真实挑战材料。
+
+可运行例子里，`console.log(value)` 会显示值；`console.assert(condition)` 表示“预期这个条件为真”，正常时不输出，条件为假时显示断言失败。它默认不是抛异常终止程序的测试框架。
+
 ## 1. 面对几十万字节的代码，第一件事不是从头读
 
 最初关心的问题很具体：浏览器提交给 DataDome 的动态字段，是怎么生成的？
@@ -64,10 +95,13 @@ window.plv3
 
 其中一个赋值关系等价于：
 
-```javascript
-// 对已确认赋值关系的简化表达，不是完整生成逻辑。
-window.plv3 = o.r
+```text title="伪代码：从消费端逐级找生产者"
+request.fields.plv3 = window.plv3       // 这里消费结果，不一定在这里计算
+window.plv3 = o.r                      // 继续查 o 的赋值
+o = runEnvironmentModule()            // 再进入返回 o 的那个模块
 ```
+
+分析时是从第一行往下追来源；实际执行时，通常先算出 `o`，再赋值，最后组装请求。**逆向追查方向不等于运行方向。** `runEnvironmentModule` 是便于讲解起的名字，不是说在混淆源码里能直接搜索到它。
 
 它看起来平平无奇，却把问题从“读懂整个网页”缩小到了“解释这个对象的 r 从哪里来”。
 
@@ -96,43 +130,136 @@ window.plv3 = o.r
 
 例如，前一段脚本可能只注册了事件监听器，后一段才设置输入。你提前派发事件，得到的就是另一条执行路径。把多个文件拼成一个文件，还可能改变源码位置和错误栈，而这些信息本身也可能被程序读取。
 
+用一个装载过程的伪代码看会更直观：
+
+```text title="伪代码：注册回调不等于立即执行回调"
+// HTML 内联脚本：此时只是登记一个以后执行的函数。
+on("DOMContentLoaded", () => calculate(config))
+
+// 外部 defer 脚本：在 DOMContentLoaded 之前准备数据。
+config = initializeFromPage()
+
+// 文档解析与相应 defer 脚本完成后，浏览器派发事件。
+dispatch("DOMContentLoaded")           // 这时 calculate 才读 config
+
+// 错误的离线调度：若在第二步之前派发事件，读到的可能还是 undefined。
+```
+
+`callback` 就是登记后等待调用的函数；`loader` 是负责装载后续资源的入口脚本。它们不是另一种加密算法。这里的事件名是浏览器的真实概念，`on`、`dispatch` 则只是示意接口。
+
 这一步学到的是：**程序的输入不只有函数参数，还有装载方式、执行顺序和事件发生的时机。**
 
 我们因此把资源来源、脚本顺序、样本时间和文件 SHA-256 一起记录。哈希在这里不是用来“破解”的，而是给样本一个稳定身份证：只有确认字节相同，前后两轮结果才有资格直接比较。
 
-## 3. 找到生成模块，却发现里面藏着另一门语言
+## 3. VM 究竟藏在哪里？先画出它和浏览器、Node 的关系
 
-继续进入旧样本的 `vm-obf.js`，看到的不是一串直接读取浏览器属性的代码，而是一个反复取出数字、查表、调用处理函数的循环。
+**这一节开始看控制流。** 第 1 节顺着 `o.r` 找到的生成模块，在 8 月旧 CAPTCHA 样本中对应 bundle 内部的 `detection-js/dist/vm-obf.js`。这里说的模块名来自旧样本分析，**不保证网络面板里有一个单独叫 `vm-obf.js` 的请求**：模块可以被打包在更大的文件里面。
 
-把结构简化，大致是这样：
+它与其他部分的位置关系是：
 
-```javascript
-// 解释器结构示意；不是 DataDome 的实际 opcode 或状态布局。
-while (!state.halted) {
-  const opcode = program[state.ip++]
-  handlers[opcode](state)
-}
+```text title="结构图：VM 不是后来额外下载的一个软件"
+浏览器的 JavaScript 引擎（研究时也可以由 Node 承载 JavaScript）
+└─ 执行挑战 bundle
+   ├─ 行为相关模块 → 另一部分请求材料
+   └─ 环境检测模块 vm-obf.js
+      ├─ 解码内部数据 → 自定义字节码
+      ├─ 构建 handler 表 → 每种操作的实现函数
+      └─ 解释循环 → 读取字节码，查表，调用 handler
+         └─ 计算结果进入返回对象 o.r → window.plv3
 ```
 
-这时才需要引入“虚拟机”这个概念。
+发现 VM，不是因为“代码太乱所以猜它是 VM”，而是观察到三种结构一起出现：**被逐步读取的数据、不断变化的位置指针、按编号分派的处理函数**。我们沿着结果来源进入模块，才碰到这层解释器。
 
-这里的 VM 不是 VMware，也不是直接运行机器码的 CPU，而是作者用 JavaScript 写出来的一套小型解释器：
+这里至少有三个容易重名的东西：
 
-- `program` 保存自定义字节码；
-- `ip` 是指令指针，表示下一步从哪里读；
-- `opcode` 是操作编号；
-- `handler` 负责解释这个编号对应的操作；
-- `state` 保存栈、临时值、调用帧和结束状态。
+- 浏览器／Node 的 JavaScript 引擎负责执行 JavaScript。
+- DataDome 旧样本的自定义 VM，是 JavaScript 写的一段解释器程序。
+- Node 的 `node:vm` 模块提供执行上下文，不是上述自定义指令集本身，也不是完整浏览器。
 
-浏览器认识的是外层 JavaScript；真正需要研究的逻辑，又被编码成内层的另一套指令。
+因此，在 Node 中执行原脚本时，如果那个脚本内部有这套自定义 VM，仍然是 **Node 执行外层 JavaScript，外层解释器再执行内层字节码**。不是把 DataDome 的字节码直接交给 Node 当 JavaScript 运行。后来的其他挑战路线也不能被默认认为一定采用同一套 VM。
 
-普通混淆可能只是把变量改名、把字符串藏起来；这种虚拟化混淆则把“读属性”“相加”“判断”“调用函数”重新编码了一遍。即使格式化了外层源码，内层程序也不会自动变得可读。
+### 字节码到底是什么，长什么样？
 
-所以研究任务自然分成两层：
+字节码就是按照某套规则编码的指令数据。每个字节可以写成 0—255 的数字，常用十六进制展示；`0x01` 表示数值 1，`0xff` 表示 255。**字节本身没有天然的指令含义，含义由解释器规定。**
 
-**先恢复指令的含义，再理解这些指令组成的程序。**
+我们临时定义一套教学规则，只计算 `3 + 5`：
 
-这就像先知道每个汉字怎么读，再理解一篇文章。认识所有字，并不等于理解文章在说什么。
+| 编号，也就是 opcode | 我们给它起的名字 | 后面还要读什么        | 行为                   |
+| ------------------- | ---------------- | --------------------- | ---------------------- |
+| `0x01`              | PUSH             | 再读 1 字节，作为数字 | 把数字压入栈           |
+| `0x02`              | ADD              | 没有额外参数          | 弹出两个值，相加后压回 |
+| `0xff`              | HALT             | 没有额外参数          | 停止解释循环           |
+
+栈是一种后放进去的值先取出的容器。JavaScript 数组的 `push` 向尾部放值，`pop` 取出尾部的值，正好能演示这种规则。
+
+```text title="教学字节码：不是 DataDome 的真实字节"
+字节偏移       00  01  02  03  04  05
+原始字节       01  03  01  05  02  ff
+按规则解码     PUSH 3  PUSH 5  ADD HALT
+```
+
+偏移 0 的 `01` 是操作编号，偏移 1 的 `03` 是它的参数，也叫操作数；偏移 2 的 `01` 又开始下一条指令。不是每个字节都能当成一个 opcode。
+
+真实样本的数据可能先被编码或压缩，解码后还混有字符串、常量和 handler 记录。因此，看到长字符串或数字数组只能把它列为候选，还要找到“谁怎样读取它”才能判断格式。
+
+### handler 是“处理某种指令的函数”
+
+`handler` 就是处理器函数。在这套教学规则里，`handlers[0x01]` 是一个函数，专门执行 PUSH；`handlers[0x02]` 是另一个函数，专门执行 ADD。**opcode 是编号，handler 是按这个编号找到的实现，二者不是同一个东西。**
+
+下面把指令数据和解释器放在一起，可直接运行：
+
+```javascript title="可运行：一套只有三种指令的教学 VM"
+function runToyVm(program) {
+  let ip = 0 // 下一次读取的字节偏移，不是源码行号
+  let halted = false
+  const stack = []
+
+  function readByte() {
+    if (ip >= program.length) throw new Error('字节码提前结束')
+    const value = program[ip]
+    ip += 1
+    return value
+  }
+
+  const handlers = {
+    0x01: function PUSH() {
+      const operand = readByte()
+      stack.push(operand)
+    },
+    0x02: function ADD() {
+      if (stack.length < 2) throw new Error('栈里的值不够')
+      const right = stack.pop()
+      const left = stack.pop()
+      stack.push(left + right)
+    },
+    0xff: function HALT() {
+      halted = true
+    },
+  }
+
+  while (!halted) {
+    const opcode = readByte()
+    const handler = handlers[opcode]
+    if (!handler) throw new Error('未知指令')
+    handler()
+  }
+  return stack.pop()
+}
+
+const program = new Uint8Array([0x01, 0x03, 0x01, 0x05, 0x02, 0xff])
+console.assert(runToyVm(program) === 8)
+```
+
+`Uint8Array` 是按字节保存无符号整数的数组。上例里，解释循环先读 opcode；如果遇到 PUSH，它的 handler 还会再读一个操作数。因此 `ip` 不是每条指令固定加 1：
+
+| 指令起点 | 发生的事                 | 执行后栈内容 | 下一次取指位置 |
+| -------- | ------------------------ | ------------ | -------------- |
+| 0        | PUSH 读取位置 1 的数字 3 | `[3]`        | 2              |
+| 2        | PUSH 读取位置 3 的数字 5 | `[3, 5]`     | 4              |
+| 4        | ADD 弹出 5、3，压回 8    | `[8]`        | 5              |
+| 5        | HALT 设置停止标志        | `[8]`        | 6，但不再取指  |
+
+顺着表的第一列与最后一列读，是**控制流**；顺着栈里的 `3 → 3,5 → 8` 读，是**数据流**。真正的 VM 复杂得多，但我们观察状态变化的方法没有变。
 
 ## 4. 找到 103 个 handler，为什么还不算读懂程序？
 
@@ -140,116 +267,250 @@ while (!state.halted) {
 
 2026 年 8 月 9 日那个旧样本里，研究记录确认了 103 种有效 opcode handler。这个数字只属于那个样本，不是 DataDome 的固定规格。
 
-怎样判断一个 handler 在干什么？不要先猜名字，先看它执行前后修改了哪些状态。
+**“认识指令”与“读懂程序”相差在哪里？** 第 3 节只要知道 PUSH 与 ADD，就能读懂 `3 + 5`。但如果另一个 handler 表示“从某个对象上读取某个属性”，你还得知道对象和属性名是从哪来的，才能判断它究竟在读屏幕尺寸还是权限状态。
 
-例如，下列教学示意完成的是“弹出两个值，相加，再压回去”：
+```text title="伪代码：同一种 READ_PROPERTY 指令，业务含义可能完全不同"
+key = stack.pop()
+object = stack.pop()
+value = object[key]
+stack.push(value)
 
-```javascript
-// 教学用的最小状态转移。
-const stack = [3, 5]
-const right = stack.pop()
-const left = stack.pop()
-stack.push(left + right)
-console.assert(stack.length === 1 && stack[0] === 8)
+// 如果 object 是 screen、key 是 "width"，读取的是宽度。
+// 如果 object 是另一个对象、key 是另一字符串，就在做另一件事。
+// 看懂 handler 只解释了“怎样读取”，还没解释“这次读谁”。
 ```
 
-在真正的 handler 中，变量名可能不可读，栈也可能只是一块数组加一个指针，但状态变化仍然可以观察。再换一组输入，就可以继续检查它是数字相加、字符串拼接，还是别的转换。
+### 从 handler 看出分支，再画控制流
 
-同理，如果一段 handler 根据条件修改 `ip`，它就可能实现条件跳转。把所有可能的后继位置连起来，就是控制流图，也就是 CFG。
+在教学 VM 的基础上，假设增加一个 `JUMP_IF_ZERO`。它的 handler 可以这样写：
 
-**控制流回答“下一步去哪”，数据流回答“这个值从哪来”。** 两者要结合起来看：你不仅要知道某个分支被执行，还要知道是什么输入决定它被执行。
+```text title="伪代码：带一个字节目标地址的条件跳转"
+function JUMP_IF_ZERO():
+    target = readByte()       // 取出跳转目的偏移
+    value = stack.pop()
+    if value == 0:
+        ip = target          // 改变下一条指令的位置
+    // 否则不改 ip，继续读取后面的指令
+```
 
-那为什么 103 个 handler 都标注了，程序还没有读懂？因为指令语义只是局部规则。一个“读属性”指令可以读取几百种不同属性，一个“调用函数”指令也可以调用完全不同的函数。真正的含义还取决于运行到这里时，栈里装的是什么。
+它只说明跳转规则。结合一段教学字节码，才知道具体的两条路：
 
-还有一个容易踩的坑：字节码里的某个标记字节，不一定只出现在指令边界。旧样本中有 169 个字节与 handler 标记相同，但经过长度、边界与结构验证，只有 103 个是有效记录。
+```text title="教学控制流：以下偏移也不是实际样本地址"
+0: PUSH input       // input 是本次选定的单字节输入值
+2: JUMP_IF_ZERO 8
+4: PUSH 1
+6: JUMP 10
+8: PUSH 0
+10: HALT
 
-这也是文件格式分析里的常识：**搜索命中只是候选，结构验证才是证据。**
+input != 0：0 → 2 → 4 → 6 → 10
+input == 0：0 → 2 → 8 → 10
+```
 
-## 5. “缺什么补什么”为什么把程序带进了错误分支？
+这里的 `JUMP 10` 是无条件把 `ip` 改成 10；`JUMP_IF_ZERO` 则先检查栈上的条件。把这些位置与跳转边连起来，就是控制流图（CFG）。它回答“有哪些可能路径”。某一次运行只走其中一条，动态日志不能自动覆盖另一条。
 
-识别出解释器之后，一个自然想法是：把它放进 Node，缺哪个浏览器对象，就补哪个。
+更复杂的 VM 还会处理函数调用。为了让被调用的函数返回后知道从哪里继续，它需要保存返回位置和局部状态；这份调用记录就叫调用帧。这里先记住用途，不必把所有调用帧布局背下来。
 
-最方便的做法，是写一个万能占位对象。任何属性访问都返回另一个对象或函数，任何调用都“不报错”。这类占位实现通常叫 stub；如果借助 JavaScript `Proxy` 拦截访问，还能把缺失项记录下来。
+### 搜到一个标记字节，不等于找到一条 handler 记录
 
-问题是：程序不只关心“有没有报错”，还关心值的类型与语义。
+旧样本里，handler 记录包含标记、opcode、源码长度和 JavaScript 源码。下面的数值只是按该旧格式构造的示意，不是提取出的真实 handler：
 
-8 月旧样本的固定 stub 路径执行了部分指令，但没有正常到达结束标志。记录显示，一些本来参与数值运算的属性读取拿到了占位函数，类型转换之后进入了错误分支，异常又被 VM 自己捕获了。
+```text title="结构示意：长度字段决定这段记录在哪里结束"
+7e | 02 | 00 00 03 | 78 3d 31
+ ↑    ↑       ↑          ↑
+标记 编号   长度为 3    三个 UTF-8 字节，文本是 x=1
 
-为什么一个函数也能参加位运算？看看这个可独立运行的小例子：
+检查顺序：
+1. 剩余字节够不够容纳记录头？
+2. 按大端序读取的源码长度，是否越过数据末尾？
+3. 内容能否按预期解码，并符合 handler 的结构？
+```
 
-```javascript
+“大端序”指高位字节在前；这里 `00 00 03` 表示长度 3。这类记录描述的是 **handler 函数怎样实现**，与调用它的 opcode 指令数据要区分。
+
+旧样本中有 169 个字节与标记相同，但结构验证后只有 103 个有效记录。其他同值字节可能只是数据。**搜索命中是候选，结构验证才是证据；恢复指令手册之后，还要继续读程序。**
+
+## 5. Number 是什么？占位函数为什么会改变分支？
+
+**现在把数据类型与控制流接起来。** 识别出解释器后，一个自然想法是：把原脚本放进 Node，缺哪个浏览器对象，就补哪个。
+
+这类临时替代实现叫 stub，也就是占位实现。最省事的版本让所有未知属性都返回一个函数，以免继续访问或调用时立刻报错：
+
+```text title="伪代码：万能占位对象掩盖了本来不同的类型"
+function readMissingProperty(name):
+    return placeholderFunction
+
+width = readMissingProperty("width")  // 预期可能是数字，实际却拿到函数
+if (width & 255) == 0:
+    enterBranchA()
+else:
+    enterBranchB()
+```
+
+8 月旧样本的固定 stub 路径就发生过类似问题：本来参与数值运算的属性读取拿到了占位函数，类型转换后进入错误分支，异常又被 VM 内部捕获。外层没抛出异常，不代表里面已经算对。
+
+### 把一行嵌套断言拆成三步
+
+`Number(value)` 是 JavaScript 内置的**数值转换函数**，尝试把一个值转换成数字。这里没有 `new`，不是创建包装对象，也不是自动调用作为参数传入的函数。
+
+```javascript title="可运行：先看最普通的数值转换"
+console.log(Number('123')) // 123：数字字符串转数字
+console.log(Number('hello')) // NaN：无法转换成有效数字
+console.log(Number(undefined)) // NaN
+```
+
+`NaN` 全称是 Not-a-Number，是数值类型里的一个特殊值，表示无效的数值结果。`Number.isNaN(value)` 则只检查“这个值是否已经是 NaN”，**它自己不做数值转换**。
+
+```javascript title="可运行：函数本身和函数调用结果不是同一个值"
 const stub = () => 123
 
-console.assert(typeof stub === 'function')
-console.assert(Number.isNaN(Number(stub)))
-console.assert((stub & 255) === 0)
-console.assert(undefined >>> 0 === 0)
+console.log(stub()) // 123：加括号才调用函数
+console.log(Number(stub())) // 123：把调用结果转数字
+console.log(Number(stub)) // NaN：尝试转换函数对象本身
+console.log(Number.isNaN('hello')) // false：字符串本身不是 NaN
+console.log(Number.isNaN(Number('hello'))) // true：先转换，才得到 NaN
+
+const converted = Number(stub) // 第一步：尝试把函数对象转成数字
+const conversionFailed = Number.isNaN(converted) // 第二步：检查是不是 NaN
+console.assert(conversionFailed) // 第三步：验证我们预期的现象
 ```
 
-`Number(stub)` 不会替你调用函数取得 123。对这里这个普通函数，它会经过原始值转换，最终得到 `NaN`；而按位运算又会执行整数转换。
+所以原先的 `console.assert(Number.isNaN(Number(stub)))`，只是把最后三行嵌套写在了一起。
 
-于是，占位函数不仅没表达真实环境，还悄悄变成了一个足以改变分支的数值。
+对这个未改写转换方法的普通函数，转换过程大致是：先尝试取得原始值；普通 `valueOf()` 仍返回对象，再经 `toString()` 得到函数源码文本；这段文本不是数字字符串，于是结果是 `NaN`。如果对象自定义了 `Symbol.toPrimitive` 等转换行为，结果可能不同，不能把本例推广到所有对象。
 
-后来把 `window`、`document`、`navigator`、`screen` 等根对象分开，并保持派生对象身份一致，合成路径才推进到正常结束。这一步带来的不是“已经模拟了浏览器”，而是更窄的结论：**某些对象与类型关系会影响程序能否走到末端。**
+### 没有人显式写 Number，位运算也会转换
 
-所谓环境建模，不是把属性名填满，而是还原程序实际依赖的行为：返回什么类型、是不是同一个对象、什么时候抛异常、异步结果什么时候可见。
+`&` 是按位与，`>>>` 是无符号右移。在本例中，它们会先按各自规则把操作数转成 32 位整数；`NaN` 在这种整数转换中会成为 0：
+
+```javascript title="可运行：不正确的类型怎样变成不正确的分支输入"
+const stub = () => 123
+console.log(stub & 255) // 0：没有调用 stub，而是转换函数对象
+console.log(stub() & 255) // 123：先调用，拿真实返回的数字运算
+console.log(undefined >>> 0) // 0：undefined 经数值与整数转换
+```
+
+这不是说 `Number(stub)` 本身返回 0，也不是所有运算都把 `NaN` 当 0。它发生在这里特定的位运算转换中。
+
+于是，万能占位对象不只是“值不够真实”，还会改变 `if` 的条件，带程序走另一条路。后来将宿主根对象分开、保持派生对象身份一致，合成路径才推进到正常结束；这只证明模型修复了某些路径条件，不证明整个浏览器已被模拟。
 
 另外，Node 的 `vm` context 只是执行上下文，不是安全隔离边界。Node 官方明确指出 `node:vm` 不是安全机制。运行外来脚本仍需要独立、受限的执行环境，不能把宿主文件、网络能力和凭据暴露给它。
 
-## 6. 程序终于返回字符串，差异却在编码之前
+## 6. 306 个字符和 149 个函数，具体是在比较什么？
 
-让解释器正常结束之后，又出现了一个很诱人的假终点：`r` 终于是字符串了。
+**这一节转回数据流。** 合成路径正常结束后，`r` 终于是字符串了，但同一个 8 月旧样本中，合成结果长度为 1,391，浏览器结果为 407。这些都是当时那个版本的观察，不是新版应满足的固定长度。
 
-但在同一个 8 月旧样本的对照中，合成路径的字符串长度是 1,391，而浏览器样本是 407。这里的数字只是帮助理解当时的差异，不能拿来作为新版字段长度的要求。
+既然知道末端会做数组拼接，就在 `join` 之前检查数组，而不是只盯最终字符串长度：
 
-接下来该怎么查？继续乱补 API，还是从最终输出往回找？
-
-我们已经知道末端大致经过这样的过程：
-
-```text
-数组元素
-  → join("")
-  → btoa
-  → 字符替换
-  → 返回字符串
+```text title="伪代码：从结果倒查到数组写入点"
+result = replaceCharacters(btoa(joined))
+joined = chars.join("")
+chars[index] = oneValue
+oneValue = producer(input)
 ```
 
-于是把观察点放在 `join` 之前。
+这里的 `producer` 只是“产生一个元素的调用”的代称，不是已经还原出一个同名函数。逆向要逐层问：这个 `chars` 是哪个对象？谁向它写过？`oneValue` 又是哪次调用的返回值？
 
-旧样本中的浏览器路径，有一个长度为 306 的数组，写进去的是单字符字符串；对应的合成路径，数组长度是 149，元素却主要被归类为 `function`。
+### 两条路径的差异，不是“一个数组名不一样”
 
-这比“最终字段长度不同”有用得多。它说明至少存在明确的上游输入形状差异：你不能指望把 149 个占位函数交给相同的编码函数，就得到 306 个真实字符组成的结果。
+旧浏览器 trace 记录了 306 次相关写入，值都被识别为长度为 1 的字符串；相邻调用也返回长度为 1 的字符串，写入与返回有对应关系。合成路径的对应末端数组长度是 149，元素被归类为函数。
 
-这里用到的方法叫**从输出向后切片**：不是追踪所有变量，而是只追踪最终输出依赖的那一部分。
+用脱敏伪代码重画，类似这样：
 
-更细一点，怎样确认某次数组写入来自刚刚的函数返回值？需要关联调用、返回和写入，并记录数组对象身份、索引、值类型与发生顺序。这条可复查的来源链，就是 provenance，也就是数据来源追踪。
+```text title="伪代码：只表达观测到的形状，不猜测字符原值"
+浏览器路径：
+    chars = new Array(306)
+    for 每个实际观察到的索引 i:
+        value = 某次生产调用的返回值
+        // 观测：typeof value == "string"，value.length == 1
+        chars[i] = value
+    joined = chars.join("")
 
-公开记录往往不需要写出字符原值。仅仅知道“同一个数组”“数字索引”“单字符字符串”“与上一调用返回值对应”，就足以排除不少错误解释。
+合成 Node 路径：
+    chars = new Array(149)
+    for 每个实际观察到的索引 i:
+        value = 对应合成路径得到的值
+        // 观测：typeof value == "function"
+        chars[i] = value
+    joined = chars.join("")
+```
 
-这也解释了为什么逆向不是“看到 Base64，解一下就结束”。Base64 是表示方式，不是生成材料的算法，更不是自动成立的加密保护。
+这不证明两个循环原本都应固定运行 306 次，也不证明合成路径的每个函数都来自同一个属性。它只表达当时已确认的**容器长度、元素类型与写入关系**。
 
-## 7. 把算法翻译成 Python，最先出错的可能是一个字符
+更小的可运行示意能解释为什么“两边最终都是字符串”仍然不够：
 
-随着末端编码和部分哈希结构被识别，一个新的工作出现了：用独立代码复算中间结果。
+```javascript title="可运行：join 会转成字符串，不会替你调用数组里的函数"
+const browserLike = ['A', 'B', 'C'] // A/B/C 是教学字符，不是真实样本
+const nodeLike = [() => 'A', () => 'B']
 
-独立实现很重要。如果仍然调用原来的混淆函数，就只能证明“它又运行了一次”，不能证明我们已经理解并复现了它的规则。
+console.log(browserLike.join('')) // ABC
+console.log(nodeLike.join('')) // 拼接函数的源码文本，不是 AB
+console.log(nodeLike.map((fn) => fn()).join('')) // AB：显式调用才拿到返回值
 
-但从 JavaScript 翻译到 Python 时，照着公式抄还不够。
+console.assert(typeof browserLike.join('') === 'string')
+console.assert(typeof nodeLike.join('') === 'string')
+console.assert(nodeLike.join('') !== 'AB')
+```
 
-例如，9 月一些固定样本中的 cyrb53 路径涉及 `charCodeAt` 与 `Math.imul`。前者读取 UTF-16 码元，后者按 32 位整数乘法取结果。它们并不等于“Python 遍历字符，再做普通乘法”。
+上例解释普通函数的行为；真实占位对象还可能有自定义转换，不能拿这个例子的源码长度去复算旧样本的 1,391。但结论已经够用：**上游传入了不同形状的数据，同样得到 string 类型不代表内容正确。**
 
-先只看字符串：
+### 怎样确认两条日志说的是同一次写入？
 
-```javascript
+下面是追踪工具可以生成的事件格式示意。`array#1`、`call#1`、序号都是教学编号；这里只记录形状，不公开原值：
+
+```text title="事件示意：时间相邻只是线索，仍要关联对象和调用"
+{ seq: 40, kind: "call_return", call: "call#1", type: "string", length: 1 }
+{ seq: 41, kind: "array_write", array: "array#1", index: 0,
+  fromCall: "call#1", type: "string", length: 1 }
+{ seq: 42, kind: "join", array: "array#1" }
+```
+
+数组对象身份区分“同一个数组”和“另一个内容相似的数组”；调用编号与帧内值传递帮助区分“同一生产者”与“只是时间靠近”。字符串是原始值，没有数组那样的对象身份，不能仅凭两个单字符相等就断言来源相同。
+
+这条“生产调用 → 返回值 → 特定数组写入 → 编码消费”的链叫数据来源追踪，也就是 provenance。只保留与最终结果相关的链，叫向后切片。相关元素也可能被后续覆盖，所以必须追到**最终被消费的写入**，不是找到一次写入就停止。
+
+这一步把疑点放回了字符生产和上游环境输入，而不是把所有差异都归咎于最后的 Base64。Base64 只是表示方式，不会帮你把错误输入修正成正确材料。
+
+## 7. 最终用 Node，为什么中途还要写 Python？
+
+**这是数据流验证工具，不是运行路线迁移。** 最终那条 Node 路线，是在隔离环境中执行当轮原始 JavaScript；如果该版本内部有 VM，也由原脚本自己的解释器执行。
+
+Python 主要用在研究侧：对已经理解的**局部**哈希、字节变换或编码，另写一份参考实现，核对我们的解释。并没有因为写了 Python，就把整个挑战计算替换成 Python。
+
+```text title="两条路线：一条计算本轮材料，一条离线检查局部规则"
+实际执行路线：
+    当轮原始 JS + 环境模型
+        → 隔离 Node 执行
+        → 本轮计算材料
+        → HTTP 控制器提交与验证
+
+离线研究路线：
+    固定样本里的某个子过程
+        ├─ 原 JS 在受控输入下运行 → 中间结果 A
+        └─ 独立 Python 参考实现   → 中间结果 B
+    比较 A 和 B；再换输入，重复验证
+```
+
+图里的 HTTP 控制器指负责获取资源、提交结果与管理会话的程序；它和执行计算的 Node 是不同职责。Python 的局部对照不需要把浏览器答案塞进最终计算路线。
+
+它的意义是把“黑盒又跑通了”推进到“这一小段规则我们能独立解释”。假如两个结果不同，就查字符串编码、整数位宽、输入来源或模型错误。如果相同，只能为**被测子过程和输入集合**提供证据，不能直接宣布整个 DataDome 已被重写。
+
+Python 不是必须的，也可以用另一份独立 JavaScript 实现。关键是独立表达规则，而不是在 Python 里再调用原函数冒充复现。后来仍选 Node 执行原脚本，是另一层工程选择；局部复算用于排查和回归，不要求成为最终执行依赖。
+
+### 一个“同样输入，语言理解不同”的例子
+
+9 月一些固定样本中的 cyrb53 是一个把输入压缩成数值的哈希子过程，不是整个字段。它使用的 `charCodeAt` 按 UTF-16 码元读字符串。码元是编码单位，不总是人眼看见的一个字符：
+
+```javascript title="可运行：JavaScript 把这个字符表示成两个 UTF-16 码元"
 const text = '😀'
-console.assert(text.length === 2)
-console.assert(text.charCodeAt(0) === 0xd83d)
-console.assert(text.charCodeAt(1) === 0xde00)
+console.log(text.length) // 2
+console.log(text.charCodeAt(0)) // 55357，即十六进制 0xd83d
+console.log(text.charCodeAt(1)) // 56832，即十六进制 0xde00
 ```
 
-这个字符在 JavaScript 中占两个 UTF-16 码元。如果 Python 实现需要模拟 `charCodeAt`，可以先显式取得码元：
+Python 直接遍历这个字符串，会看到一个 Unicode 码点。若要模拟上述 JavaScript 子过程，需要显式取出两个 UTF-16 码元：
 
-```python
+```python title="可运行：研究侧对齐 JavaScript 的输入单位"
 text = '😀'
 encoded = text.encode('utf-16-le', errors='surrogatepass')
 units = [
@@ -259,148 +520,334 @@ units = [
 assert units == [0xD83D, 0xDE00]
 ```
 
-再看整数：
+### 运算结果，也要对齐位宽
 
-```javascript
-console.assert(Math.imul(0xffffffff, 5) === -5)
-console.assert(Math.imul(0xffffffff, 5) >>> 0 === 4294967291)
+`Math.imul(a, b)` 做 32 位整数乘法并给出有符号结果；`>>> 0` 再把对应的低 32 位按无符号整数解释：
+
+```javascript title="可运行：同一组比特的有符号与无符号读法"
+const signed = Math.imul(0xffffffff, 5)
+const unsigned = signed >>> 0
+console.log(signed) // -5
+console.log(unsigned) // 4294967291
 ```
 
-同一组低 32 位比特，可以按有符号或无符号整数解释。Python 整数不会自动以同样方式截断，所以复算时必须明确位宽、截断点和符号。
+这个特定输入的 Python 对照，可以这样表达低 32 位截断；它不是适用于任意 JavaScript 值的完整 `imul` 实现：
 
-还有 `btoa`：它接收的是每个字符都能表示一个字节的“二进制字符串”，并不自动把任意 Unicode 文本转成 UTF-8。看到它时，必须继续确认上游到底组装了什么。
+```python title="可运行：只复算上面的整数例子"
+unsigned = (0xffffffff * 5) & 0xffffffff
+signed = unsigned if unsigned < 0x80000000 else unsigned - 0x100000000
+assert signed == -5
+assert unsigned == 4294967291
+```
 
-这些细节听起来像语言基础，却往往决定“数学公式看起来一样”的两份实现为什么对不上。
+还有末端的 `btoa`：它把“每个字符表示一个字节”的字符串转成 Base64，并不自动把所有 Unicode 文本按 UTF-8 编码。在支持 `btoa` 的现代 Node 或浏览器中：
 
-另外，**识别到一个熟悉的哈希，不代表整个字段都是这个哈希，也不代表新版仍然使用同一算法。** 我们在后续脚本里还遇到过不同的哈希路径。算法名称、常量和指令位置，都要跟具体样本绑定。
+```javascript title="可运行：编码成功不等于前面的输入正确"
+console.log(btoa('ABC')) // QUJD
+try {
+  btoa('😀') // 码元超过单字节范围，不是这个接口接受的二进制字符串
+  throw new Error('这里本应拒绝这个输入')
+} catch (error) {
+  console.assert(error.name === 'InvalidCharacterError')
+}
+```
 
-## 8. 没有出现在日志里的调用，真的没有执行吗？
+所以这一节不是“为了最终运行而换语言”，而是借跨语言复算暴露隐含语义。即使最后一直用 Node，理解这些语义也能帮助发现环境模型给错类型、给错输入的问题。算法名称和常量仍须绑定样本版本。
 
-9 月的一次追踪里，日志没有显示预期的 cyrb53 起始调用。如果急着解释，很容易写出“这一分支没有走到”。
+## 8. “缩小观察范围”，究竟缩小什么？
 
-后来发现，日志只保留了尾部。调用发生过，只是早期记录已经被丢掉了。
+**这一节是控制流与数据流共用的测量方法。** trace 是程序运行时记录下来的事件序列；插桩是为获得这些事件而添加钩子、包装调用或改写代码。它们都不是完全透明的旁观者。
 
-这个坑的价值不比一个算法发现低，因为它提醒我们：**分析工具也是实验的一部分，也会制造盲区。**
+9 月的一次日志只保留了尾部，没有显示预期的 cyrb53 起始调用。若据此判断“这一分支没执行”，就把工具的容量限制误当成程序行为了。
 
-因此，一份 trace 至少要说明：
+“缩小范围”不是让程序少执行一点，更不是把不喜欢的分支删掉，而是：**程序仍按原逻辑运行，只让日志保存与当前问题有关的事件。** 这样才不会让成千上万条无关记录挤掉关键证据。
 
-| 记录项   | 要回答的问题                     |
-| -------- | -------------------------------- |
-| total    | 一共观察到了多少事件？           |
-| retained | 最终保留了多少条？               |
-| dropped  | 因容量限制丢了多少条？           |
-| thrown   | 被观察的调用中有多少抛出了异常？ |
+### 从一个具体问题确定过滤条件
 
-具体计数口径必须由工具定义清楚。例如，异常是否也会占一条 retained 记录，不能靠猜。
+假设当前只问：“传给 `join` 的数组第一个元素是谁写的？”可以按下面的顺序缩小：
 
-即使 `dropped` 为零，也要检查观测覆盖范围：钩子什么时候装上，观察了哪些调用点，是否跨异步任务，记录窗口从哪里开始。完整的局部窗口不等于完整的全程序轨迹。
+1. **锁定消费对象**：在 `join` 处给接收数组标一个对象 ID，而不是追所有数组。
+2. **反查写入位置**：找到向该对象写入的 handler 与字节码位置。
+3. **保留附近指令窗口**：查看该写入前后的值怎么进栈、怎么调用、怎么返回。
+4. **跨窗口追来源**：如果值来自某个全局槽，就只额外跟踪这个槽的相关读写。
 
-后来的做法是缩小观察范围，只追相关指令窗口与指定状态槽。不要一边让全量日志溢出，一边拿截断结果讲完整故事。
+“全局槽”是该 VM 状态存储中的一个位置，例如 `vm.globals[7]`，不是在说真实浏览器一定有 `window[7]` 这个属性。
 
-插桩还可能改变被测程序本身。源码重写、函数包装、额外计时都会影响执行；如果程序观察源码或调用栈，影响尤其明显。因此要保留未插桩基线，对照插桩前后的输出和行为。
+下面所有位置、对象和槽号都是教学数值，不是可套用到真实样本的固定地址：
 
-一个靠谱的结论，不仅要解释程序，还要解释：**为什么这份观察值得相信。**
+```text title="伪代码：允许相关来源跨出 IP 窗口，不只截取几行"
+watchArray = "array#1"
+watchSlots = {7}
+startIP = 100
+endIP = 140
+remainingFollowingSteps = 0
+
+function onEvent(event):
+    inWindow = startIP <= event.ip <= endIP
+    followsJump = remainingFollowingSteps > 0
+    arrayRelated = event.arrayId == watchArray
+    slotRelated = event.slotId in watchSlots
+
+    if event.kind == "instruction" and remainingFollowingSteps > 0:
+        remainingFollowingSteps -= 1
+    if event.kind == "instruction" and event.ip == endIP:
+        remainingFollowingSteps = 8  // 教学预算：再跟实际执行的 8 条指令
+
+    if inWindow or followsJump or arrayRelated or slotRelated:
+        boundedRecord(event)
+    else:
+        filteredOut += 1             // 主动过滤，和容量溢出不是一回事
+```
+
+**IP 窗口按代码位置筛选，后继步数按实际执行顺序筛选。** 假如窗口末端跳到了 IP 900，只记录 100—140 就会丢掉后继；多保留有限的实际后继步骤，可以看到那个跳转后的局部结果。它不是自动追完所有可能分支。
+
+研究工具中对应的思路包括 `--vm-history-range` 的指令范围、`--vm-watch-global-slot` 的指定槽读写，以及关联数组的跟踪。实际工具还会限制后继记录和观察槽数量；这些是项目诊断选项，不是 Node 自带 API，也不能跨脚本版本照抄 IP。
+
+### 找到晚了，就回到同一个固定样本重跑
+
+假设你直到 `join` 才知道目标数组是谁，早先的写入不能凭空补进日志。正确做法是先做定位运行，再在固定样本上提前安装相关观察点重跑，或用事先受限保存的前置事件核对。
+
+“同一个数组”也不能跨运行靠原来的对象地址判断；应从它的构造位置、所属调用等重新识别。若目标值在窗口之前初始化，就把初始化点纳入观察，不能只保存消费端便宣称来源完整。
+
+### 日志容量要算清，未记录不等于未执行
+
+一份报告至少要解释以下计数的口径：
+
+| 计数          | 含义                               |
+| ------------- | ---------------------------------- |
+| `total`       | 钩子实际观察到的事件数量           |
+| `filteredOut` | 因为不符合筛选条件而主动忽略的数量 |
+| `retained`    | 满足筛选条件且实际保存的数量       |
+| `dropped`     | 满足条件，却因容量上限丢弃的数量   |
+| `thrown`      | 观察到的调用中，抛异常的数量       |
+
+这是教学计数模型，不要求项目所有历史报告都恰好采用同一字段或口径。在这个模型里，前四项满足 `total = filteredOut + retained + dropped`；`thrown` 是事件的附加分类，不另加到总数里。
+
+```text title="示意统计：这些数字不是一次真实实验结果"
+宽范围：total=10000, filteredOut=0,    retained=1000, dropped=9000
+窄范围：total=10000, filteredOut=9600, retained=400,  dropped=0
+```
+
+后者能说明“被选中的事件没有因容量溢出丢失”，不能说明被主动过滤的 9,600 条没有执行，也不能说明钩子安装之前没有事件。
+
+最后仍须保留未插桩基线。插桩可能改变函数源码、调用栈、计时与调度；在同一固定样本和受控输入下，比较插桩前后的输出、异常和路径，能帮助发现这种干扰。无法控制的差异应标注，不能让一份漂亮日志代替原程序行为。
 
 ## 9. 改了时区，哈希变了，最终字段没变，说明什么？
 
-理解数据流之后，我们开始做反事实实验：固定其他条件，只改变一个输入，看看输出如何变化。
+**这里研究数据依赖，不是只数走了多少条指令。** 9 月 27 日的一组固定样本实验中，改变时区相关条件后，一组中间哈希发生变化，但最终 `plv3` 没变。
 
-9 月 27 日的一组固定样本实验中，改变时区相关条件后，一组中间哈希发生了变化，但最终 `plv3` 没变。
+“这组哈希没用”是一个过早的判断。继续追踪发现它确实有多个读取点；当时只完成了部分消费路径的局部归因，不能把其他路径全部判成噪声。
 
-最省事的解释是：“这组哈希没用。”
+下面这个教学例子能说明，为什么“被使用”与“改变最终结果”不是同一件事：
 
-但继续追踪，发现它确实被读取过，而且有多个消费点。已追到的一条局部路径，还经过取低位和表操作。**输出没变，不等于中间值没被使用。**
-
-可能的原因很多：
-
-- 差异被截断或掩码抹掉了；
-- 两个不同索引最终取到了相同结果；
-- 中间写入后来被覆盖；
-- 变化影响了另一段输出，而不是当前观察的字段；
-- 这次实验没有覆盖真正敏感的条件。
-
-这些只是候选解释，不能从一个不变的结果里挑一个自己喜欢的当答案。当时只完成了部分消费路径的局部追踪，不能把剩余读取全部判为噪声。
-
-这就是相关性与因果关系的区别。一个值变化，说明它对改动敏感；想证明它如何影响最终结果，还得把中间路径追完整。
-
-实际对照也应先重复同条件基线，再改变一个因素，最后恢复基线。否则时间、随机源或挑战本身的变化，都可能被误记到那个被修改的变量头上。
-
-## 10. 为什么浏览器里有，Node 里也有，结果仍然不同？
-
-到这里，很容易把剩下的问题理解为“还有几个 API 没补”。实际情况比一份属性清单复杂得多。
-
-### 对象相同，不是看起来相同
-
-同一个对象的重复读取，和每次创建一个内容相同的新对象，不是一回事：
-
-```javascript
-console.assert({ width: 100 } !== { width: 100 })
+```javascript title="可运行：不同中间值可以经过掩码后变得相同"
+function consume(hash) {
+  return hash & 255 // 只保留低 8 位
+}
+console.assert(257 !== 513)
+console.assert(consume(257) === 1)
+console.assert(consume(513) === 1)
 ```
 
-跨 iframe 又涉及不同的 JavaScript realm：各自的全局对象、构造器和原型身份会影响比较结果。把所有 iframe 都指向同一个全局对象，并不是一个无害的简化。
+这只是一个可能机制，不是声称当时已经用它解释了所有路径。差异还可能在查表时合并、在后续被覆盖，或影响了我们没观察的输出。
 
-### 没有权限，也是一种真实行为
+反事实实验的意思是“在可控条件下改变一个因素，看会怎样”。要避免把随机变化当成时区影响，实验安排至少应类似这样：
 
-某次跨站挑战帧的实测中，存储访问会受到限制。若模型为了“完善”而让它总能成功，就模拟出了一个与被测浏览器不同的世界。
+```text title="伪代码：先确认基线可重复，再做单因素改动"
+baseline = {sample: 同一份字节, clock: 固定值, randomSeed: 固定值, timezone: A}
+a1 = runOffline(baseline)
+a2 = runOffline(baseline)
+先检查 a1 与 a2 是否一致，否则先研究基线波动
 
-同样，真实环境没有提供的高熵浏览器版本、系统信息或硬件值，不应该因为代码里有位置可以填，就随便补进去。缺失、异常、不可用，都可能是需要忠实表达的行为。
+changed = copy(baseline)
+changed.timezone = B
+b = runOffline(changed)
+a3 = runOffline(baseline)          // 恢复基线，再验证
 
-这些现象取决于浏览器版本、权限与页面上下文，不是说某个 API 在所有浏览器里都应被关闭。
+比较各次的中间结果、消费路径与最终结果，而不只比较最终字符串
+```
 
-### 异步顺序，也是程序输入
+如果时间、随机源、脚本版本或走到的分支也变了，就不是干净的单因素对照。**变化告诉你哪里敏感；完整的来源与消费链，才帮助你解释它为何影响或没有影响输出。**
 
-有的检测先发起异步任务，稍后才收集结果。如果合成调度器一口气处理完全部定时器，或者过早执行编码回调，就可能在结果尚未写入时打包字段。
+## 10. 对象、异常与异步，为什么也要建模？
 
-一个不涉及 DataDome 的小例子，可以帮助理解同步代码、微任务与定时器的先后关系：
+我们已经看到类型能改变分支。接下来三类环境语义，会同时影响控制流和数据流，不能靠“这个 API 名字存在”判断模型正确。
 
-```javascript
-const events = []
+### 对象身份：内容一样，不等于同一个对象
+
+```javascript title="可运行：一个保持身份的属性与每次新建的属性"
+const stableScreen = { width: 100 }
+const stable = {
+  get screen() {
+    return stableScreen
+  },
+}
+const fresh = {
+  get screen() {
+    return { width: 100 }
+  },
+}
+
+console.assert(stable.screen === stable.screen) // 两次取得同一个对象
+console.assert(fresh.screen !== fresh.screen) // 内容相似，却是两个对象
+```
+
+有些 API 需要保持稳定对象身份，上例说明该怎样理解“稳定”，不意味着所有 API 都必须返回同一个对象。
+
+iframe 还可能处于独立的 realm，即拥有自己的全局对象和一组内建构造器的 JavaScript 环境。同源且可访问的独立 iframe 可以出现这样的关系：
+
+```text title="伪代码：不同 realm 的 Array 构造器不是同一个对象"
+parentArray = parentRealm.Array
+childArray = childRealm.Array
+parentArray !== childArray
+
+childValue = new childArray()
+childValue instanceof childArray   // true
+childValue instanceof parentArray  // false
+```
+
+把所有 iframe 都指向同一套构造器，会改变这类判断。`instanceof` 在这里依赖构造器的原型关系，不是只检查变量“长得像数组”。
+
+### 异常：访问失败也是程序的一种输入
+
+```text title="伪代码：错误地总返回成功，会让 catch 分支消失"
+try:
+    value = frame.localStorage.getItem("demo")
+    report({storage: "available"})
+catch error:
+    report({storage: "unavailable", errorName: error.name})
+```
+
+某次跨站挑战帧的实测里，访问存储受到限制。若模型总是返回一个可用对象，就走了与当时浏览器不同的分支。但这不等于所有页面都该禁用存储；要按版本、权限和页面上下文记录实际行为。
+
+同理，读不到的高熵浏览器版本或硬件信息应保持不可用，不能因为模型有字段可以填就凭空编造。
+
+### 异步：正确值晚到一步，也可能没有进入输出
+
+```javascript title="可运行：相同的对象，在不同时间读到的内容不同"
+const collected = []
+Promise.resolve().then(() => collected.push('ready'))
+
+const tooEarly = collected.join('') // 同步读取，微任务还没执行
+console.assert(tooEarly === '')
+
 setTimeout(() => {
-  events.push('timer')
-  console.assert(events.join(',') === 'sync,microtask,timer')
+  const later = collected.join('')
+  console.assert(later === 'ready')
 }, 0)
-Promise.resolve().then(() => events.push('microtask'))
-events.push('sync')
 ```
 
-但这个例子不是完整的浏览器调度模型。真实页面还涉及渲染、I/O 和不同任务来源。它只说明一件事：**值最后能算出来，不代表它在被读取时已经存在。**
+这里 Promise 回调进入微任务，当前同步代码结束后才执行；定时器回调又在之后。`join` 不会等待未来发生的写入。
 
-因此，“补环境”真正要做的是语义建模，而不是制造一个永远不报错的万能对象。
+真实浏览器还涉及渲染、I/O 和不同任务来源，本例不是完整调度器。但它准确解释了为什么“环境接口最后能算出值”仍不够：**必须在原程序读取它的那个时间点，提供相符的行为。**
 
-## 11. 最后的 401，把问题从 JavaScript 拉回 HTTP
+## 11. Cookie 之外，Session 到底还保存了什么？
 
-现在回到开头：为什么已经有字符串、200 和 Cookie，正文仍然失败？
+**现在从客户端内部的数据流，走到 HTTP 交互与状态。** Node 产生的是提交材料；Cookie 是服务端响应返回的，不是 Node 自行签发的一张通行证。
 
-因为这几件事处在不同层级。
+项目要求候选 Cookie 在 Reuters 首页、栏目页、文章页上分别通过真实文档验证。严格 `3/3` 的意思不是三个任意 200，而是三类页面都不是挑战页、空壳或错误页。这是项目验收规则，不是 DataDome 官方协议。
 
-JavaScript 生成的是要提交的材料；Cookie 是服务端在交互后返回的。Node 并不是算完一个函数，就自行签发了一张服务端必然认可的通行证。
+```text title="伪代码：传输失败、挑战页与正常文档分开计数"
+for pageClass in [首页, 栏目页, 文章页]:
+    try:
+        response = session.request(pageClass)
+    catch transportError:
+        record(pageClass, "transport_error")
+        continue
 
-在项目里，我们要求候选 Cookie 再经过三类真实页面验证：Reuters 首页、栏目页、文章页。所谓严格 `3/3`，不是三次任意 200，而是三类页面都确认为正常文档，不是挑战页、空壳或错误页面。这是本项目的验收规则，不是 DataDome 官方协议。
+    if isExpectedDocument(response, pageClass):
+        record(pageClass, "usable")
+    else:
+        record(pageClass, "not_usable")
 
-对应的证据链是：
-
-```text
-当轮新挑战与对应资源
-  → 独立计算本轮材料
-  → 原 HTTP 会话提交
-  → 取得候选 Cookie
-  → 三类真实文档验证
-  → 实际使用端再次验证复用
+只有三个 pageClass 都为 usable，才报告 3/3
 ```
 
-10 月 2 日的一批记录里，生成端已经能通过 `3/3`，但交给 worker 后却只有 `1/3`。此时再盲目钻进 VM 里改算法，就很可能在排查错误的层级。
+`isExpectedDocument` 是正文验证逻辑的代称，不是只判断状态码的库函数。没取得候选、没有运行探针时，应报告“未运行”，不能混写成已测三个页面全部失败。
 
-于是实验改成对照 Session。这里的 Session 不只是 Cookie，它还包含客户端配置、请求上下文、连接与其他状态。
+### 用一个结构体展开 Session
 
-两枚独立候选都曾在复制生成端完整配置与应用层状态的新 Session 中通过 `3/3`；移除项目里的请求上下文包装器后，则都出现三个 401，而原 Session 复测仍为 `3/3`。
+10 月 2 日的一批实验里，生成端已通过 `3/3`，交给实际抓取文章的 worker 进程后却只有 `1/3`。这时如果继续只改 VM，就可能找错了层级。
 
-这支持“请求上下文组合会影响所测结果”，但不支持“已经定位某一个请求头”。因为那个包装器同时管理多项行为，实验也没有固定所有网络变量。其中一轮后置完整新 Session 对照还有传输错误，不能把它润色成全部成功。
+Cookie 可以理解为会话里的一部分数据，而 Session 还管理“怎样把请求送出去”。用伪代码展开如下；它不对应某个库的真实构造参数：
 
-它还否定了另一个过强判断：成功复用并不必然要求保留原 TCP 连接。新 Session 在所测条件下也可以成功。
+```text title="伪代码：Session 不等于一串 Cookie 文本"
+Session = {
+    cookieJar: Cookie 容器，按域名、路径、有效期等选择发送内容,
+    clientConfig: {
+        客户端版本、声明身份、传输 profile、代理和路由设置
+    },
+    requestPolicy: {
+        导航、脚本、接口等不同请求如何组织 headers,
+        Referer/Origin 规则、语言与压缩协商设置
+    },
+    applicationState: {
+        按 origin 保存的 Client Hints 协商状态、目标地址映射等
+    },
+    connectionPool: 活跃连接及相关传输状态
+}
 
-这就是消融实验：从已能工作的完整条件里移除一个组件，观察差异。它帮助定位范围，但组件里如果还包含多个因素，就需要继续拆分，而不是提前宣判唯一原因。
+function request(session, resource, kind):
+    headers = session.requestPolicy.build(resource, kind)
+    cookies = session.cookieJar.selectFor(resource)
+    return transport.send(
+        resource, headers, cookies,
+        session.clientConfig, session.connectionPool
+    )
+```
 
-同样，代理的 CONNECT 200 只说明建立隧道这一层的结果；浏览器出现 request 事件，也只说明启动了请求流程。它们都不能自动替代目标站响应，更不能替代真实正文验收。
+这里的 `profile` 指客户端采用的一组传输行为配置，不是用户账户。`origin` 指协议、主机和端口组成的来源。`headers` 是请求元数据；请求上下文在这里表示“这是导航、脚本还是接口请求，来自哪里”，不能全部塞入同一组固定头。`Client Hints` 是浏览器／客户端可协商提供的身份与能力信息，相关状态还可能按 origin 区分。连接池则是为了复用已经建立的连接，不是一份可以靠复制 Cookie 顺便复制的对象。
+
+### “复制 Cookie”与“完整新 Session”怎么对照？
+
+```text title="伪代码：复制应用层状态，不伪称复制活跃 TCP/TLS 连接"
+original = 生成端已经通过 3/3 的 Session
+
+cookieOnly = createSession(defaultConfig)
+cookieOnly.cookieJar = clone(original.cookieJar)
+// 请求策略、配置和协商状态仍可能与 original 不同。
+
+matched = createSession(copy(original.clientConfig))
+matched.cookieJar = clone(original.cookieJar)
+matched.requestPolicy = copy(original.requestPolicy)
+matched.applicationState = copy(original.applicationState)
+// matched 使用自己的新连接池，没有复制 original 的活跃连接。
+
+probe(original)        // 正对照：确认候选此时仍可用
+probe(matched)         // 检查复制完整配置与状态后的复用
+probe(original)        // 后置对照：避免把候选失效误归因于 matched
+```
+
+在所测记录里，两枚独立候选都曾在完整配置的新 Session 中通过 `3/3`。因此，那个条件下并不要求保留原 TCP 连接才能复用。它不是说任何 Cookie 都能随便跨环境使用。
+
+### 消融实验，移除的究竟是什么？
+
+消融就是从已能工作的条件里拿掉一部分，再看结果。本项目的 `_RequestContextSession` 是自己写的包装器，不是 `curl_cffi` 自带功能；它同时管理请求头上下文和压缩设置等行为。
+
+```text title="伪代码：一次移除组件，不等于只改了一个请求头"
+control = cloneConfigurationIntoNewSession(original)
+assert probe(control) == "3/3"
+
+variant = cloneConfigurationIntoNewSession(original)
+variant.requestPolicy = policyWithoutRequestContextWrapper()
+probe(variant)
+probe(original)
+probe(cloneConfigurationIntoNewSession(original))
+```
+
+两枚独立候选移除这个包装器后，都出现三个 401；原 Session 复测仍为 `3/3`。但其中一轮后置完整新 Session 对照还出现了传输错误，不能润色成所有对照全部成功。
+
+这个结果支持“该请求上下文组合在所测条件下影响复用”，不支持“已经定位某一个头”，也不能解释所有历史失败。包装器内有多项因素，实验还没控制所有目标连接的实际出口。
+
+最后再区分三个看起来都像“请求成功”的阶段：
+
+```text title="证据边界：前一步不能替后一步作证"
+代理 CONNECT 200       → 建隧道这一层的结果
+目标 HTTP 响应 200     → 目标请求有了响应，正文仍需检查
+三类页面为正常文档     → 本次 3/3 真实页面验收
+```
+
+浏览器的 request 事件也只表示请求流程开始，不能单凭它证明字节已到达服务端。**本地计算、网络交互、服务端接受和最终使用端复用，是连续但不同的检查点。**
 
 ## 12. 做到哪里，才可以说“成功”？
 
@@ -415,6 +862,8 @@ JavaScript 生成的是要提交的材料；Cookie 是服务端在交互后返�
 - 实际使用端可以复用，又是额外的工程验证。
 
 这不是故意把成功标准抬高，而是避免用一个层级的证据回答另一个层级的问题。
+
+这里的 fresh 指使用当轮新挑战，而不是拿旧材料重放；interstitial 指服务端当次提供的设备检查中间页，与滑块挑战不是同一条路线。
 
 截至本文采用的 10 月 2 日记录，已经有两次独立 Node 运行在服务端当次提供的 **interstitial 设备检查路线**上完成 fresh `3/3`；输入没有使用浏览器产出的 Cookie、证明值或运行时快照。之后还发生了上文提到的移交与生产接入排查。
 
@@ -454,4 +903,5 @@ DataDome 只是这次的案例。真正可以带走的方法，是把一个巨�
 - [10 月 2 日 Cookie 交接对照](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-cookie-handoff-2026-10-02.md)：Session 复用、消融结果及未控制的变量。
 - [10 月 1 日请求停留阶段记录](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-browserless-check-stage-2026-10-01.md)：请求事件、响应与代理隧道的证据区别。
 - [Node.js：VM 文档](https://nodejs.org/api/vm.html)：执行上下文与安全边界。
+- [MDN：Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)、[Number.isNaN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isNaN)：数值转换与检查的区别。
 - [MDN：charCodeAt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/charCodeAt)、[Math.imul](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul)、[btoa](https://developer.mozilla.org/en-US/docs/Web/API/Window/btoa)：独立复算时容易遗漏的语言语义。
