@@ -8,7 +8,7 @@ const article = new URL('../src/content/blog/reverse-engineering-for-beginners/i
 test('October 17 update reports independent fresh acceptance without claiming a new permission fix', async () => {
   const source = await readFile(article, 'utf8')
   assert.match(source, /2026-10-17 补记/)
-  const update = source.split('## 13. 10 月 17 日续记：')[1]
+  const update = source.split('## 13. 10 月 17 日续记：')[1]?.split('## 14.')[0]
   assert.ok(update, 'Keep the new investigation separate from historical chapters')
   assert.match(update, /本轮没有修改权限模型/)
   assert.match(update, /两次独立 Node fresh/)
@@ -22,7 +22,7 @@ test('October 17 update reports independent fresh acceptance without claiming a 
 
 test('new article section separates browser observation, API query and causality', async () => {
   const source = await readFile(article, 'utf8')
-  const update = source.split('## 13. 10 月 17 日续记：')[1]?.split('## 如果从头再做一次')[0]
+  const update = source.split('## 13. 10 月 17 日续记：')[1]?.split('## 14.')[0]
   assert.ok(update)
   assert.match(update, /IframeAttribute/)
   assert.match(update, /没有调用或截获 `navigator\.permissions\.query\(\)`/)
@@ -42,20 +42,20 @@ test('the policy-state teaching example is runnable and leaves unknown separate 
   assert.equal(result.status, 0, result.stderr)
 })
 
-test('October 18 section records the browserless production switch without secrets', async () => {
+test('October 18 section stays focused on identity analysis, not crawler operations', async () => {
   const source = await readFile(article, 'utf8')
   const update = source.split('## 14. 10 月 17 日晚—18 日：')[1]?.split('## 如果从头再做一次')[0]
-  assert.ok(update, 'Keep the production section before the retrospective')
-  assert.match(update, /WORKER_BROWSER_MODE=browserless/)
-  assert.match(update, /13,210/)
+  assert.ok(update, 'Keep the identity investigation before the retrospective')
+  assert.match(update, /声明身份/)
+  assert.match(update, /传输指纹/)
+  assert.match(update, /Client Hints/)
   assert.match(update, /0\/12/)
-  assert.match(update, /world/)
   assert.match(update, /153/)
   assert.match(update, /概率/)
-  assert.match(update, /9ff1a59/)
-  assert.match(update, /694733e/)
-  assert.match(update, /0a481dc/)
-  assert.doesNotMatch(update, /evidence\/private\/|\/home\/ubuntu\/|\.env\b|Proxy-Authorization:|api[_-]?key|Bearer\s+[A-Za-z0-9]/i)
+  const operations = /\bseed\b|discovered_count|new_count|0a481dc|入库|WORKER_BROWSER_MODE|docker compose|构建期配置|镜像变体|健康检查|槽位轮换/i
+  assert.equal(operations.test(source), false, 'Keep crawler and deployment operations out of the article')
+  const privateMaterial = /evidence\/private\/|\/home\/ubuntu\/|\.env\b|Proxy-Authorization:|api[_-]?key\s*[:=]|Bearer\s+[A-Za-z0-9]|https?:\/\/[^\s/]+:[^\s/]+@|-----BEGIN [A-Z ]*PRIVATE KEY-----/i
+  assert.equal(privateMaterial.test(source), false, 'Do not publish private paths or credential patterns')
 })
 
 test('the arch/bitness teaching example derives from the declared platform', async () => {
