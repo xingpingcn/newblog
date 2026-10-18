@@ -20,11 +20,15 @@ draft: false
 
 import Callout from '@/components/callout.astro'
 
-借助ai小白也能搞js逆向，本次逆向的目的是在仅通过node环境在不使用真实浏览器的情况下过datadome的盾，减少资源占用。大体思路就是拿到足够的正样本，然后模拟真实浏览器获得挑战并通过挑战，拿到cookie来复用，可以在node里复用也可以在curl_cffi里复用。
+借助 ai 小白也能搞 js 逆向，本次逆向的目的是在仅通过 node 环境在不使用真实浏览器的情况下过 datadome 的盾，减少资源占用。大体思路就是拿到足够的正样本，然后模拟真实浏览器获得挑战并通过挑战，拿到 cookie 来复用，可以在 node 里复用也可以在 curl_cffi 里复用。
 
 <Callout variant="note">
 
-本文会借助ai写大部分的内容，同时我也会校对，写为一篇记录与ai边做边学的博客
+本文会借助 ai 写大部分的内容，同时我也会校对，写为一篇记录与 ai 边做边学的博客
+
+**2026-10-17 补记：**文末第 13 节新增了权限上下文调查和两次独立 Node interstitial fresh `3/3` 的实测。该轮没有修改权限模型；成功仅覆盖当次受控条件，不是完整浏览器等价或生产上线的证明。
+
+**2026-10-18 补记：**第 14 节补录了 10 月 17 日晚至 18 日的生产化过程：worker 已切到 browserless 纯 Node 模式；修正了“解挑战用一套身份、取正文用另一套身份”和 UA-CH `arch/bitness` 与声明平台矛盾两处问题，并补上缺失的 `/world/` 发现 seed。142 身份修正后仍是 0/12，生产使用 153；153 是概率通道，不是“永久通过”。
 
 </Callout>
 
@@ -38,7 +42,7 @@ import Callout from '@/components/callout.astro'
 
 你只需要会读基本的 JavaScript，知道对象、数组、函数和 HTTP 请求是什么。不需要先背汇编指令，也不需要一开始就会写反编译器。
 
-> 本文依据 2026 年 8 月至 10 月初的研究记录整理，不是一次新的在线复测。不同日期的脚本与挑战类型会变化，下文会把旧样本的结论标清楚。代码片段用于解释局部语义，不是 DataDome 原始源码，也不包含 Cookie、完整挑战请求或可复用的证明值。实际实验应在自有或获授权的环境中进行。
+> 本文主体依据 2026 年 8 月至 10 月初的研究记录整理；第 13 节单独补录 10 月 17 日实际完成的新实验，不把新结果倒写成旧样本已经证明的事实。不同日期的脚本与挑战类型会变化。代码片段用于解释局部语义，不是 DataDome 原始源码，也不包含 Cookie、完整挑战请求或可复用的证明值。实际实验应在自有或获授权的环境中进行。
 
 ## 阅读地图：我们会沿着哪两条线走？
 
@@ -70,6 +74,8 @@ function calculate(environment) {
 | 第 9 节     | 数据依赖与因果验证             | 中间值变了，为什么结果没变？       |
 | 第 10 节    | 环境语义对两条线的影响         | 对象、异常和异步时序为什么重要？   |
 | 第 11—12 节 | HTTP 状态与验收边界            | 本地计算完成以后，还有哪些关要过？ |
+| 第 13 节    | 新观测与 fresh 基线            | 发现真实差异，就必须先修它吗？     |
+| 第 14 节    | 从研究通过到生产运行           | 确定性错误和概率性通过，怎样分开看？ |
 
 伪代码也使用 JavaScript 写法与语法高亮；标题里的“伪代码”仍表示它依赖省略的上下文，并非可直接运行的完整程序。
 
@@ -271,7 +277,7 @@ console.assert(runToyVm(program) === 8)
 
 ## 4. 找到 103 个 handler，为什么还不算读懂程序？
 
-分析vm的话只能靠ai了。
+分析 vm 的话只能靠 ai 了。
 
 2026 年 8 月 9 日那个旧样本里，研究记录确认了 103 种有效 opcode handler。这个数字只属于那个样本，不是 DataDome 的固定规格。
 
@@ -1058,19 +1064,325 @@ await probe(cloneConfigurationIntoNewSession(original))
 
 这里的 fresh 指使用当轮新挑战，而不是拿旧材料重放；interstitial 指服务端当次提供的设备检查中间页，与滑块挑战不是同一条路线。
 
-截至本文采用的 10 月 2 日记录，已经有两次独立 Node 运行在服务端当次提供的 **interstitial 设备检查路线**上完成 fresh `3/3`；输入没有使用浏览器产出的 Cookie、证明值或运行时快照。之后还发生了上文提到的移交与生产接入排查。
+在 10 月 2 日的历史记录中，已经有两次独立 Node 运行在服务端当次提供的 **interstitial 设备检查路线**上完成 fresh `3/3`；输入没有使用浏览器产出的 Cookie、证明值或运行时快照。之后还发生了上文提到的移交与生产接入排查。10 月 17 日的新一轮结果单独放在下一节，不替换这段历史。
 
 但这不等于同一时期的滑块路线已经被验证通过，也不等于 8 月旧 VM 的所有未知点都被补齐。早期旧版滑块的成功、后来的设备检查成功，是不同版本和路线的证据，不能合并成“DataDome 已经全部逆向完成”。
 
 这里有个重要区别：**用 Node 执行原始脚本并建模所需环境，和把整个算法独立重写，是两种不同成果。** 前者的服务端成功，不能替代后者尚未完成的数据流解释。
 
+## 13. 10 月 17 日续记：发现差异以后，先验证它是否阻止通过
+
+这一轮调查把前面几种证据边界串到了一起：我们找到了真实差异，补到了运行时证据，最后却没有先修改那个差异，而是用现有模型完成了两次独立 Node fresh。
+
+它提醒我，**“这处和浏览器不同”与“必须先修好这处才能通过”，是两个需要分别验证的判断。**
+
+### 一个 denied，为什么不能直接复制给 Node？
+
+10 月 16 日对历史脚本的局部分析发现，相关分支先查询麦克风权限，再查询摄像头权限，任一项为 `denied` 就提前结束；否则继续到设备枚举。Node 模型未显式声明权限时默认返回 `prompt`，再配合空设备列表，就可以解释为什么末端得到空字符串，而历史浏览器记录得到 `denied`。
+
+到这里，我们知道了**两类输出怎样产生**，却还不知道浏览器为什么被拒绝，更没有证明这个字段导致了服务端拒绝。
+
+摄像头和麦克风是否能用，不只由用户点过“允许”还是“拒绝”决定，还与页面的权限策略、是否处于安全上下文、父子 frame 关系等条件有关。若实际挑战在跨域 iframe 中执行，模型却把它当成不受限制的顶层页面，那么仅仅改一个默认字符串，可能只是掩盖了上下文缺失。
+
+因此，我们先整理了七项依据：父子页面的策略响应头、是否嵌入及父页面是否顶层、当时的 `allow` 与 `sandbox`、安全上下文。重点不在字段数量，而在于**“没采集”不能偷偷变成“没有限制”或“已经拒绝”**。
+
+例如下面这个可运行的小函数，只概括策略结果，不生成用户权限状态，也不代表 DataDome 原始算法：
+
+```js title="可运行：策略允许不等于用户授权"
+function summarizePolicy(state) {
+  if (typeof state?.allowed !== 'boolean') return 'unknown'
+  return state.allowed ? 'not-blocked-by-policy' : 'blocked-by-policy'
+}
+
+console.assert(summarizePolicy(undefined) === 'unknown')
+console.assert(summarizePolicy({ allowed: false }) === 'blocked-by-policy')
+console.assert(summarizePolicy({ allowed: true }) === 'not-blocked-by-policy')
+```
+
+这里的 `not-blocked-by-policy` 不等于用户已经 `granted`，`unknown` 也不是另一种写法的 `denied`。如果把三种情况混在一起，后面的实验即使“结果对齐”，也可能对齐了错误的原因。
+
+### REA 的静态分析与浏览器观测，分别回答什么？
+
+这一轮用 REA 读取本地保存的 JavaScript，辅助定位模块、属性和关系。它不需要往在线浏览器里插入代码，但也不会自动解开所有动态属性或 Promise 的真实返回值；局部分支解释还需要既有来源映射和隔离执行对照。
+
+静态分析能回答的是：“**如果这里收到 denied，代码会走哪条路？**”它不能凭空回答：“**浏览器当时为什么收到 denied？**”后一个问题需要当时的上下文记录。
+
+在明确允许的有限采样中，我们用自己的采集器通过 CDP（Chrome DevTools Protocol，浏览器调试协议）读取 frame 树、iframe owner 属性、有效权限策略和网络响应头。这次没有改写目标 JS，也没有开启断点或执行覆盖率，**没有调用或截获 `navigator.permissions.query()`**。
+
+实际取得的五份挑战 iframe 快照一致显示：
+
+- 挑战位于跨域 iframe，父页面是顶层文档，安全上下文为 `Secure`；
+- 实际 `allow` 只有 `accelerometer; gyroscope; magnetometer`；
+- 实际 sandbox 为 `allow-scripts allow-same-origin allow-forms`；
+- camera 与 microphone 的有效策略均为 `allowed: false`，阻止来源为 **`IframeAttribute`**。
+
+这把此前“可能缺少 iframe 委派”的解释推进到了**当前浏览器确实报告这条策略阻止**。但它依然不是目标脚本某次 query 返回值的直接日志，更不是服务端如何给这个字段赋权的证据。
+
+采集自身也不能被忽略：基线本身也连接 CDP，不是完全没有调试接口的真人对照。两份浏览器对照都通过，只说明这对会话没有出现增加观测后无法通过的现象，**不能证明采集不可检测或没有时序影响**。
+
+### 真正的下一步：不改权限模型，先跑 fresh
+
+有了这些证据，仍然不应该直接把 Node 的默认权限改成 `denied`。我们先问了一个更接近目标的问题：**当前模型现在究竟能不能完成一轮新的挑战？**
+
+中间并非一次就成功。离线预检出现过问题；一次新的浏览器复核也只有栏目和文章成功，主页仍停在挑战中，只有 `2/3`。这时 Node 没有执行，不能写成“Node 又失败了”，也不能拿更早的浏览器正样本替它通过门槛。
+
+后来，原研究出口又出现其他账号的目标流量。我们没有修改生产路由，而是选了一个当前空闲的研究出口，让新的浏览器对照和两次 Node 固定在同一节点、同一出口。浏览器在同一会话中依次验证主页、栏目、文章并重访主页，四次导航最终都通过后，才立即进入 Node fresh。
+
+Node 的两次路径都是：
+
+```text title="本轮实际验收链，而不是复制浏览器答案"
+自己的 HTTP 会话取得新的挑战 HTML 和原始 JS
+  → 隔离、无网络 executor 中的 Node 独立执行
+  → 原 HTTP 会话提交自己生成的结果
+  → 收到 HTTP 200、view=redirect 和新的候选 Cookie
+  → 同一 HTTP 会话验证主页、栏目、文章真实正文
+```
+
+| 验收项 | Node 1 | Node 2 |
+| --- | --- | --- |
+| 初始主页响应 | 401 | 401 |
+| 实际执行原始挑战 JS | 是 | 是 |
+| 提交结果 | 200 / redirect | 200 / redirect |
+| 三类真实文档 | 3/3 | 3/3 |
+| 使用浏览器 Cookie 或证明 | 否 | 否 |
+
+两次挑战 URL、生成请求和候选 Cookie 各不相同，原始 JS 没有重写；两次都不是无挑战页面的直接 Cookie 复用。浏览器参考材料**不是 Node 的答案输入**，不能因为研究阶段用了浏览器对照，就把结果误写成浏览器替 Node 完成了计算。
+
+而且，Node 自己取得了完整的新 HTML 和主脚本。之前浏览器没有完整留存的挑战正文，不必成为 fresh 一直推迟的理由；独立 Node 本来就应该自己获取当轮材料。当然，这也不能倒过来证明此前缺失的浏览器正文与 Node 下载的字节完全一样。
+
+### 这两次成功，改变了什么结论？
+
+**本轮没有修改权限模型**。因此，不能把这两次成功归功于一个没有实施的权限补丁，也不能继续坚持“只有先修权限差异才能进入 fresh”。但它不意味着此前 DOM、Canvas、GLES 等环境模型没有价值——已有实现仍然是原始脚本能执行的基础。
+
+我们现在可以说：当前模型在这轮受控条件下，完成了两次独立 interstitial 新挑战，并通过严格真实正文 `3/3`。
+
+这不代表 slider/captcha 路由也已验证，不代表完整 Chromium 等价，也不代表生产已经切到 Node-only 或长期稳定。出口、时段和脚本版本与历史失败并不完全相同，所以这次也不是证明所有旧失败原因的单因素实验。
+
+对我来说，这一轮最有用的方法变化是：**既要补证据，也要及时回到目标上验证基线。发现差异后先问它是否真的阻止结果，而不是把“所有差异清零”当成永远排在 fresh 前面的任务。**
+
 
 <Callout variant="note">
 
-以下是ai自己的总结
+以下是 ai 自己的总结
 
 </Callout>
 
+
+## 14. 10 月 17 日晚—18 日：从“研究里通过”到“生产里跑起来”
+
+第 13 节结束时，我们只证明了：当前模型在受控条件下完成了两次独立的 interstitial fresh，并通过严格 `3/3`。这仍然是一个**研究结论**。把它变成生产，还要回答另外几类问题：
+
+1. 解挑战的身份，和随后取正文的身份，是不是同一个？
+2. 线上发出的每个声明字段，会不会来自不同“人格”？
+3. 抓取器看到的世界，是否完整？
+4. 一次成功之后，失败率、恢复时间和回滚路径是什么？
+
+这一节按这四问展开。先解释几个会反复出现的词。
+
+### 14.1 先把词说清楚：browserless、身份、指纹与概率
+
+<Callout variant="note">
+
+**browserless（纯 Node）**：不是“没有网络请求”，也不是“没有浏览器语义”。它指挑战页的获取、挑战脚本的执行、结果的计算和回写都在 Node/隔离执行器中完成，不再启动 Chromium。页面仍然需要 DOM、Canvas、WebGL、权限等环境模型，只是这些模型由代码提供。
+
+**声明身份（declared identity）**：我们主动告诉服务端“我是谁”的字段，例如 User-Agent、`Sec-CH-UA`、`Sec-CH-UA-Platform`、`Sec-CH-UA-Arch`、`Sec-CH-UA-Bitness`。它们是文本，能被单独拼装，所以也最容易互相矛盾。
+
+**传输指纹（transport fingerprint）**：不写在 UA 里、但真实浏览器会稳定表现出的网络层特征，例如 TLS ClientHello 的扩展与顺序、HTTP/2 的 SETTINGS 与头字段顺序。`chrome146` 这类 impersonate profile 复现的是一套已知浏览器网络栈，它和“声明自己是 Chrome 153”不是同一层东西。
+
+**interstitial**：服务端下发的设备检查中间页。当前 runtime 能在这类页面上完成计算并换到 `view=redirect`。
+
+**hard_block**：服务端直接给出的拒绝页。Node 可能已经执行，提交也可能返回 HTTP 200，但结果是 `view=captcha`，页面里没有一条当前 runtime 能走的挑战路径。它不是本地异常，也不等于“答案算错”。
+
+**vm_slider**：另一档基于滑块的挑战路线。它有独立的 controller 和页面结构，不能和 interstitial 混为一谈；当前 runner 对它的可用类别是 0。
+
+**strict 3/3**：主页、栏目、文章三类真实文档都通过正文结构验证。HTTP 200 只说明有响应，挑战页也可以是 200。
+
+**槽位（slot）**：生产里并行的独立身份/会话单元。某个槽位被挑战或拒绝时，轮换账号与出口重试；只有所有槽位在限定时间内都不可用，整轮才会失败。
+
+**概率通道**：单次尝试成功率小于 1 的通道。一次干净通过不能证明“已经稳定”，一次失败也不能证明“已经失效”；必须看分母、时段和恢复方式。
+
+**发现 seed**：抓取器开始发现文章条目的栏目 URL。它不是全站爬虫的入口清单，而是“这次愿意看哪些版面”的边界。
+
+</Callout>
+
+这里有一个容易混淆的地方：**“声明是 Chrome 153，传输用 chrome146 profile”并不等于自相矛盾。** 前者是应用层文本，后者是网络层模仿；在模拟环境里，两者本来就是分开配置的，而且可用的传输 profile 版本往往落后于声明版本。真正要避免的，是同一个声明内部互相打架，例如 UA 说 `x86_64`，Client Hint 却说 `arm`。
+
+还要记住：下文出现的 `13,210 B`、`21.4 KB`、`24.4 KB` 是**那个时间窗口里页面族的体积指纹**，用于区分 interstitial、hard block 和 slider，不是协议常量，也不保证明天还是同样的字节数。
+
+### 14.2 第一处不一致：用 A 身份解挑战，却用 B 身份取正文
+
+先看一条最容易被忽略的链路：
+
+```text title="一次“解挑战后取文”实际经过两个阶段"
+Node 子进程：用身份 A 执行挑战 JS，提交结果，拿到候选 Cookie
+        ↓ 把 Cookie 交给 HTTP 会话
+HTTP 会话：用身份 B 请求主页、栏目、文章
+```
+
+如果 A 和 B 是同一个身份，这条链路看起来理所当然；但代码里它们可能来自两个不同的配置源。10 月 17 日切到 153 后，生产就出现了这种情况：Node 子进程用 153 描述符和 `chrome146` 传输 profile 解挑战，而 worker 自己的 document session 仍有两处写死 142——一处读取固定的 142 描述符，一处固定使用 `chrome142` 传输 profile。
+
+结果不是“挑战没解出来”，而是**挑战解出来了，随后取文却换了一副面孔**。服务端完全可以把 Cookie 与当时的 UA、Client Hints、TLS 指纹、会话和出口联系起来；同一段 Cookie 在另一副面孔下使用，可能被重新判定为需要挑战。日志上的表现是：切换后若干轮次反复出现 challenge 突发，而不是一次干净的拒绝。
+
+修复提交 `9ff1a59` 没有引入新算法，只做了两件事：
+
+- `declared_identity()` 不再读死 142，而是读当前活动的 `PROFILE`；
+- document session 的传输 profile 跟随 `TRANSPORT_PROFILE`，当前为 `chrome146`。
+
+并加了回归测试，断言“声明身份与活动 profile 一致，会话使用当前传输 profile”。部署后的三个连续轮次为 `challenge=0`、`refresh_failure=0`。样本仍然很短，不能把“三个干净轮次”写成永久结论；但这次修复的机制是可解释的：**挑战阶段和取文阶段必须使用同一套身份呈现。**
+
+这里也顺带解释一个概念：**“同一 HTTP 会话”不等于“同一个 Cookie 罐子”。** 会话至少包含 Cookie、连接复用、默认请求头、TLS 指纹和出口。只复用 Cookie，却在另一次连接里换掉 UA 和 TLS 栈，仍然可能被看成另一个客户端。
+
+### 14.3 第二处不一致：UA 说 x86_64，Client Hint 却说 arm
+
+第二处问题更底层，也更适合用来练习“什么叫确定性错误”。
+
+现代 Chromium 除了 User-Agent，还会发送一组 **Client Hints**（客户端提示）。可以把它理解成结构化版的 UA：`Sec-CH-UA` 说明品牌和主版本，`Sec-CH-UA-Platform` 说明操作系统，`Sec-CH-UA-Arch` 说明 CPU 架构，`Sec-CH-UA-Bitness` 说明 32/64 位。浏览器默认只发少量“低熵”字段；服务端通过 `Accept-CH` 请求更多“高熵”字段，浏览器再回答。
+
+问题在于：在真实浏览器里，这些值由同一个构建、同一台机器统一产生；在模拟环境里，它们却可能由不同的代码分别填写。10 月 17 日的生产宿主是 aarch64，声明描述符写的是 `X11; Linux x86_64`，而旧代码用宿主机的 `os.uname()` 推导高熵字段，于是实际发出去的是：
+
+```text title="同一份请求里不可能同时成立的两个声明"
+User-Agent:        ... X11; Linux x86_64 ... Chrome/142 ...
+sec-ch-ua-arch:    "arm"
+sec-ch-ua-bitness: "64"
+```
+
+真实的 x86_64 Linux Chrome 不会把 UA 写成 `x86_64`、却把 `sec-ch-ua-arch` 写成 `arm`。这不是“某个细节没模拟”，而是**我们自己的输出互相矛盾**。这类错误和“权限字段与浏览器不同”不一样：后者可能影响、也可能不影响结果，需要实验判断；前者是一个确定性的自相矛盾，应该先修，不需要先问服务端在不在乎。
+
+修复提交 `694733e` 把 arch/bitness 改为从**声明描述符里的 Linux 平台 token** 推导，宿主架构只做支持性校验，不再覆盖声明值：
+
+| 声明平台 token | `sec-ch-ua-arch` | `sec-ch-ua-bitness` |
+| --- | --- | --- |
+| `x86_64` | `x86` | `64` |
+| `aarch64` | `arm` | `64` |
+| `i686` | `x86` | `32` |
+
+`sec-ch-ua-platform-version` 仍然取宿主内核版本。这不是偷懒：真实 Linux Chrome 报的也是内核版本，而不是 CPU 架构；但换宿主时这个值会漂移，所以它属于“已知的、需要单独观察的变量”，不能和 arch/bitness 混在一起。
+
+下面这个可运行的小例子只演示“从声明平台推导 arch/bitness”的规则，不是 DataDome 原始代码：
+
+```js title="可运行：从声明平台推导 arch/bitness"
+function chromiumArchFromPlatform(platform) {
+  if (platform.includes('x86_64')) return { arch: 'x86', bitness: '64' }
+  if (platform.includes('aarch64')) return { arch: 'arm', bitness: '64' }
+  if (platform.includes('i686')) return { arch: 'x86', bitness: '32' }
+  return null
+}
+
+console.assert(chromiumArchFromPlatform('X11; Linux x86_64').arch === 'x86')
+console.assert(chromiumArchFromPlatform('X11; Linux aarch64').bitness === '64')
+console.assert(chromiumArchFromPlatform('X11; Linux mips64') === null)
+```
+
+最后一行同样重要：遇到没有建模的平台 token，应该明确拒绝，而不是猜一个看起来差不多的值。**“不知道”不能悄悄变成“默认 x86”。**
+
+#### 修好确定性错误，为什么还是没有通过？
+
+修复后，研究侧用 142 身份做了 C7 的 6 次独立 Node fresh：
+
+| 形态 | 次数 | 页面体积 | 结果 |
+| --- | ---: | ---: | --- |
+| `vm_slider` | 3 | 约 24.4 KB | 可用类别为 0，严格通过 0 |
+| `hard_block` | 3 | 约 21.4 KB | 未进入可执行的挑战路径 |
+| 合计 | 6 | — | 严格通过 **0/6** |
+
+随后 C8 又用同一套生产参数复测 6 次，全部是 `hard_block`，页面体积在 21,402–21,798 B 之间，仍是 **0/6**。C7 与 C8 合计 **0/12**。
+
+这组数字最能说明“修 bug”和“达到目标”不是一回事：
+
+- 修复前，142 基本只得到约 21.3 KB 的 `hard_block`；
+- 修复后，6 次里有 3 次变成约 24.4 KB 的 `vm_slider`，说明服务端分类确实变了，arch 矛盾不是无关字段；
+- 但 `vm_slider` 是另一条当前 runner 不会走的路线，所以严格通过仍然是 0。
+
+换句话说：**去掉一个确定性矛盾，只是把“明显不可能”变成了“下一个可研究的问题”。** 它不自动带来通过。142 因此只保留研究和回滚用途，生产 route 换成 153；而 153 也不是确定性身份，下面会看到它的概率性。
+
+### 14.4 第三处边界：取文成功，不等于发现完整
+
+前三节都在谈“能不能取到正文”。还有一个完全不同的问题：**我们知不知道自己漏了哪些文章？**
+
+抓取器通常不是从首页递归爬完整站点，而是从一组 **discovery seed**（发现种子）开始：先读这些栏目页的 listing，抽取文章链接，再逐篇取正文。seed 决定了“愿意看哪些版面”，也就决定了发现范围。
+
+当时 Reuters 的 seed 有 10 个，覆盖 home、china、us、business、technology、asia-pacific、europe、israel-hamas、ukraine-russia-war、americas，但缺少 `/world/`。这不是一个小遗漏：`/world/` 下有一些通用条目并不出现在上述栏目路径里，于是它们对抓取器来说等于不存在。
+
+提交 `0a481dc` 增加了一个 seed：
+
+```json title="新增的发现边界（示意）"
+{ "url": "https://www.reuters.com/world/", "tags": ["world"] }
+```
+
+seed 从 10 个变成 11 个。首轮 listing 的 `discovered_count` 为 234，合并后新增 6 篇，随后又新增 1 篇。这里要区分三件事：
+
+- **发现（discovery）**：listing 里有没有这条链接；
+- **取文（fetch）**：能不能拿到并通过严格正文验证；
+- **入库（save）**：拿到之后有没有真的写入。
+
+`strict 3/3` 只验证三个已知 URL 的正文，不能证明发现完整；反过来，`new_count=0` 也不一定是“没有新闻”，可能只是“我们没去看那个栏目”。**没有发现，不是没有发生。** 这类覆盖缺口不会报错，只会安静地少文章，所以它比一次显式的 403 更容易被忽略。
+
+### 14.5 上线以后看什么：把“过没过”换成“以多大概率、多久恢复”
+
+2026-10-17 18:11 UTC，生产 worker 切到 `WORKER_BROWSER_MODE=browserless`。容器内不再有 chrome/chromium/playwright/Xvfb 进程，Reuters 的挑战执行和取文都走 Node。切换当时，第一个槽位仍然先拿到一次约 21.6 KB 的 `hard_block`；第 2、3 个槽位先后以 13,210 B 的 interstitial 通过，`strict=3`，轮次恢复。这个细节很重要：**上线成功不等于第一次尝试就成功。**
+
+把 2026-10-17 19:33 UTC 到 2026-10-18 02:12 UTC 的一段只读日志窗口拿出来看：
+
+| 指标 | 观察值 | 怎么读 |
+| --- | ---: | --- |
+| Reuters 轮次 | 76 | 约每 5–6 分钟一轮 |
+| 新增并入库 | 16 篇 | 吞吐量，不是通过率 |
+| 出现 challenge 的轮次 | 30 / 76 | 其余 46 轮为 0 |
+| challenge 事件总数 | 143 | 一轮内可能多次，不能当轮次数 |
+| 单轮 challenge 分布 | 0×46，3×1，4×24，8×4，12×1 | 4 次最常见，通常对应三个槽位加一次重试 |
+
+在这段窗口里：
+
+- 每次突发都靠**槽位轮换 + `node_challenge` 重试**恢复，常见恢复形态是 13,210 B interstitial、`strict=3`；
+- 恢复时间大约在 30 秒到 1.5 分钟；
+- 没有出现“所有 Reuters 身份槽位在 120 秒内都不可用”的整轮崩溃；
+- 新增文章的“发现 → 取文 → 入库”链路实际跑通过，不只是 recheck 旧文章。
+
+但这不是“已经稳定”的证明。研究侧对 153 的估计是 8/10；生产切换后的第一个槽位仍先吃了 `hard_block`；上面的 76 轮也只是**一个出口池、一个时段、一个脚本版本**的样本。153 是**概率通道**：它能用，但需要轮换、重试和监控，不能写成“永久通过”。
+
+还要学会读健康检查。同期另一个新闻源 FT 每约 7 分钟返回一次 `HTTP 403`，worker 因此被标成 `unhealthy`；但 Reuters 轮次仍在这段时间正常完成。**健康检查是聚合信号，不是单一来源的诊断。** 看到红色时，先问“哪个探针失败”，不要直接推断“整个 worker 挂了”，也不要把 FT 的问题算到 browserless 改动头上。
+
+### 14.6 为什么“改一个环境变量”不等于切换
+
+这次切换还暴露了一个很常见的部署误区：把**构建期配置**当成**运行期开关**。
+
+`WORKER_BROWSER_MODE` 不只是容器启动时读一下的变量，它还决定构建哪个镜像变体。镜像里的 entrypoint 会比较“运行环境声明的模式”和“镜像构建时的模式”；两者不一致时，进程会以退出码 64 结束。因此：
+
+```bash title="切换与回滚都要重建，不是 restart"
+# 切到纯 Node（示意；真实配置里不要放任何凭据）
+WORKER_BROWSER_MODE=browserless
+docker compose up -d --build worker
+
+# 回滚到浏览器模式
+WORKER_BROWSER_MODE=browser
+docker compose up -d --build worker
+```
+
+`docker compose restart` 只会重启现有容器，不会重新构建镜像，也不会改变构建目标。看到“配置已经改了，但容器里的行为没变”，第一反应应该是检查**实际镜像变体和容器内环境**，而不是继续在代码里找。
+
+另一个容易误判的点是：某个名字里带 `ENABLED` 的布尔值，不一定是总闸。某些模式下，代码会直接按模式放行，根本不再看那个开关。判断“是否真的启用”，要看容器内实际模式、镜像变体和运行日志，不能只看一个变量。
+
+### 14.7 这一节改变了什么结论
+
+可以把这一轮的工作分成三类，而不是混成一句“搞定了”：
+
+| 类型 | 例子 | 结论 |
+| --- | --- | --- |
+| 确定性错误 | UA 说 x86_64，Client Hint 说 arm；挑战与取文身份不一致 | 必须修，修完也不保证通过 |
+| 覆盖缺口 | 缺少 `/world/` seed | 修完只改变“能发现什么”，与反爬判定无关 |
+| 概率性结果 | 153 的通过率、challenge 突发与恢复 | 只能统计和监控，不能写成永久稳定 |
+
+现在可以比较准确地说：
+
+- 生产 Reuters worker 自 2026-10-17 18:11 UTC 起运行在 browserless 模式，容器内没有浏览器进程；
+- 142 身份在 arch 修复后仍是 0/12，只保留研究和回滚用途；
+- 153 是当前生产 route，但它是概率通道，研究估计 8/10，生产依赖槽位轮换与重试；
+- 新增文章的发现、取文、入库链路已经实际跑通，但样本仍短；
+- slider/captcha 路线、其他出口、其他账号、未来脚本版本和长期稳定性，仍然没有被这一轮证明。
+
+最重要的方法变化是：**先给差异分类，再决定要不要修、修完怎么验收。** 自相矛盾的声明是确定性错误；没建模的细节是需要实验的差异；身份一致但仍被拒绝，是概率和出口问题。把这三类混在一起，就会得到两种错误结论——“修了一个字段所以全好了”，或者“还有一个字段不同所以肯定不行”。
+
+第 13 节说的是“发现差异后，先验证它是否阻止通过”。这一节补上后半句：**如果差异是我们自己输出里的不可能组合，就先修；修完仍然不通过，就承认还有下一层原因，并用有分母的实验继续测。**
 
 ## 如果从头再做一次，我会怎样开始？
 
@@ -1091,11 +1403,11 @@ DataDome 只是这次的案例。真正可以带走的方法，是把一个巨�
 
 ## 资料与证据边界
 
-本文中的实验事实来自项目研究记录；其中的历史章节必须按章节日期阅读，不能当作今天的在线结果。以下项目链接固定到整理时的仓库版本：
+本文中的实验事实来自项目研究记录；历史章节必须按章节日期阅读，不能当作今天的在线结果。第 13 节依据独立 DataDome Lab 中 2026-10-17 的浏览器观测、门槛失败和 Node fresh 验收记录；第 14 节依据当晚至 18 日的生产切换记录、142/153 身份差分与 C7/C8 复测。两节都只公开脱敏方法与结论，不公开原始样本、Cookie、账号、出口、代理凭据或可复用证明；生产日志与实验目录仍保存在私有仓库，本文不额外给出会失效的私有链接。下列早期项目链接仍固定到原整理版本，不冒充新增实验的公开复现包：
 
 <Callout variant="warning">
 
-私有repo不公开
+私有 repo 不公开
 
 </Callout>
 
@@ -1105,6 +1417,8 @@ DataDome 只是这次的案例。真正可以带走的方法，是把一个巨�
 - [10 月 1 日请求停留阶段记录](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-browserless-check-stage-2026-10-01.md)：请求事件、响应与代理隧道的证据区别。
 - [10 月初环境接口修复](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-browserless-interfaces-2026-10-01.md)、[XML 接口修复](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-browserless-xml-2026-10-01.md)、[WebGL 修复及限制](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-browserless-webgl-controls-2026-10-01.md)：区分模型已修复与服务端已接受。
 - [10 月 2 日策略复盘](https://github.com/xingpingcn/newsjoin/blob/45d303d395fedb2b8a5b63bc95b5b28ad127e49d/docs/reuters-browserless-strategy-change-2026-10-02.md)：已有环境模型与当轮成功之间的证据边界。
+- [10 月 17 日使用的模型代码基线](https://github.com/xingpingcn/datadome-lab/tree/cad69c449a5cdacad3bbd65c051704f5830d8ac7)：固定模型提交，不包含私有原始实验材料；研究成功不表示该快照已部署生产。
+- [Chrome DevTools Protocol：有效权限策略](https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-getPermissionsPolicyState)、[MDN：Permissions API](https://developer.mozilla.org/en-US/docs/Web/API/Permissions_API)：区分策略限制、权限查询与用户授权。
 - [Node.js：VM 文档](https://nodejs.org/api/vm.html)：执行上下文与安全边界。
 - [MDN：Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number)、[Number.isNaN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isNaN)：数值转换与检查的区别。
 - [MDN：charCodeAt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/charCodeAt)、[Math.imul](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul)、[btoa](https://developer.mozilla.org/en-US/docs/Web/API/Window/btoa)：独立复算时容易遗漏的语言语义。
