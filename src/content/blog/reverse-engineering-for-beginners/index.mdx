@@ -1319,7 +1319,7 @@ seed 从 10 个变成 11 个。首轮 listing 的 `discovered_count` 为 234，�
 
 ### 14.5 上线以后看什么：把“过没过”换成“以多大概率、多久恢复”
 
-2026-10-17 18:11 UTC，生产 worker 切到 `WORKER_BROWSER_MODE=browserless`。容器内不再有 chrome/chromium/playwright/Xvfb 进程，Reuters 的挑战执行和取文都走 Node。切换当时，第一个槽位仍然先拿到一次约 21.6 KB 的 `hard_block`；第 2、3 个槽位先后以 13,210 B 的 interstitial 通过，`strict=3`，轮次恢复。这个细节很重要：**上线成功不等于第一次尝试就成功。**
+2026-10-17 18:11 UTC，生产 worker 切到 `WORKER_BROWSER_MODE=browserless`。容器内不再有 chrome/chromium/playwright/Xvfb 进程，Reuters 的挑战执行和取文都走 Node。切换当时，第一个槽位仍然先拿到一次约 21.6 KB 的 `hard_block`；随后三个槽位先后以 13,210 B 的 interstitial 通过，`strict=3`，轮次恢复。这个细节很重要：**上线成功不等于第一次尝试就成功。**
 
 把 2026-10-17 19:33 UTC 到 2026-10-18 02:12 UTC 的一段只读日志窗口拿出来看：
 
@@ -1333,8 +1333,8 @@ seed 从 10 个变成 11 个。首轮 listing 的 `discovered_count` 为 234，�
 
 在这段窗口里：
 
-- 这段窗口里的突发，恢复形态是**槽位轮换 + `node_challenge` 重试**，常见结果是 13,210 B interstitial、`strict=3`；
-- 恢复时间大约在 30 秒到 1.5 分钟；
+- 突发恢复形态是**槽位轮换 + `node_challenge` 重试**，常见结果是 13,210 B interstitial、`strict=3`；
+- 恢复时间大约是几十秒到一两分钟；
 - 没有出现“所有 Reuters 身份槽位在 120 秒内都不可用”的整轮崩溃；
 - 新增文章的“发现 → 取文 → 入库”链路实际跑通过，不只是 recheck 旧文章。
 
