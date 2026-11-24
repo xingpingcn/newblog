@@ -4,6 +4,7 @@ import ThemeToggle from '@/components/theme-toggle.astro'
 import { buttonVariants } from '@/components/ui/button'
 import { NAV_LINKS } from '@/consts'
 import { Icon } from 'astro-icon/components'
+import { getEntry } from 'astro:content'
 
 const navIconMap: Record<string, string> = {
   首页: 'lucide:home',
@@ -22,8 +23,13 @@ const primaryNavLinks = NAV_LINKS.filter(
 const secondaryNavLinks = NAV_LINKS.filter((item) =>
   secondaryNavLabels.has(item.label),
 )
-const logoCdnRoot =
-  'https://cdn.jsdmirror.com/gh/xingpingcn/picx-images-hosting@master/optimized/newblog/logo'
+// Reuse the About profile's published image instead of missing logo variants.
+const siteAuthor = await getEntry('authors', 'xingpingcn')
+if (!siteAuthor) {
+  throw new Error(
+    'Site author "xingpingcn" is missing from the authors collection',
+  )
+}
 ---
 
 <site-header-motion class="site-header-motion">
@@ -43,9 +49,7 @@ const logoCdnRoot =
       })}
     >
       <img
-        src={`${logoCdnRoot}/5beaa005-96.webp`}
-        srcset={`${logoCdnRoot}/5beaa005-64.webp 64w, ${logoCdnRoot}/5beaa005-96.webp 96w`}
-        sizes="32px"
+        src={siteAuthor.data.avatar}
         alt="Logo"
         width="32"
         height="32"

@@ -16,7 +16,6 @@ function findImage(html, alt) {
 
 test('serves home cover variants directly from jsdmirror', async () => {
   const homePage = await readDistPage('index.html')
-  const logo = findImage(homePage, 'Logo')
   const firstCover = findImage(
     homePage,
     '提升部署在 cloudflare、vercel 或 netlify 的网站在中国国内的访问速度和稳定性',
@@ -34,10 +33,33 @@ test('serves home cover variants directly from jsdmirror', async () => {
     /sizes="\(min-width: 640px\) 16rem, calc\(100vw - 2rem\)"/,
   )
   assert.doesNotMatch(firstCover, /\/_astro\//)
-  assert.match(logo, new RegExp(`${cdnRoot}/logo/5beaa005-96\\.webp`))
-  assert.match(logo, new RegExp(`${cdnRoot}/logo/5beaa005-64\\.webp 64w`))
-  assert.match(logo, /sizes="32px"/)
-  assert.doesNotMatch(logo, /\/_astro\//)
+})
+
+test('shares the published About avatar for the header logo on every page', async () => {
+  const aboutPage = await readDistPage('about/index.html')
+  const avatar = findImage(aboutPage, 'Avatar of 邢平cn')
+  const avatarSrc = avatar.match(/\bsrc="([^"]+)"/)?.[1]
+
+  assert.ok(avatarSrc, 'the About profile must have an image source')
+  assert.match(avatarSrc, new RegExp(`^${cdnRoot}/avatar/`))
+
+  for (const path of [
+    'index.html',
+    'about/index.html',
+    'enhanced-faas-in-cn/index.html',
+  ]) {
+    const logo = findImage(await readDistPage(path), 'Logo')
+    const logoSrc = logo.match(/\bsrc="([^"]+)"/)?.[1]
+
+    assert.equal(logoSrc, avatarSrc, `${path} should reuse the About image`)
+    assert.match(logo, /width="32"/)
+    assert.match(logo, /height="32"/)
+    assert.match(logo, /loading="eager"/)
+    assert.doesNotMatch(
+      logo,
+      /\b(?:srcset|sizes)=|optimized\/newblog\/logo|\/_astro\//,
+    )
+  }
 })
 
 test('serves article covers and the author avatar directly from jsdmirror', async () => {
