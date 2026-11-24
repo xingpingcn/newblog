@@ -83,6 +83,8 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: var(--accent);
+  --navigation-progress-color: oklch(0.488 0.243 264.376);
+  --navigation-progress-highlight: oklch(0.546 0.245 262.881);
   --search-highlight: oklch(0.88 0.19 95);
   --search-highlight-foreground: oklch(0.2 0.03 70);
 }
@@ -100,6 +102,12 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: var(--accent);
+  --navigation-progress-color: var(--accent);
+  --navigation-progress-highlight: color-mix(
+    in oklab,
+    var(--accent) 55%,
+    var(--background)
+  );
   --search-highlight: oklch(0.72 0.17 95);
   --search-highlight-foreground: oklch(0.18 0.03 70);
 }
@@ -162,10 +170,11 @@
   transform-origin: left center;
   background: linear-gradient(
     90deg,
-    var(--accent),
-    color-mix(in oklab, var(--accent) 55%, var(--background))
+    var(--navigation-progress-color),
+    var(--navigation-progress-highlight)
   );
-  box-shadow: 0 0 16px color-mix(in oklab, var(--accent) 32%, transparent);
+  box-shadow: 0 0 16px
+    color-mix(in oklab, var(--navigation-progress-color) 32%, transparent);
 }
 
 .site-navigation-progress[data-state='loading'] {
